@@ -1,23 +1,26 @@
-//--------------------------------------------------------------------------------------
-// CombinedUVVS.hlsl
-//--------------------------------------------------------------------------------------
-struct PS_INPUT
-{
-	float4 Pos : SV_POSITION;
-	float2 Tex : TEXCOORD;
+struct VertTexPosWide {
+	float3 uuv : TEXCOORD;
+	float4 pos : SV_POSITION;
 };
 
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
-PS_INPUT VS(uint vI : SV_VERTEXID)
+VertTexPosWide VS(uint vI : SV_VERTEXID)
 {
-	PS_INPUT output = (PS_INPUT)0;
+	float width_i = 1.0f / 1920.0f;
+	float idHigh = float(vI >> 1);
+	float idLow = float(vI & uint(1));
 
-	float2 texcoord = float2(vI & 1, vI >> 1);
+	float x = idHigh * 4.0 - 1.0;
+	float y = idLow * 4.0 - 1.0;
 
-	output.Pos = float4((texcoord.x - 0.5f) * 2.0f, -(texcoord.y + 0.0f) * 0.5f, 0.0f, 1.0f);
-	output.Tex = texcoord;
+	float u_right = idHigh * 2.0;
+	float u_left = u_right - width_i;
+	float v = 1.0 - idLow * 2.0;
 
-	return output;
+	VertTexPosWide vert_out;
+	vert_out.uuv = float3(u_left, u_right, v);
+	vert_out.pos = float4(x, y, 0.0, 1.0);
+	return vert_out;
 }
