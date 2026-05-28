@@ -70,7 +70,50 @@ namespace {
   constexpr std::uint32_t TEMPORARY_DISPLAY_NAME_CHARS = sunshine_driver::kDisplayNameChars;
 }  // namespace
 
-namespace VDISPLAY {
+namespace VDISPLAY_SUNSHINE {
+  using VDISPLAY::DRIVER_STATUS;
+  using VDISPLAY::VirtualDisplayCreationResult;
+  using VDISPLAY::VirtualDisplayInfo;
+  using VDISPLAY::VirtualDisplayRecoveryParams;
+  using VDISPLAY::ensure_display_result;
+  inline constexpr const char *VIRTUAL_DISPLAY_SELECTION = VDISPLAY::VIRTUAL_DISPLAY_SELECTION;
+
+  void closeVDisplayDevice();
+  DRIVER_STATUS openVDisplayDevice();
+  bool ensure_driver_is_ready();
+  bool startPingThread(std::function<void()> failCb);
+  void setWatchdogFeedingEnabled(bool enable);
+  bool setRenderAdapterByName(const std::wstring &adapterName);
+  bool setRenderAdapterWithMostDedicatedMemory();
+  void ensureVirtualDisplayRegistryDefaults();
+  std::optional<VirtualDisplayCreationResult> createVirtualDisplay(
+    const char *s_client_uid,
+    const char *s_client_name,
+    const char *s_hdr_profile,
+    uint32_t width,
+    uint32_t height,
+    uint32_t fps,
+    const GUID &guid,
+    uint32_t base_fps_millihz = 0,
+    bool framegen_refresh_active = false,
+    bool hdr_requested = false,
+    bool allow_pending_enumeration = false
+  );
+  bool removeVirtualDisplay(const GUID &guid);
+  bool removeAllVirtualDisplays();
+  std::optional<std::string> resolveVirtualDisplayDeviceId(const std::wstring &display_name);
+  std::optional<std::string> resolveVirtualDisplayDeviceIdForClient(const std::string &client_name);
+  std::optional<std::string> resolveAnyVirtualDisplayDeviceId();
+  bool is_virtual_display_selection(const std::string &output_identifier);
+  bool isVirtualDisplayDriverInstalled();
+  std::vector<VirtualDisplayInfo> enumerateVirtualDisplays();
+  uuid_util::uuid_t persistentVirtualDisplayUuid();
+  bool has_active_physical_display();
+  bool should_auto_enable_virtual_display();
+  bool has_retained_ensure_display();
+  ensure_display_result ensure_display();
+  void cleanup_ensure_display(const ensure_display_result &result, bool probe_succeeded, bool allow_temporary_teardown = true);
+
   enum class RestartCooldownBehavior {
     skip,
     wait,
@@ -703,14 +746,14 @@ namespace VDISPLAY {
     /**
      * @brief Check if a device is stuck in the disabled state (CM_PROB_DISABLED, code 22).
      *
-     * This can happen when a previous DICS_DISABLE→DICS_ENABLE cycle fails at the
+     * This can happen when a previous DICS_DISABLE -> DICS_ENABLE cycle fails at the
      * DICS_ENABLE step, leaving the device disabled with no automatic recovery.
      */
     bool is_device_disabled(const std::wstring &instance_id) {
       DEVINST dev_inst = 0;
       CONFIGRET cr = CM_Locate_DevNodeW(&dev_inst, const_cast<DEVINSTID_W>(instance_id.c_str()), CM_LOCATE_DEVNODE_NORMAL);
       if (cr != CR_SUCCESS) {
-        // Device not found via normal lookup — try phantom (device may be disabled and not enumerated)
+        // Device not found via normal lookup; try phantom because the device may be disabled and not enumerated.
         cr = CM_Locate_DevNodeW(&dev_inst, const_cast<DEVINSTID_W>(instance_id.c_str()), CM_LOCATE_DEVNODE_PHANTOM);
         if (cr != CR_SUCCESS) {
           return false;
@@ -4102,7 +4145,7 @@ namespace VDISPLAY {
     for (const auto &guid : all_guids) {
       GUID native_guid = uuid_to_guid(guid);
       BOOST_LOG(debug) << "Removing virtual display with GUID " << guid.string();
-      if (!VDISPLAY::removeVirtualDisplay(native_guid)) {
+      if (!VDISPLAY_SUNSHINE::removeVirtualDisplay(native_guid)) {
         all_removed = false;
       }
     }
@@ -4512,9 +4555,9 @@ namespace VDISPLAY {
   }
 
   // END ISOLATED DISPLAY METHODS
-}  // namespace VDISPLAY
+}  // namespace VDISPLAY_SUNSHINE
 
-bool VDISPLAY::has_active_physical_display() {
+bool VDISPLAY_SUNSHINE::has_active_physical_display() {
   auto devices = platf::display_helper::Coordinator::instance().enumerate_devices(display_device::DeviceEnumerationDetail::Minimal);
   BOOST_LOG(debug) << "Enumerated devices count: " << (devices ? devices->size() : 0);
   if (!devices) {
@@ -4537,7 +4580,7 @@ bool VDISPLAY::has_active_physical_display() {
   return false;
 }
 
-bool VDISPLAY::should_auto_enable_virtual_display() {
+bool VDISPLAY_SUNSHINE::should_auto_enable_virtual_display() {
   if (!isVirtualDisplayDriverInstalled()) {
     BOOST_LOG(warning) << "Virtual display driver not available, not enabling virtual display.";
     return false;
@@ -4551,11 +4594,11 @@ bool VDISPLAY::should_auto_enable_virtual_display() {
   return true;
 }
 
-uuid_util::uuid_t VDISPLAY::persistentVirtualDisplayUuid() {
+uuid_util::uuid_t VDISPLAY_SUNSHINE::persistentVirtualDisplayUuid() {
   return ensure_persistent_guid();
 }
 
-VDISPLAY::ensure_display_result VDISPLAY::ensure_display() {
+VDISPLAY_SUNSHINE::ensure_display_result VDISPLAY_SUNSHINE::ensure_display() {
   ensure_display_result result {false, false, false, {}};
 
   if (has_active_physical_display()) {
@@ -4663,7 +4706,7 @@ VDISPLAY::ensure_display_result VDISPLAY::ensure_display() {
   return result;
 }
 
-void VDISPLAY::cleanup_ensure_display(const ensure_display_result &result, bool probe_succeeded, bool allow_temporary_teardown) {
+void VDISPLAY_SUNSHINE::cleanup_ensure_display(const ensure_display_result &result, bool probe_succeeded, bool allow_temporary_teardown) {
   if (!result.tracks_temporary_for_probe) {
     return;
   }
@@ -4723,7 +4766,7 @@ void VDISPLAY::cleanup_ensure_display(const ensure_display_result &result, bool 
   }
 }
 
-bool VDISPLAY::has_retained_ensure_display() {
+bool VDISPLAY_SUNSHINE::has_retained_ensure_display() {
   std::lock_guard<std::mutex> lock(g_ensure_display_state_mutex);
   if (!g_ensure_display_retained) {
     return false;
