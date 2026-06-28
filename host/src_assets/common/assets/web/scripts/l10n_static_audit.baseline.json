@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-28T16:06:34.885Z",
-  "issueCount": 16371,
+  "generatedAt": "2026-06-28T16:20:30.018Z",
+  "issueCount": 16165,
   "issues": [
     {
       "fingerprint": "fallback-literal|configs/configSelectOptions.ts|100||config.address_family_both|Both||",
@@ -2056,7 +2056,7 @@
       "message": "Hard-coded message text should use i18n: Update failed"
     },
     {
-      "fingerprint": "hardcoded-ui-prop|components/app-edit/AppEditConfigOverridesSection.vue|1354|||Configure Resolution||",
+      "fingerprint": "hardcoded-ui-prop|components/app-edit/AppEditConfigOverridesSection.vue|1353|||Configure Resolution||",
       "rule": "hardcoded-ui-prop",
       "file": "components/app-edit/AppEditConfigOverridesSection.vue",
       "locale": null,
@@ -2065,7 +2065,7 @@
       "message": "Hard-coded UI property \"label\" should use i18n: Configure Resolution"
     },
     {
-      "fingerprint": "hardcoded-ui-prop|components/app-edit/AppEditConfigOverridesSection.vue|1366|||Configure Refresh Rate||",
+      "fingerprint": "hardcoded-ui-prop|components/app-edit/AppEditConfigOverridesSection.vue|1365|||Configure Refresh Rate||",
       "rule": "hardcoded-ui-prop",
       "file": "components/app-edit/AppEditConfigOverridesSection.vue",
       "locale": null,
@@ -2074,7 +2074,7 @@
       "message": "Hard-coded UI property \"label\" should use i18n: Configure Refresh Rate"
     },
     {
-      "fingerprint": "hardcoded-ui-prop|components/app-edit/AppEditConfigOverridesSection.vue|1378|||Configure HDR||",
+      "fingerprint": "hardcoded-ui-prop|components/app-edit/AppEditConfigOverridesSection.vue|1377|||Configure HDR||",
       "rule": "hardcoded-ui-prop",
       "file": "components/app-edit/AppEditConfigOverridesSection.vue",
       "locale": null,
@@ -2344,7 +2344,7 @@
       "message": "Hard-coded UI property \"description\" should use i18n: Report bugs or request features"
     },
     {
-      "fingerprint": "hardcoded-ui-prop|stores/config.ts|742|||Invalid manual resolution. Use WIDTHxHEIGHT (e.g., 2560x1440).||",
+      "fingerprint": "hardcoded-ui-prop|stores/config.ts|740|||Invalid manual resolution. Use WIDTHxHEIGHT (e.g., 2560x1440).||",
       "rule": "hardcoded-ui-prop",
       "file": "stores/config.ts",
       "locale": null,
@@ -2353,7 +2353,7 @@
       "message": "Hard-coded UI property \"message\" should use i18n: Invalid manual resolution. Use WIDTHxHEIGHT (e.g., 2560x1440)."
     },
     {
-      "fingerprint": "hardcoded-ui-prop|stores/config.ts|761|||Invalid manual refresh rate. Use a positive number, e.g., 60 or 59.94.||",
+      "fingerprint": "hardcoded-ui-prop|stores/config.ts|759|||Invalid manual refresh rate. Use a positive number, e.g., 60 or 59.94.||",
       "rule": "hardcoded-ui-prop",
       "file": "stores/config.ts",
       "locale": null,
@@ -2362,7 +2362,7 @@
       "message": "Hard-coded UI property \"message\" should use i18n: Invalid manual refresh rate. Use a positive number, e.g., 60 or 59.94."
     },
     {
-      "fingerprint": "hardcoded-ui-prop|stores/config.ts|788|||Invalid resolution in Display mode remapping. Use WIDTHxHEIGHT (e.g., 1920x1080) or leave blank.||",
+      "fingerprint": "hardcoded-ui-prop|stores/config.ts|786|||Invalid resolution in Display mode remapping. Use WIDTHxHEIGHT (e.g., 1920x1080) or leave blank.||",
       "rule": "hardcoded-ui-prop",
       "file": "stores/config.ts",
       "locale": null,
@@ -2371,7 +2371,7 @@
       "message": "Hard-coded UI property \"message\" should use i18n: Invalid resolution in Display mode remapping. Use WIDTHxHEIGHT (e.g., 1920x1080) or leave blank."
     },
     {
-      "fingerprint": "hardcoded-ui-prop|stores/config.ts|803|||Invalid refresh rate in remapping. Use a positive number or leave blank.||",
+      "fingerprint": "hardcoded-ui-prop|stores/config.ts|801|||Invalid refresh rate in remapping. Use a positive number or leave blank.||",
       "rule": "hardcoded-ui-prop",
       "file": "stores/config.ts",
       "locale": null,
@@ -2380,7 +2380,7 @@
       "message": "Hard-coded UI property \"message\" should use i18n: Invalid refresh rate in remapping. Use a positive number or leave blank."
     },
     {
-      "fingerprint": "hardcoded-ui-prop|stores/config.ts|810|||For refresh-rate-only mappings, Final refresh rate is required.||",
+      "fingerprint": "hardcoded-ui-prop|stores/config.ts|808|||For refresh-rate-only mappings, Final refresh rate is required.||",
       "rule": "hardcoded-ui-prop",
       "file": "stores/config.ts",
       "locale": null,
@@ -2389,7 +2389,7 @@
       "message": "Hard-coded UI property \"message\" should use i18n: For refresh-rate-only mappings, Final refresh rate is required."
     },
     {
-      "fingerprint": "hardcoded-ui-prop|stores/config.ts|821|||Invalid refresh rate in remapping. Use a positive number or leave blank.||",
+      "fingerprint": "hardcoded-ui-prop|stores/config.ts|819|||Invalid refresh rate in remapping. Use a positive number or leave blank.||",
       "rule": "hardcoded-ui-prop",
       "file": "stores/config.ts",
       "locale": null,
@@ -2398,7 +2398,7 @@
       "message": "Hard-coded UI property \"message\" should use i18n: Invalid refresh rate in remapping. Use a positive number or leave blank."
     },
     {
-      "fingerprint": "hardcoded-ui-prop|stores/config.ts|831|||For mixed mappings, specify at least one Final field.||",
+      "fingerprint": "hardcoded-ui-prop|stores/config.ts|829|||For mixed mappings, specify at least one Final field.||",
       "rule": "hardcoded-ui-prop",
       "file": "stores/config.ts",
       "locale": null,
@@ -2407,7 +2407,7 @@
       "message": "Hard-coded UI property \"message\" should use i18n: For mixed mappings, specify at least one Final field."
     },
     {
-      "fingerprint": "hardcoded-ui-prop|stores/config.ts|845|||For resolution-only mappings, Final resolution is required.||",
+      "fingerprint": "hardcoded-ui-prop|stores/config.ts|843|||For resolution-only mappings, Final resolution is required.||",
       "rule": "hardcoded-ui-prop",
       "file": "stores/config.ts",
       "locale": null,
@@ -2477,195 +2477,6 @@
       "key": null,
       "value": "Failed to terminate session.",
       "message": "Hard-coded UI property \"message\" should use i18n: Failed to terminate session."
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/bg.json||bg|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "bg.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/cs.json||cs|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/cs.json",
-      "locale": "cs",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "cs.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/de.json||de|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "de.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/en_GB.json||en_GB|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/en_GB.json",
-      "locale": "en_GB",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "en_GB.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/en_US.json||en_US|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/en_US.json",
-      "locale": "en_US",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "en_US.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/es.json||es|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "es.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/fr.json||fr|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "fr.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/hu.json||hu|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "hu.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/it.json||it|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "it.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/ja.json||ja|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "ja.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/ko.json||ko|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "ko.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/pl.json||pl|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "pl.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/pt_BR.json||pt_BR|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "pt_BR.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/pt.json||pt|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "pt.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/ru.json||ru|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "ru.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/sv.json||sv|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "sv.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/tr.json||tr|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "tr.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/uk.json||uk|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "uk.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/vi.json||vi|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "vi.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/zh_TW.json||zh_TW|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "zh_TW.json has stale extra key config.vibeshine_file_state"
-    },
-    {
-      "fingerprint": "locale-extra-key|public/assets/locale/zh.json||zh|config.vibeshine_file_state|||",
-      "rule": "locale-extra-key",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "config.vibeshine_file_state",
-      "value": null,
-      "message": "zh.json has stale extra key config.vibeshine_file_state"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|_comment|Fallback strings copied from English until translated.||",
@@ -6160,24 +5971,6 @@
       "message": "bg.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "bg.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "bg.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/bg.json",
@@ -6196,15 +5989,6 @@
       "message": "bg.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "bg.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/bg.json",
@@ -6221,15 +6005,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "bg.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "bg.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.rtssPath|RTSS install path||",
@@ -6437,15 +6212,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "bg.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "bg.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -8680,33 +8446,6 @@
       "message": "bg.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "bg.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "bg.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "bg.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/bg.json",
@@ -8714,24 +8453,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "bg.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "bg.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/bg.json",
-      "locale": "bg",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "bg.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/bg.json||bg|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -11380,15 +11101,6 @@
       "message": "cs.json value is identical to English at config.output_name_desc_macos"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/cs.json||cs|config.physical_display_framegen_warning|Physical displays cannot capture DLSS/FSR generated frames. If you use DLSS/FSR frame generation with an RTSS frame limiter on a physical screen, latency can increase by 50 ms or more. Without suitable frame pacing, it may micro-stutter or judder. Use a virtual display for low-latency, smooth capture.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/cs.json",
-      "locale": "cs",
-      "key": "config.physical_display_framegen_warning",
-      "value": "Physical displays cannot capture DLSS/FSR generated frames. If you use DLSS/FSR frame generation with an RTSS frame limiter on a physical screen, latency can increase by 50 ms or more. Without suitable frame pacing, it may micro-stutter or judder. Use a virtual display for low-latency, smooth capture.",
-      "message": "cs.json value is identical to English at config.physical_display_framegen_warning"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/cs.json||cs|config.server_cmd_desc|Commands that authorized clients can run on the host.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/cs.json",
@@ -11666,24 +11378,6 @@
       "key": "featured.github",
       "value": "GitHub Repository",
       "message": "cs.json value is identical to English at featured.github"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/cs.json||cs|frameLimiter.autoVirtualFramegenHint|When a virtual-display WGC stream uses frame generation, Vibepollo runs the display at 4x refresh and applies a matching FPS cap for pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/cs.json",
-      "locale": "cs",
-      "key": "frameLimiter.autoVirtualFramegenHint",
-      "value": "When a virtual-display WGC stream uses frame generation, Vibepollo runs the display at 4x refresh and applies a matching FPS cap for pacing.",
-      "message": "cs.json value is identical to English at frameLimiter.autoVirtualFramegenHint"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/cs.json||cs|frameLimiter.autoVirtualFramegenLabel|Auto-limit virtual frame generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/cs.json",
-      "locale": "cs",
-      "key": "frameLimiter.autoVirtualFramegenLabel",
-      "value": "Auto-limit virtual frame generation",
-      "message": "cs.json value is identical to English at frameLimiter.autoVirtualFramegenLabel"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/cs.json||cs|frameLimiter.rtssPathPlaceholder|C:\\Program Files (x86)\\RivaTuner Statistics Server||",
@@ -17113,24 +16807,6 @@
       "message": "de.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "de.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "de.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/de.json",
@@ -17149,15 +16825,6 @@
       "message": "de.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "de.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/de.json",
@@ -17174,15 +16841,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "de.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "de.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.rtssPath|RTSS install path||",
@@ -17390,15 +17048,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "de.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "de.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -19651,33 +19300,6 @@
       "message": "de.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "de.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "de.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "de.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/de.json",
@@ -19685,24 +19307,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "de.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "de.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/de.json",
-      "locale": "de",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "de.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/de.json||de|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -25024,24 +24628,6 @@
       "message": "es.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "es.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "es.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/es.json",
@@ -25060,15 +24646,6 @@
       "message": "es.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "es.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/es.json",
@@ -25085,15 +24662,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "es.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "es.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.rtssPath|RTSS install path||",
@@ -25301,15 +24869,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "es.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "es.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -27544,33 +27103,6 @@
       "message": "es.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "es.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "es.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "es.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/es.json",
@@ -27578,24 +27110,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "es.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "es.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/es.json",
-      "locale": "es",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "es.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/es.json||es|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -32908,24 +32422,6 @@
       "message": "fr.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "fr.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "fr.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/fr.json",
@@ -32944,15 +32440,6 @@
       "message": "fr.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "fr.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/fr.json",
@@ -32969,15 +32456,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "fr.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "fr.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.rtssPath|RTSS install path||",
@@ -33185,15 +32663,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "fr.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "fr.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -35428,33 +34897,6 @@
       "message": "fr.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "fr.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "fr.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "fr.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/fr.json",
@@ -35462,24 +34904,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "fr.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "fr.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/fr.json",
-      "locale": "fr",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "fr.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/fr.json||fr|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -39397,15 +38821,6 @@
       "message": "hu.json value is identical to English at config.dd_pre_stream_setup"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|config.dd_refresh_rate_option_manual_desc|⚠️ Enforcing a manual refresh rate forces the host to this refresh for all streams, overriding any refresh rules below and the \"Double refresh rate for virtual displays\" option.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "config.dd_refresh_rate_option_manual_desc",
-      "value": "⚠️ Enforcing a manual refresh rate forces the host to this refresh for all streams, overriding any refresh rules below and the \"Double refresh rate for virtual displays\" option.",
-      "message": "hu.json value is identical to English at config.dd_refresh_rate_option_manual_desc"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|config.dd_resolution_option_manual_desc|⚠️ Enforcing a manual resolution disables all display overrides below. The host will always be set to this resolution regardless of any override rules.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/hu.json",
@@ -40693,24 +40108,6 @@
       "message": "hu.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "hu.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "hu.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/hu.json",
@@ -40729,15 +40126,6 @@
       "message": "hu.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "hu.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/hu.json",
@@ -40754,15 +40142,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "hu.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "hu.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.rtssPath|RTSS install path||",
@@ -40970,15 +40349,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "hu.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "hu.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -43231,33 +42601,6 @@
       "message": "hu.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "hu.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "hu.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "hu.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/hu.json",
@@ -43265,24 +42608,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "hu.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "hu.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/hu.json",
-      "locale": "hu",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "hu.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/hu.json||hu|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -48622,24 +47947,6 @@
       "message": "it.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "it.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "it.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/it.json",
@@ -48658,15 +47965,6 @@
       "message": "it.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "it.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/it.json",
@@ -48683,15 +47981,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "it.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "it.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.rtssPath|RTSS install path||",
@@ -48899,15 +48188,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "it.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "it.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -51142,33 +50422,6 @@
       "message": "it.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "it.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "it.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "it.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/it.json",
@@ -51176,24 +50429,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "it.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "it.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/it.json",
-      "locale": "it",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "it.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/it.json||it|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -56533,24 +55768,6 @@
       "message": "ja.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "ja.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "ja.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ja.json",
@@ -56569,15 +55786,6 @@
       "message": "ja.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "ja.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ja.json",
@@ -56594,15 +55802,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "ja.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "ja.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.rtssPath|RTSS install path||",
@@ -56810,15 +56009,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "ja.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "ja.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -59062,33 +58252,6 @@
       "message": "ja.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "ja.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "ja.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "ja.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ja.json",
@@ -59096,24 +58259,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "ja.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "ja.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ja.json",
-      "locale": "ja",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "ja.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ja.json||ja|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -64408,24 +63553,6 @@
       "message": "ko.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "ko.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "ko.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ko.json",
@@ -64444,15 +63571,6 @@
       "message": "ko.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "ko.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ko.json",
@@ -64469,15 +63587,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "ko.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "ko.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.rtssPath|RTSS install path||",
@@ -64685,15 +63794,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "ko.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "ko.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -66928,33 +66028,6 @@
       "message": "ko.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "ko.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "ko.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "ko.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ko.json",
@@ -66962,24 +66035,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "ko.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "ko.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ko.json",
-      "locale": "ko",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "ko.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ko.json||ko|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -72211,24 +71266,6 @@
       "message": "pl.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "pl.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "pl.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pl.json",
@@ -72247,15 +71284,6 @@
       "message": "pl.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "pl.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pl.json",
@@ -72272,15 +71300,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "pl.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "pl.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.rtssPath|RTSS install path||",
@@ -72488,15 +71507,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "pl.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "pl.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -74731,33 +73741,6 @@
       "message": "pl.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "pl.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "pl.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "pl.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pl.json",
@@ -74765,24 +73748,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "pl.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "pl.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pl.json",
-      "locale": "pl",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "pl.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pl.json||pl|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -80095,24 +79060,6 @@
       "message": "pt_BR.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "pt_BR.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "pt_BR.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pt_BR.json",
@@ -80131,15 +79078,6 @@
       "message": "pt_BR.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "pt_BR.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pt_BR.json",
@@ -80156,15 +79094,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "pt_BR.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "pt_BR.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.rtssPath|RTSS install path||",
@@ -80372,15 +79301,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "pt_BR.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "pt_BR.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -82615,33 +81535,6 @@
       "message": "pt_BR.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "pt_BR.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "pt_BR.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "pt_BR.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pt_BR.json",
@@ -82649,24 +81542,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "pt_BR.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "pt_BR.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt_BR.json",
-      "locale": "pt_BR",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "pt_BR.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt_BR.json||pt_BR|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -88006,24 +86881,6 @@
       "message": "pt.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "pt.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "pt.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pt.json",
@@ -88042,15 +86899,6 @@
       "message": "pt.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "pt.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pt.json",
@@ -88067,15 +86915,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "pt.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "pt.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.rtssPath|RTSS install path||",
@@ -88283,15 +87122,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "pt.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "pt.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -90544,33 +89374,6 @@
       "message": "pt.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "pt.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "pt.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "pt.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/pt.json",
@@ -90578,24 +89381,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "pt.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "pt.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/pt.json",
-      "locale": "pt",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "pt.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/pt.json||pt|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -95899,24 +94684,6 @@
       "message": "ru.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "ru.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "ru.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ru.json",
@@ -95935,15 +94702,6 @@
       "message": "ru.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "ru.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ru.json",
@@ -95960,15 +94718,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "ru.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "ru.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.rtssPath|RTSS install path||",
@@ -96176,15 +94925,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "ru.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "ru.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -98428,33 +97168,6 @@
       "message": "ru.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "ru.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "ru.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "ru.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/ru.json",
@@ -98462,24 +97175,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "ru.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "ru.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/ru.json",
-      "locale": "ru",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "ru.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/ru.json||ru|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -103864,24 +102559,6 @@
       "message": "sv.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "sv.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "sv.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/sv.json",
@@ -103900,15 +102577,6 @@
       "message": "sv.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "sv.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/sv.json",
@@ -103925,15 +102593,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "sv.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "sv.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.rtssPath|RTSS install path||",
@@ -104141,15 +102800,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "sv.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "sv.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -106402,33 +105052,6 @@
       "message": "sv.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "sv.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "sv.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "sv.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/sv.json",
@@ -106436,24 +105059,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "sv.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "sv.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/sv.json",
-      "locale": "sv",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "sv.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/sv.json||sv|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -111721,24 +110326,6 @@
       "message": "tr.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "tr.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "tr.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/tr.json",
@@ -111757,15 +110344,6 @@
       "message": "tr.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "tr.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/tr.json",
@@ -111782,15 +110360,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "tr.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "tr.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.rtssPath|RTSS install path||",
@@ -111998,15 +110567,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "tr.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "tr.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -114241,33 +112801,6 @@
       "message": "tr.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "tr.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "tr.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "tr.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/tr.json",
@@ -114275,24 +112808,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "tr.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "tr.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/tr.json",
-      "locale": "tr",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "tr.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/tr.json||tr|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -119587,24 +118102,6 @@
       "message": "uk.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "uk.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "uk.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/uk.json",
@@ -119623,15 +118120,6 @@
       "message": "uk.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "uk.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/uk.json",
@@ -119648,15 +118136,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "uk.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "uk.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.rtssPath|RTSS install path||",
@@ -119864,15 +118343,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "uk.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "uk.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -122107,33 +120577,6 @@
       "message": "uk.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "uk.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "uk.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "uk.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/uk.json",
@@ -122141,24 +120584,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "uk.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "uk.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/uk.json",
-      "locale": "uk",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "uk.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/uk.json||uk|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -126076,15 +124501,6 @@
       "message": "vi.json value is identical to English at config.dd_pre_stream_setup"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|config.dd_refresh_rate_option_manual_desc|⚠️ Enforcing a manual refresh rate forces the host to this refresh for all streams, overriding any refresh rules below and the \"Double refresh rate for virtual displays\" option.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "config.dd_refresh_rate_option_manual_desc",
-      "value": "⚠️ Enforcing a manual refresh rate forces the host to this refresh for all streams, overriding any refresh rules below and the \"Double refresh rate for virtual displays\" option.",
-      "message": "vi.json value is identical to English at config.dd_refresh_rate_option_manual_desc"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|config.dd_resolution_option_manual_desc|⚠️ Enforcing a manual resolution disables all display overrides below. The host will always be set to this resolution regardless of any override rules.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/vi.json",
@@ -127372,24 +125788,6 @@
       "message": "vi.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "vi.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "vi.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/vi.json",
@@ -127408,15 +125806,6 @@
       "message": "vi.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "vi.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/vi.json",
@@ -127433,15 +125822,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "vi.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "vi.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.rtssPath|RTSS install path||",
@@ -127649,15 +126029,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "vi.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "vi.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -129892,33 +128263,6 @@
       "message": "vi.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "vi.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "vi.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "vi.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/vi.json",
@@ -129926,24 +128270,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "vi.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "vi.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/vi.json",
-      "locale": "vi",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "vi.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/vi.json||vi|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -135184,24 +133510,6 @@
       "message": "zh_TW.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "zh_TW.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "zh_TW.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/zh_TW.json",
@@ -135220,15 +133528,6 @@
       "message": "zh_TW.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "zh_TW.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/zh_TW.json",
@@ -135245,15 +133544,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "zh_TW.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "zh_TW.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.rtssPath|RTSS install path||",
@@ -135461,15 +133751,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "zh_TW.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "zh_TW.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -137704,33 +135985,6 @@
       "message": "zh_TW.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "zh_TW.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "zh_TW.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "zh_TW.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/zh_TW.json",
@@ -137738,24 +135992,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "zh_TW.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "zh_TW.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh_TW.json",
-      "locale": "zh_TW",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "zh_TW.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh_TW.json||zh_TW|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
@@ -143068,24 +141304,6 @@
       "message": "zh.json value is identical to English at frameLimiter.limitLabel"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.noticeCopy|RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "frameLimiter.noticeCopy",
-      "value": "RTSS offers the most stable frame pacing. Vibepollo will use it automatically when available; NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.",
-      "message": "zh.json value is identical to English at frameLimiter.noticeCopy"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.noticeTitle|RTSS recommended||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "frameLimiter.noticeTitle",
-      "value": "RTSS recommended",
-      "message": "zh.json value is identical to English at frameLimiter.noticeTitle"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.provider.auto|Auto (prefer RTSS)||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/zh.json",
@@ -143104,15 +141322,6 @@
       "message": "zh.json value is identical to English at frameLimiter.provider.nvcp"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.provider.rtss|RTSS (recommended)||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "frameLimiter.provider.rtss",
-      "value": "RTSS (recommended)",
-      "message": "zh.json value is identical to English at frameLimiter.provider.rtss"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.providerHint|Auto prefers RTSS whenever it is available and falls back to the NVIDIA Control Panel limiter if needed. NVIDIA's limiter is not recommended because it cannot guarantee perfect frame pacing.||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/zh.json",
@@ -143129,15 +141338,6 @@
       "key": "frameLimiter.providerLabel",
       "value": "Limiter provider",
       "message": "zh.json value is identical to English at frameLimiter.providerLabel"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.rtssMissing|RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "frameLimiter.rtssMissing",
-      "value": "RTSS was not detected. Install RTSS or adjust the install path to use it as a limiter.",
-      "message": "zh.json value is identical to English at frameLimiter.rtssMissing"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.rtssPath|RTSS install path||",
@@ -143345,15 +141545,6 @@
       "key": "frameLimiter.syncLimiter.reflex",
       "value": "NVIDIA Reflex",
       "message": "zh.json value is identical to English at frameLimiter.syncLimiter.reflex"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.syncLimiterHint|Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "frameLimiter.syncLimiterHint",
-      "value": "Optional: adjust RTSS SyncLimiter when Vibepollo uses RTSS to limit framerate.",
-      "message": "zh.json value is identical to English at frameLimiter.syncLimiterHint"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|frameLimiter.syncLimiterLabel|RTSS SyncLimiter mode||",
@@ -145588,33 +143779,6 @@
       "message": "zh.json value is identical to English at rtss.sync_limiter_mode"
     },
     {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|rtss.sync_limiter_reflex_advantages|Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "rtss.sync_limiter_reflex_advantages",
-      "value": "Can reduce latency in Reflex-optimized titles; integrates with DLSS 3 Frame Generation",
-      "message": "zh.json value is identical to English at rtss.sync_limiter_reflex_advantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|rtss.sync_limiter_reflex_disadvantages|Requires explicit game support; inconsistent behavior; microstutter issues are common||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "rtss.sync_limiter_reflex_disadvantages",
-      "value": "Requires explicit game support; inconsistent behavior; microstutter issues are common",
-      "message": "zh.json value is identical to English at rtss.sync_limiter_reflex_disadvantages"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|rtss.sync_limiter_reflex_latency|Variable; depends on driver and game||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "rtss.sync_limiter_reflex_latency",
-      "value": "Variable; depends on driver and game",
-      "message": "zh.json value is identical to English at rtss.sync_limiter_reflex_latency"
-    },
-    {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|rtss.sync_limiter_reflex_short|NVIDIA Reflex||",
       "rule": "locale-untranslated-value",
       "file": "public/assets/locale/zh.json",
@@ -145622,24 +143786,6 @@
       "key": "rtss.sync_limiter_reflex_short",
       "value": "NVIDIA Reflex",
       "message": "zh.json value is identical to English at rtss.sync_limiter_reflex_short"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|rtss.sync_limiter_reflex_stutter|Often unreliable; may introduce microstutter if the game is not optimized||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "rtss.sync_limiter_reflex_stutter",
-      "value": "Often unreliable; may introduce microstutter if the game is not optimized",
-      "message": "zh.json value is identical to English at rtss.sync_limiter_reflex_stutter"
-    },
-    {
-      "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|rtss.sync_limiter_reflex_use|Only worth testing when Reflex is properly supported and tuned||",
-      "rule": "locale-untranslated-value",
-      "file": "public/assets/locale/zh.json",
-      "locale": "zh",
-      "key": "rtss.sync_limiter_reflex_use",
-      "value": "Only worth testing when Reflex is properly supported and tuned",
-      "message": "zh.json value is identical to English at rtss.sync_limiter_reflex_use"
     },
     {
       "fingerprint": "locale-untranslated-value|public/assets/locale/zh.json||zh|rtss.sync_limiter_reflex|NVIDIA Reflex (may cause microstuttering)||",
