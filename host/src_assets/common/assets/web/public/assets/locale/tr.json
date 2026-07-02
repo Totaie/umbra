@@ -227,7 +227,13 @@
       "health_suggestion_capture": "Kare üretiminin kararlı kalması için Yakalama -> Yöntem ayarını Windows Graphics Capture olarak ayarlayın.",
       "health_suggestion_target": "Vibepollo sanal ekranına geçmek için yukarıdaki ekran geçersiz kılmasını kullanın veya {fps} FPS akışlarının akıcı kalması için Ekran Aygıtı Adım 1'i sanal ekranı hedefleyecek şekilde yapılandırın.",
       "health_run_error": "Kare üretimi sağlık denetimi çalıştırılamadı.",
-      "health_devices_error": "Ekran aygıtları yüklenemedi"
+      "health_devices_error": "Ekran aygıtları yüklenemedi",
+      "lossless_win10_warning": "Bu ana makine Windows 10 çalıştırıyor. Lossless Scaling kare üretimi Windows 10'da çalışmaz — Windows 11 gereklidir.",
+      "req_os_label": "Windows 11 (önerilir)",
+      "health_os_win11": "Windows 11 algılandı. Kare üretimi bu Windows sürümünde tam olarak desteklenir.",
+      "health_os_win10": "Windows 10 algılandı. Kare üretimi Windows 10'da sorun yaşar — Windows 11 önerilir.",
+      "health_os_win10_lossless": "Windows 10 algılandı. Lossless Scaling kare üretimi Windows 10'da çalışmaz — Windows 11 gereklidir.",
+      "health_os_unknown": "Windows sürümü belirlenemedi."
     }
   },
   "config": {
@@ -592,10 +598,10 @@
     "dd_virtual_display_choice_virtual": "Use virtualized display",
     "dd_virtual_display_choice_physical": "Use my own display",
     "virtual_display_mode_disabled": "Use Physical Display",
-    "virtual_display_mode_per_client": "Virtual Display (Per Client)",
+    "virtual_display_mode_per_client": "Sanal Ekran (İstemci Başına) — Önerilir",
     "virtual_display_mode_shared": "Shared Virtual Display",
     "virtual_display_mode_label": "Virtual display mode",
-    "virtual_display_mode_step_hint": "Select which display Vibepollo should prepare: keep your physical monitor, create a per-client virtual display, or reuse a shared virtual screen.",
+    "virtual_display_mode_step_hint": "Vibepollo'ın hangi ekranı hazırlayacağını seçin: fiziksel monitörünüzü koruyun, istemci başına bir sanal ekran oluşturun veya paylaşılan bir sanal ekranı yeniden kullanın. Sanal ekran önerilen varsayılandır — Vibepollo'ı fiziksel monitörün çözünürlük ve yenileme hızı sınırlarından kurtarır.",
     "dd_use_sunshine_virtual_display_driver": "SudoVDA kullan",
     "dd_use_sunshine_virtual_display_driver_desc": "Sanal ekranlar için SudoVDA'ya geri dönün. Vibepollo Ekran Sürücüsü yüklü kalır ve bu seçenek temizlenerek geri yüklenebilir.",
     "virtual_display_hdr_tip": "HDR Tip: Run Windows HDR Calibration while streaming and save the profile. Then open the Clients tab and click HDR Color Profile for the client to choose the saved profile.",
@@ -785,7 +791,11 @@
     "realtime_stats_show_active_sessions": "Etkin Oturumlar Kartını Göster",
     "realtime_stats_show_host_stats": "Ana Makine İstatistikleri Kartını Göster",
     "realtime_stats_show_host_charts": "Geçmiş Grafikleri Kartını Göster",
-    "realtime_stats_show_session_history": "Oturum Geçmişi Kartını Göster"
+    "realtime_stats_show_session_history": "Oturum Geçmişi Kartını Göster",
+    "virtual_display_driver_label": "Sanal Ekran Sürücüsü",
+    "virtual_display_driver_desc": "Vibepollo Ekran Sürücüsü, sanal ekranlar için önerilen varsayılandır. Yalnızca önceki sürücüye ihtiyacınız varsa SudoVDA'yı (eski) seçin — her ikisi de yüklü kalır, böylece istediğiniz zaman geri dönebilirsiniz.",
+    "virtual_display_driver_vibeshine_option": "Vibepollo Ekran Sürücüsü (önerilen, varsayılan)",
+    "virtual_display_driver_sudovda_option": "SudoVDA (eski)"
   },
   "index": {
     "description": "Vibepollo, Moonlight için kendi kendine barındırılan bir oyun akışı sunucusudur.",

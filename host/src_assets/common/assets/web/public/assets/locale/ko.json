@@ -227,7 +227,13 @@
       "health_suggestion_capture": "프레임 생성이 안정적으로 유지되도록 캡처 -> 방식을 Windows Graphics Capture로 설정하세요.",
       "health_suggestion_target": "위의 디스플레이 재정의를 사용하여 Vibepollo 가상 디스플레이로 전환하거나, {fps} FPS 스트림이 매끄럽게 유지되도록 Display Device Step 1을 가상 디스플레이를 대상으로 구성하세요.",
       "health_run_error": "프레임 생성 상태 점검을 실행할 수 없습니다.",
-      "health_devices_error": "디스플레이 장치를 불러오지 못했습니다"
+      "health_devices_error": "디스플레이 장치를 불러오지 못했습니다",
+      "lossless_win10_warning": "이 호스트는 Windows 10에서 실행 중입니다. Lossless Scaling 프레임 생성은 Windows 10에서 작동하지 않습니다 — Windows 11이 필요합니다.",
+      "req_os_label": "Windows 11 (권장)",
+      "health_os_win11": "Windows 11이 감지되었습니다. 이 Windows 버전에서는 프레임 생성이 완전히 지원됩니다.",
+      "health_os_win10": "Windows 10이 감지되었습니다. Windows 10에서는 프레임 생성에 문제가 발생합니다 — Windows 11을 권장합니다.",
+      "health_os_win10_lossless": "Windows 10이 감지되었습니다. Lossless Scaling 프레임 생성은 Windows 10에서 작동하지 않습니다 — Windows 11이 필요합니다.",
+      "health_os_unknown": "Windows 버전을 확인할 수 없습니다."
     }
   },
   "config": {
@@ -580,10 +586,10 @@
     "dd_virtual_display_choice_virtual": "Use virtualized display",
     "dd_virtual_display_choice_physical": "Use my own display",
     "virtual_display_mode_disabled": "Use Physical Display",
-    "virtual_display_mode_per_client": "Virtual Display (Per Client)",
+    "virtual_display_mode_per_client": "가상 디스플레이 (클라이언트별) — 권장",
     "virtual_display_mode_shared": "Shared Virtual Display",
     "virtual_display_mode_label": "Virtual display mode",
-    "virtual_display_mode_step_hint": "Select which display Vibepollo should prepare: keep your physical monitor, create a per-client virtual display, or reuse a shared virtual screen.",
+    "virtual_display_mode_step_hint": "Vibepollo가 준비할 디스플레이를 선택하세요: 물리 모니터 유지, 클라이언트별 가상 디스플레이 생성, 또는 공유 가상 화면 재사용. 가상 디스플레이가 권장 기본값입니다 — 물리 모니터의 해상도와 주사율 제한에서 Vibepollo을 자유롭게 합니다.",
     "dd_use_sunshine_virtual_display_driver": "SudoVDA 사용",
     "dd_use_sunshine_virtual_display_driver_desc": "가상 디스플레이에 SudoVDA를 다시 사용합니다. Vibepollo 디스플레이 드라이버는 설치된 상태로 유지되며, 이 옵션을 해제하면 복원할 수 있습니다.",
     "virtual_display_hdr_tip": "HDR Tip: Run Windows HDR Calibration while streaming and save the profile. Then open the Clients tab and click HDR Color Profile for the client to choose the saved profile.",
@@ -785,7 +791,11 @@
     "realtime_stats_show_active_sessions": "활성 세션 카드 표시",
     "realtime_stats_show_host_stats": "호스트 통계 카드 표시",
     "realtime_stats_show_host_charts": "기록 차트 카드 표시",
-    "realtime_stats_show_session_history": "세션 기록 카드 표시"
+    "realtime_stats_show_session_history": "세션 기록 카드 표시",
+    "virtual_display_driver_label": "가상 디스플레이 드라이버",
+    "virtual_display_driver_desc": "Vibepollo 디스플레이 드라이버는 가상 디스플레이에 권장되는 기본 드라이버입니다. 이전 드라이버가 필요한 경우에만 SudoVDA(레거시)를 선택하세요 — 둘 다 설치된 상태로 유지되므로 언제든지 다시 전환할 수 있습니다.",
+    "virtual_display_driver_vibeshine_option": "Vibepollo 디스플레이 드라이버 (권장, 기본값)",
+    "virtual_display_driver_sudovda_option": "SudoVDA (레거시)"
   },
   "index": {
     "description": "Vibepollo은 Moonlight의 게임 스트리밍 프로그램입니다.",

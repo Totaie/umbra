@@ -227,7 +227,13 @@
       "health_suggestion_capture": "將「擷取 -> 方式」設為 Windows Graphics Capture，使畫面生成保持穩定。",
       "health_suggestion_target": "請使用上方的顯示器覆寫切換至 Vibepollo 虛擬顯示器，或設定「顯示裝置步驟 1」以鎖定虛擬顯示器，讓 {fps} FPS 串流保持流暢。",
       "health_run_error": "無法執行畫面生成健康檢查。",
-      "health_devices_error": "載入顯示裝置失敗"
+      "health_devices_error": "載入顯示裝置失敗",
+      "lossless_win10_warning": "此主機執行的是 Windows 10。Lossless Scaling 畫格生成在 Windows 10 上無法運作——需要 Windows 11。",
+      "req_os_label": "Windows 11（建議）",
+      "health_os_win11": "偵測到 Windows 11。此 Windows 版本完全支援畫格生成。",
+      "health_os_win10": "偵測到 Windows 10。畫格生成在 Windows 10 上會出現問題——建議使用 Windows 11。",
+      "health_os_win10_lossless": "偵測到 Windows 10。Lossless Scaling 畫格生成在 Windows 10 上無法運作——需要 Windows 11。",
+      "health_os_unknown": "無法判斷 Windows 版本。"
     }
   },
   "config": {
@@ -593,10 +599,10 @@
     "dd_virtual_display_choice_virtual": "Use virtualized display",
     "dd_virtual_display_choice_physical": "Use my own display",
     "virtual_display_mode_disabled": "Use Physical Display",
-    "virtual_display_mode_per_client": "Virtual Display (Per Client)",
+    "virtual_display_mode_per_client": "虛擬顯示器（依用戶端）（建議）",
     "virtual_display_mode_shared": "Shared Virtual Display",
     "virtual_display_mode_label": "Virtual display mode",
-    "virtual_display_mode_step_hint": "Select which display Vibepollo should prepare: keep your physical monitor, create a per-client virtual display, or reuse a shared virtual screen.",
+    "virtual_display_mode_step_hint": "選擇 Vibepollo 應準備哪一個顯示器：保留您的實體顯示器、為每個用戶端建立虛擬顯示器，或重複使用共用的虛擬畫面。 虛擬顯示器是建議的預設選項——它讓 Vibepollo 不受實體顯示器解析度與更新率的限制。",
     "dd_use_sunshine_virtual_display_driver": "使用 SudoVDA",
     "dd_use_sunshine_virtual_display_driver_desc": "切換回 SudoVDA 用於虛擬顯示器。Vibepollo 顯示驅動程式仍會保持安裝，清除此選項即可恢復使用。",
     "virtual_display_hdr_tip": "HDR Tip: Run Windows HDR Calibration while streaming and save the profile. Then open the Clients tab and click HDR Color Profile for the client to choose the saved profile.",
@@ -785,7 +791,11 @@
     "realtime_stats_show_active_sessions": "顯示作用中工作階段卡片",
     "realtime_stats_show_host_stats": "顯示主機統計資料卡片",
     "realtime_stats_show_host_charts": "顯示歷程圖表卡片",
-    "realtime_stats_show_session_history": "顯示工作階段歷程卡片"
+    "realtime_stats_show_session_history": "顯示工作階段歷程卡片",
+    "virtual_display_driver_label": "虛擬顯示器驅動程式",
+    "virtual_display_driver_desc": "Vibepollo 顯示驅動程式是虛擬顯示器的建議預設值。僅在需要舊驅動程式時才選擇 SudoVDA（舊版）——兩者都會保持安裝，可隨時切換回來。",
+    "virtual_display_driver_vibeshine_option": "Vibepollo 顯示驅動程式（建議，預設）",
+    "virtual_display_driver_sudovda_option": "SudoVDA（舊版）"
   },
   "index": {
     "description": "Vibepollo 是 Moonlight 的自架遊戲串流主機。",

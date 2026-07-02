@@ -227,7 +227,13 @@
       "health_suggestion_capture": "Configura Captura -> Método como Windows Graphics Capture para que la generación de fotogramas se mantenga estable.",
       "health_suggestion_target": "Usa la anulación de pantalla de arriba para cambiar a la pantalla virtual de Vibepollo o configura el Paso 1 de Dispositivo de pantalla para apuntar a la pantalla virtual y así mantener fluidas las transmisiones de {fps} FPS.",
       "health_run_error": "No se puede ejecutar la comprobación de estado de la generación de fotogramas.",
-      "health_devices_error": "Error al cargar los dispositivos de pantalla"
+      "health_devices_error": "Error al cargar los dispositivos de pantalla",
+      "lossless_win10_warning": "Este equipo usa Windows 10. La generación de fotogramas de Lossless Scaling no funcionará en Windows 10 — se requiere Windows 11.",
+      "req_os_label": "Windows 11 (recomendado)",
+      "health_os_win11": "Windows 11 detectado. La generación de fotogramas es totalmente compatible con esta versión de Windows.",
+      "health_os_win10": "Windows 10 detectado. La generación de fotogramas tendrá problemas en Windows 10 — se recomienda Windows 11.",
+      "health_os_win10_lossless": "Windows 10 detectado. La generación de fotogramas de Lossless Scaling no funcionará en Windows 10 — se requiere Windows 11.",
+      "health_os_unknown": "No se pudo determinar la versión de Windows."
     }
   },
   "config": {
@@ -582,10 +588,10 @@
     "dd_virtual_display_choice_virtual": "Use virtualized display",
     "dd_virtual_display_choice_physical": "Use my own display",
     "virtual_display_mode_disabled": "Use Physical Display",
-    "virtual_display_mode_per_client": "Virtual Display (Per Client)",
+    "virtual_display_mode_per_client": "Pantalla virtual (por cliente) — Recomendado",
     "virtual_display_mode_shared": "Shared Virtual Display",
     "virtual_display_mode_label": "Virtual display mode",
-    "virtual_display_mode_step_hint": "Select which display Vibepollo should prepare: keep your physical monitor, create a per-client virtual display, or reuse a shared virtual screen.",
+    "virtual_display_mode_step_hint": "Selecciona qué pantalla debe preparar Vibepollo: mantener tu monitor físico, crear una pantalla virtual por cliente o reutilizar una pantalla virtual compartida. Una pantalla virtual es la opción predeterminada recomendada — libera a Vibepollo de los límites de resolución y frecuencia de actualización del monitor físico.",
     "dd_use_sunshine_virtual_display_driver": "Usar SudoVDA",
     "dd_use_sunshine_virtual_display_driver_desc": "Vuelve a SudoVDA para las pantallas virtuales. El controlador de pantalla de Vibepollo permanece instalado y puede restaurarse desmarcando esta opción.",
     "virtual_display_hdr_tip": "HDR Tip: Run Windows HDR Calibration while streaming and save the profile. Then open the Clients tab and click HDR Color Profile for the client to choose the saved profile.",
@@ -785,7 +791,11 @@
     "realtime_stats_show_active_sessions": "Mostrar tarjeta de sesiones activas",
     "realtime_stats_show_host_stats": "Mostrar tarjeta de estad?sticas del host",
     "realtime_stats_show_host_charts": "Mostrar tarjeta de gr?ficos del historial",
-    "realtime_stats_show_session_history": "Mostrar tarjeta de historial de sesiones"
+    "realtime_stats_show_session_history": "Mostrar tarjeta de historial de sesiones",
+    "virtual_display_driver_label": "Controlador de pantalla virtual",
+    "virtual_display_driver_desc": "El controlador de pantalla de Vibepollo es el predeterminado recomendado para pantallas virtuales. Selecciona SudoVDA (heredado) solo si necesitas el controlador anterior — ambos permanecen instalados, así que puedes volver a cambiar en cualquier momento.",
+    "virtual_display_driver_vibeshine_option": "Controlador de pantalla de Vibepollo (recomendado, predeterminado)",
+    "virtual_display_driver_sudovda_option": "SudoVDA (heredado)"
   },
   "index": {
     "description": "Vibepollo es un servidor de transmisión de juego autoalojado para Moonlight.",

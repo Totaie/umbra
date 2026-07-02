@@ -227,7 +227,13 @@
       "health_suggestion_capture": "Встановіть Захоплення -> Метод на Windows Graphics Capture, щоб генерація кадрів залишалася стабільною.",
       "health_suggestion_target": "Скористайтеся перевизначенням дисплея вище, щоб перемкнутися на віртуальний дисплей Vibepollo, або налаштуйте Крок 1 пристрою дисплея на цільовий віртуальний дисплей, щоб стріми {fps} FPS залишалися плавними.",
       "health_run_error": "Не вдалося запустити перевірку стану генерації кадрів.",
-      "health_devices_error": "Не вдалося завантажити пристрої дисплея"
+      "health_devices_error": "Не вдалося завантажити пристрої дисплея",
+      "lossless_win10_warning": "Цей хост працює під керуванням Windows 10. Генерація кадрів Lossless Scaling не працюватиме у Windows 10 — потрібна Windows 11.",
+      "req_os_label": "Windows 11 (рекомендовано)",
+      "health_os_win11": "Виявлено Windows 11. Генерація кадрів повністю підтримується в цій версії Windows.",
+      "health_os_win10": "Виявлено Windows 10. Генерація кадрів матиме проблеми у Windows 10 — рекомендовано Windows 11.",
+      "health_os_win10_lossless": "Виявлено Windows 10. Генерація кадрів Lossless Scaling не працюватиме у Windows 10 — потрібна Windows 11.",
+      "health_os_unknown": "Не вдалося визначити версію Windows."
     }
   },
   "config": {
@@ -580,10 +586,10 @@
     "dd_virtual_display_choice_virtual": "Use virtualized display",
     "dd_virtual_display_choice_physical": "Use my own display",
     "virtual_display_mode_disabled": "Use Physical Display",
-    "virtual_display_mode_per_client": "Virtual Display (Per Client)",
+    "virtual_display_mode_per_client": "Віртуальний дисплей (на клієнта) — рекомендовано",
     "virtual_display_mode_shared": "Shared Virtual Display",
     "virtual_display_mode_label": "Virtual display mode",
-    "virtual_display_mode_step_hint": "Select which display Vibepollo should prepare: keep your physical monitor, create a per-client virtual display, or reuse a shared virtual screen.",
+    "virtual_display_mode_step_hint": "Виберіть, який дисплей має підготувати Vibepollo: зберегти ваш фізичний монітор, створити віртуальний дисплей для кожного клієнта або повторно використати спільний віртуальний екран. Віртуальний дисплей — рекомендований варіант за замовчуванням: він звільняє Vibepollo від обмежень роздільної здатності та частоти оновлення фізичного монітора.",
     "dd_use_sunshine_virtual_display_driver": "Використовувати SudoVDA",
     "dd_use_sunshine_virtual_display_driver_desc": "Переключитися назад на SudoVDA для віртуальних дисплеїв. Драйвер дисплея Vibepollo залишиться встановленим, і його можна відновити, знявши цей прапорець.",
     "virtual_display_hdr_tip": "HDR Tip: Run Windows HDR Calibration while streaming and save the profile. Then open the Clients tab and click HDR Color Profile for the client to choose the saved profile.",
@@ -785,7 +791,11 @@
     "realtime_stats_show_active_sessions": "Показувати картку активних сеансів",
     "realtime_stats_show_host_stats": "Показувати картку статистики хоста",
     "realtime_stats_show_host_charts": "Показувати картку графіків історії",
-    "realtime_stats_show_session_history": "Показувати картку історії сеансів"
+    "realtime_stats_show_session_history": "Показувати картку історії сеансів",
+    "virtual_display_driver_label": "Драйвер віртуального дисплея",
+    "virtual_display_driver_desc": "Драйвер дисплея Vibepollo — рекомендований драйвер за замовчуванням для віртуальних дисплеїв. Обирайте SudoVDA (застарілий) лише якщо вам потрібен попередній драйвер — обидва залишаються встановленими, тож ви можете повернутися будь-коли.",
+    "virtual_display_driver_vibeshine_option": "Драйвер дисплея Vibepollo (рекомендовано, за замовчуванням)",
+    "virtual_display_driver_sudovda_option": "SudoVDA (застарілий)"
   },
   "index": {
     "description": "Vibepollo - це самостійний ігровий стримінговий хостинг для Moonlight.",

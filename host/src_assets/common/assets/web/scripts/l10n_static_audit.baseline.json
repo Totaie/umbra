@@ -1867,7 +1867,7 @@
       "message": "Hard-coded template text should use i18n: Override HDR values directly"
     },
     {
-      "fingerprint": "hardcoded-template-text|configs/tabs/AudioVideo.vue|222|||tools\\audio-info.exe||",
+      "fingerprint": "hardcoded-template-text|configs/tabs/AudioVideo.vue|229|||tools\\audio-info.exe||",
       "rule": "hardcoded-template-text",
       "file": "configs/tabs/AudioVideo.vue",
       "locale": null,
@@ -2164,7 +2164,7 @@
       "message": "Hard-coded UI property \"label\" should use i18n: NVIDIA Smooth Motion"
     },
     {
-      "fingerprint": "hardcoded-ui-prop|components/AppEditModal.vue|1291|||Unable to apply RTX HDR changes to the active stream.||",
+      "fingerprint": "hardcoded-ui-prop|components/AppEditModal.vue|1294|||Unable to apply RTX HDR changes to the active stream.||",
       "rule": "hardcoded-ui-prop",
       "file": "components/AppEditModal.vue",
       "locale": null,
@@ -2173,7 +2173,7 @@
       "message": "Hard-coded UI property \"message\" should use i18n: Unable to apply RTX HDR changes to the active stream."
     },
     {
-      "fingerprint": "hardcoded-ui-prop|components/AppEditModal.vue|1699|||Loading Playnite games…||",
+      "fingerprint": "hardcoded-ui-prop|components/AppEditModal.vue|1702|||Loading Playnite games…||",
       "rule": "hardcoded-ui-prop",
       "file": "components/AppEditModal.vue",
       "locale": null,

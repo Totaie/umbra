@@ -378,6 +378,7 @@
             :lossless-active="losslessFrameGenEnabled"
             :nvidia-active="nvidiaFrameGenEnabled"
             :using-virtual-display="usingVirtualDisplay"
+            :windows10="isWindows10"
             :has-active-lossless-overrides="hasActiveLosslessOverrides"
             :on-lossless-rtss-limit-change="onLosslessRtssLimitChange"
             :reset-active-lossless-profile="resetActiveLosslessProfile"
@@ -734,7 +735,8 @@ function buildConfigOverridesPayload(f: AppForm): Record<string, unknown> {
   }
   return Object.fromEntries(
     Object.entries(overrides).filter(
-      ([key, value]) => typeof key === 'string' && key.length > 0 && value !== undefined && value !== null,
+      ([key, value]) =>
+        typeof key === 'string' && key.length > 0 && value !== undefined && value !== null,
     ),
   );
 }
@@ -907,8 +909,8 @@ function fromServerApp(src?: ServerApp | null, idx: number = -1): AppForm {
     typeof src['lossless-scaling-enabled'] === 'boolean'
       ? src['lossless-scaling-enabled']
       : !hasExplicitLosslessEnabled &&
-          frameGenerationMode !== 'lossless-scaling' &&
-          legacyLosslessFlag;
+        frameGenerationMode !== 'lossless-scaling' &&
+        legacyLosslessFlag;
   const frameGenerationProvider =
     frameGenerationModeFromConfig && frameGenerationModeFromConfig !== 'off'
       ? (frameGenerationModeFromConfig as FrameGenerationProvider)
@@ -1086,10 +1088,8 @@ function toServerPayload(f: AppForm): Record<string, any> {
   const losslessRuntimeActive = !!f.losslessScalingEnabled || losslessFramegenActive;
   payload['lossless-scaling-enabled'] = !!f.losslessScalingEnabled;
   payload['lossless-scaling-framegen'] = losslessFramegenActive;
-  payload['lossless-scaling-target-fps'] =
-    losslessFramegenActive ? payloadLosslessTarget : null;
-  payload['lossless-scaling-rtss-limit'] =
-    losslessFramegenActive ? payloadLosslessLimit : null;
+  payload['lossless-scaling-target-fps'] = losslessFramegenActive ? payloadLosslessTarget : null;
+  payload['lossless-scaling-rtss-limit'] = losslessFramegenActive ? payloadLosslessLimit : null;
   const payloadLosslessDelayRaw = parseNumeric(f.losslessScalingLaunchDelay);
   const payloadLosslessDelay =
     payloadLosslessDelayRaw && payloadLosslessDelayRaw > 0
@@ -1247,7 +1247,10 @@ function primeLiveRtxHdrState() {
   clearLiveRtxHdrTimer();
 }
 
-async function postRtxHdrLiveOverrides(overrides: Record<string, unknown>, key: string): Promise<void> {
+async function postRtxHdrLiveOverrides(
+  overrides: Record<string, unknown>,
+  key: string,
+): Promise<void> {
   const uuid = activeAppUuid();
   if (!uuid) {
     return;
@@ -2037,6 +2040,12 @@ const autoCaptureUsesWgc = computed(() => {
   }
   return false;
 });
+// Windows 11 shipped as build 22000; anything below that on Windows is Windows 10.
+const isWindows10 = computed(() => {
+  if (!isWindows.value) return false;
+  const build = windowsBuildNumber.value;
+  return build !== null && build < 22000;
+});
 const usingVirtualDisplay = computed(() => {
   return resolvesToVirtualDisplay({
     displaySelection: displaySelection.value,
@@ -2713,8 +2722,31 @@ async function refreshFrameGenHealth(options: FrameGenHealthOptions = {}): Promi
         }));
       }
 
+      const osBuild = windowsBuildNumber.value;
+      const losslessSelected = form.value.frameGenerationMode === 'lossless-scaling';
+      let osStatus: FrameGenHealth['os']['status'];
+      let osMessage: string;
+      if (osBuild === null) {
+        osStatus = 'unknown';
+        osMessage = t('apps.framegen.health_os_unknown');
+      } else if (osBuild >= 22000) {
+        osStatus = 'pass';
+        osMessage = t('apps.framegen.health_os_win11');
+      } else if (losslessSelected) {
+        osStatus = 'fail';
+        osMessage = t('apps.framegen.health_os_win10_lossless');
+      } else {
+        osStatus = 'warn';
+        osMessage = t('apps.framegen.health_os_win10');
+      }
+
       const health: FrameGenHealth = {
         checkedAt: Date.now(),
+        os: {
+          status: osStatus,
+          buildNumber: osBuild,
+          message: osMessage,
+        },
         capture: {
           status: captureStatus,
           method: captureValue,
@@ -2788,8 +2820,7 @@ function handleEnableVirtualScreen() {
 }
 
 const playniteInstalled = ref(false);
-const APP_UUID_RE =
-  /^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$/;
+const APP_UUID_RE = /^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$/;
 const isNew = computed(() => !form.value.uuid && form.value.index < 0);
 // New app source: 'custom' or 'playnite' (Windows only)
 const newAppSource = ref<'custom' | 'playnite'>('custom');

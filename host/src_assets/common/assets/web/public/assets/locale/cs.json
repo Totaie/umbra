@@ -227,7 +227,13 @@
       "health_suggestion_capture": "Nastavte Zachycení -> Metoda na Windows Graphics Capture, aby generování snímků zůstalo stabilní.",
       "health_suggestion_target": "Použijte přepsání displeje výše k přepnutí na virtuální displej Vibepollo nebo nakonfigurujte krok 1 zobrazovacího zařízení tak, aby cílil na virtuální displej a streamy {fps} FPS zůstaly plynulé.",
       "health_run_error": "Nelze spustit kontrolu stavu generování snímků.",
-      "health_devices_error": "Nepodařilo se načíst zobrazovací zařízení"
+      "health_devices_error": "Nepodařilo se načíst zobrazovací zařízení",
+      "lossless_win10_warning": "Tento hostitel běží na Windows 10. Generování snímků Lossless Scaling nebude ve Windows 10 fungovat — je vyžadován Windows 11.",
+      "req_os_label": "Windows 11 (doporučeno)",
+      "health_os_win11": "Zjištěn Windows 11. Generování snímků je na této verzi Windows plně podporováno.",
+      "health_os_win10": "Zjištěn Windows 10. Generování snímků bude mít ve Windows 10 problémy — doporučujeme Windows 11.",
+      "health_os_win10_lossless": "Zjištěn Windows 10. Generování snímků Lossless Scaling nebude ve Windows 10 fungovat — je vyžadován Windows 11.",
+      "health_os_unknown": "Nepodařilo se zjistit verzi Windows."
     }
   },
   "offline": {
@@ -386,10 +392,10 @@
     "dd_virtual_display_choice_virtual": "Použijte virtualizované zobrazení",
     "dd_virtual_display_choice_physical": "Použít můj vlastní displej",
     "virtual_display_mode_disabled": "Použít fyzický displej",
-    "virtual_display_mode_per_client": "Virtuální displej (pro klienta)",
+    "virtual_display_mode_per_client": "Virtuální displej (pro klienta) — Doporučeno",
     "virtual_display_mode_shared": "Sdílený virtuální displej",
     "virtual_display_mode_label": "Režim virtuálního zobrazení",
-    "virtual_display_mode_step_hint": "Vyberte, který displej má Vibepollo znovu použít, vytvořit pro každý virtuální displej, vytvořit virtuální displej, ponechat si svůj fyzický monitor.",
+    "virtual_display_mode_step_hint": "Vyberte, který displej má Vibepollo znovu použít, vytvořit pro každý virtuální displej, vytvořit virtuální displej, ponechat si svůj fyzický monitor. Virtuální displej je doporučeným výchozím nastavením — osvobozuje Vibepollo od omezení rozlišení a obnovovací frekvence fyzického monitoru.",
     "physical_display_framegen_warning": "Fyzické displeje nedokážou zachytit snímky generované DLSS/FSR. Kombinace omezovače snímků s generováním snímků na fyzickém displeji může zvýšit latenci o 50 ms nebo více a bez vhodného tempa snímků může mikrotrhat nebo cukat. Použijte virtuální displej pro plynulé zachycení s nízkou latencí.",
     "virtual_display_hdr_tip": "HDR Tip: Spusťte Windows HDR Calibration během streamování a uložte profil. Poté otevřete kartu Klienti a kliknutím na Barevný profil HDR pro klienta vyberte uložený profil.",
     "virtual_display_layout_label": "Rozvržení virtuálního displeje",
@@ -798,7 +804,11 @@
     "realtime_stats_show_active_sessions": "Zobrazit kartu aktivních relací",
     "realtime_stats_show_host_stats": "Zobrazit kartu statistik hostitele",
     "realtime_stats_show_host_charts": "Zobrazit kartu grafů historie",
-    "realtime_stats_show_session_history": "Zobrazit kartu historie relací"
+    "realtime_stats_show_session_history": "Zobrazit kartu historie relací",
+    "virtual_display_driver_label": "Ovladač virtuálního displeje",
+    "virtual_display_driver_desc": "Ovladač displeje Vibepollo je doporučeným výchozím ovladačem pro virtuální displeje. SudoVDA (starší) zvolte pouze v případě, že potřebujete předchozí ovladač — oba zůstávají nainstalované, takže se můžete kdykoli vrátit.",
+    "virtual_display_driver_vibeshine_option": "Ovladač displeje Vibepollo (doporučeno, výchozí)",
+    "virtual_display_driver_sudovda_option": "SudoVDA (starší)"
   },
   "index": {
     "description": "Sluneční stream je hostitelem pro Měsíční světlo.",
