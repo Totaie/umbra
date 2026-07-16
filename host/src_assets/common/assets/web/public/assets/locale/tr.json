@@ -55,7 +55,10 @@
     "inherited": "Devralındı",
     "no_results": "Sonuç yok",
     "options": "Seçenekler",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "display": "Ekran",
+    "default_parenthetical": "(varsayılan)",
+    "change": "Değiştir"
   },
   "apps": {
     "actions": "Eylemler",
@@ -277,7 +280,8 @@
       "health_display_120_stutter": "Geçerli yenileme hızı {hz} Hz. Daha yüksek yenileme hızlı bir ekran olmadan 120 FPS kare oluşturma takılabilir. Vibepollo sanal ekranına geçmek için aşağıdaki ekran geçersiz kılmasını kullanın veya akışı daha yüksek yenileme hızlı bir monitöre taşıyın.",
       "health_display_switch_if_active": "Görüntü Aygıtı Adım 1 yalnızca bu monitörü etkin tutarsa Vibepollo en fazla {hz} Hz'ye geçebilir.",
       "health_display_tops_out": "Ekran en fazla {hz} Hz'yi destekler. Vibepollo sanal ekranına geçmek için aşağıdaki ekran geçersiz kılmasını kullanın veya kare oluşturma için 240 Hz'lik bir ekrana geçin.",
-      "health_display_switch_if_configured": "Görüntü Aygıtı Adım 1'de yapılandırılmışsa Vibepollo en fazla {hz} Hz'ye geçebilir."
+      "health_display_switch_if_configured": "Görüntü Aygıtı Adım 1'de yapılandırılmışsa Vibepollo en fazla {hz} Hz'ye geçebilir.",
+      "provider_game_provided": "Oyun tarafından sağlanır"
     },
     "add_application": "Uygulama Ekle",
     "no_applications_yet": "Henüz uygulama yok",
@@ -353,7 +357,29 @@
     "terminate_on_pause": "Duraklat?ld???nda sonland?r",
     "allow_client_commands": "?stemci komutlar?na izin ver",
     "use_app_identity": "Uygulama kimli?ini kullan",
-    "per_client_app_identity": "?stemci ba??na uygulama kimli?i"
+    "per_client_app_identity": "?stemci ba??na uygulama kimli?i",
+    "name_search_placeholder": "Aramak için yazın veya özel bir ad girin",
+    "linked_to_playnite": "Playnite'a bağlı",
+    "custom_application": "Özel uygulama",
+    "cmd_placeholder": "Yürütülebilir komut satırı",
+    "cmd_runtime_desc": "Vibepollo bu işlemi bekler. İşlem kapanınca yayın sona erer.",
+    "detached_cmds_runtime_desc": "Önce çalışan ve bittiklerinde yayını etkin tutan isteğe bağlı komutlar.",
+    "detached_cmds_empty": "Henüz ayrılmış komut yok. Betik veya başlatıcı ayarlamak için Ekle'yi kullanın.",
+    "detached_cmd_number": "Ayrılmış Komut #{number}",
+    "detached_cmd_placeholder": "Yayından önce çalıştırılacak komut",
+    "detached_cmd_runtime_desc": "Ana komuttan önce çalışır. Bu komut sonlansa bile Vibepollo devam eder.",
+    "image_storage_desc": "İsteğe bağlıdır; yalnızca saklanır ve Vibepollo tarafından alınmaz.",
+    "lossless": {
+      "scaling_bcas": "BCAS (anime)",
+      "scaling_sharp_bilinear": "Keskin çift doğrusal",
+      "scaling_integer": "Tamsayı ölçekleme",
+      "scaling_nearest": "En yakın komşu",
+      "anime_size_s": "Küçük",
+      "anime_size_m": "Orta",
+      "anime_size_l": "Büyük",
+      "anime_size_vl": "Çok büyük",
+      "anime_size_ul": "Ultra büyük"
+    }
   },
   "config": {
     "adapter_name": "Adaptör Adı",
@@ -620,7 +646,7 @@
     "sw_preset_ultrafast": "ultra hızlı",
     "sw_preset_veryfast": "çok hızlı",
     "sw_preset_veryslow": "çok yavaş",
-    "sw_tune": "SW Tune",
+    "sw_tune": "SW Ayarı",
     "sw_tune_animation": "animasyon -- çizgi filmler için iyi; daha yüksek deblocking ve daha fazla referans karesi kullanır",
     "sw_tune_desc": "Ön ayardan sonra uygulanan ayarlama seçenekleri. Varsayılan değer sıfır gecikmedir.",
     "sw_tune_fastdecode": "fastdecode -- belirli filtreleri devre dışı bırakarak daha hızlı kod çözme sağlar",
@@ -957,7 +983,22 @@
       "browser_failed": "Bu yola göz atılamadı.",
       "rescan": "Yeniden Tara",
       "use_path": "Bu Yolu Kullan"
-    }
+    },
+    "display_devices_load_failed": "Görüntü aygıtları yüklenemedi",
+    "dd_snapshot_restore_hotkey_placeholder": "Tıklayın ve bir tuş birleşimine basın",
+    "capture_wgc_constant": "Windows Graphics Capture (sabit)",
+    "amd_section_title": "AMD AMF Kodlayıcı",
+    "qsv_section_title": "Intel Quick Sync Kodlayıcı",
+    "vt_section_title": "VideoToolbox Kodlayıcı",
+    "vaapi_section_title": "VA-API Kodlayıcı",
+    "vulkan_section_title": "Vulkan Kodlayıcı",
+    "sw_section_title": "Yazılım Kodlayıcı",
+    "dd_validation_resolution_or_blank": "Geçersiz. GENİŞLİKxYÜKSEKLİK kullanın (örn. {example}, x veya ×) ya da boş bırakın.",
+    "dd_validation_positive_or_blank": "Geçersiz. Pozitif bir sayı kullanın ya da boş bırakın.",
+    "dd_validation_mixed_final_required": "Karma eşlemelerde en az bir Son alan belirtin.",
+    "dd_validation_resolution": "Geçersiz biçim. GENİŞLİKxYÜKSEKLİK kullanın, örn. {example} (x veya ×).",
+    "dd_validation_refresh_rate": "Geçersiz yenileme hızı. 60 veya 59.94 gibi pozitif bir sayı kullanın.",
+    "dd_manual_enforcement_notice": "El ile ayarlanan bir çözünürlük veya yenileme hızı zorlandığında aşağıdaki geçersiz kılmalar devre dışı bırakılır. El ile ayarlanan yenileme hızları zorla uygulanır ve sanal ekranlarda oyuna göre yenileme hızı geçişini geçersiz kılar."
   },
   "index": {
     "description": "Vibepollo, Moonlight için kendi kendine barındırılan bir oyun akışı sunucusudur.",
@@ -981,7 +1022,8 @@
     "version_behind": "Your build is {behind} commits behind the latest release; consider updating.",
     "version_compare_unknown": "Unable to determine commit distance to latest release.",
     "version_branch": "Branch: {branch} (commit {commit})",
-    "view_logs": "Open Troubleshooting — Logs"
+    "view_logs": "Open Troubleshooting — Logs",
+    "web_links": "Web Bağlantıları"
   },
   "navbar": {
     "applications": "Uygulamalar",
@@ -1657,7 +1699,9 @@
     "fullscreen_launcher_entry": "bir Playnite (Tam Ekran) başlatıcı girdisi",
     "entries": "Playnite girdileri",
     "missing_plugin_message": "{details} algılandı, ancak Playnite eklentisi artık yüklü değil. Entegrasyonu geri yüklemek için eklentiyi yeniden yükleyin veya Vibepollo içindeki tüm Playnite girdilerini kaldırmak için Playnite oyunlarını temizleyin.",
-    "fullscreen_entry_removed": "Playnite Tam Ekran girdisi kaldırıldı. Playnite Desktop seçeneği Ayarlar → Playnite bölümünde kapatıldı."
+    "fullscreen_entry_removed": "Playnite Tam Ekran girdisi kaldırıldı. Playnite Desktop seçeneği Ayarlar → Playnite bölümünde kapatıldı.",
+    "fullscreen_entry": "Uygulamalara 'Playnite (Tam Ekran)' ekle",
+    "fullscreen_entry_desc": "Etkinleştirildiğinde Vibepollo, Playnite uygulamasını tam ekran masaüstü modunda açan bir başlatıcı girdisi ekler."
   },
   "auth": {
     "title": "API Token Management",

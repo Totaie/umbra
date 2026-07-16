@@ -55,7 +55,10 @@
     "inherited": "Наследено",
     "no_results": "Няма резултати",
     "options": "Опции",
-    "retry": "Опитайте отново"
+    "retry": "Опитайте отново",
+    "display": "Дисплей",
+    "default_parenthetical": "(по подразбиране)",
+    "change": "Промяна"
   },
   "apps": {
     "actions": "Действия",
@@ -277,7 +280,8 @@
       "health_display_120_stutter": "Текущата честота на опресняване е {hz} Hz. Генерирането на кадри при 120 FPS може да заеква без дисплей с по-висока честота на опресняване. Използвайте заместването на дисплея по-долу, за да превключите към виртуалния дисплей на Vibepollo, или преместете потока на монитор с по-висока честота на опресняване.",
       "health_display_switch_if_active": "Vibepollo може да превключи до {hz} Hz, ако стъпка 1 „Устройство за показване“ запазва активен само този монитор.",
       "health_display_tops_out": "Дисплеят достига максимум {hz} Hz. Използвайте заместването на дисплея по-долу, за да превключите към виртуалния дисплей на Vibepollo, или преминете към дисплей с 240 Hz за генериране на кадри.",
-      "health_display_switch_if_configured": "Vibepollo може да превключи до {hz} Hz, ако е конфигуриран в стъпка 1 „Устройство за показване“."
+      "health_display_switch_if_configured": "Vibepollo може да превключи до {hz} Hz, ако е конфигуриран в стъпка 1 „Устройство за показване“.",
+      "provider_game_provided": "Предоставено от играта"
     },
     "add_application": "Добавяне на приложение",
     "no_applications_yet": "Все още няма приложения",
@@ -353,7 +357,29 @@
     "terminate_on_pause": "???????????? ??? ?????",
     "allow_client_commands": "??????????? ?? ????????? ???????",
     "use_app_identity": "?????????? ?? ????????????? ?? ????????????",
-    "per_client_app_identity": "??????????? ?? ???????????? ?? ????? ??????"
+    "per_client_app_identity": "??????????? ?? ???????????? ?? ????? ??????",
+    "name_search_placeholder": "Въведете за търсене или собствено име",
+    "linked_to_playnite": "Свързано с Playnite",
+    "custom_application": "Персонализирано приложение",
+    "cmd_placeholder": "Команден ред на изпълнимия файл",
+    "cmd_runtime_desc": "Vibepollo изчаква този процес. Когато той приключи, потокът спира.",
+    "detached_cmds_runtime_desc": "Незадължителни команди, които се изпълняват първи и поддържат потока активен след приключване.",
+    "detached_cmds_empty": "Все още няма отделени команди. Използвайте Добавяне за скриптове или стартери.",
+    "detached_cmd_number": "Отделена команда №{number}",
+    "detached_cmd_placeholder": "Команда за изпълнение преди потока",
+    "detached_cmd_runtime_desc": "Изпълнява се преди основната команда. Vibepollo продължава дори ако тази команда приключи.",
+    "image_storage_desc": "Незадължително; само се съхранява и не се изтегля от Vibepollo.",
+    "lossless": {
+      "scaling_bcas": "BCAS (аниме)",
+      "scaling_sharp_bilinear": "Рязко билинейно",
+      "scaling_integer": "Целочислено мащабиране",
+      "scaling_nearest": "Най-близък съсед",
+      "anime_size_s": "Малък",
+      "anime_size_m": "Среден",
+      "anime_size_l": "Голям",
+      "anime_size_vl": "Много голям",
+      "anime_size_ul": "Изключително голям"
+    }
   },
   "config": {
     "adapter_name": "Име на устройството",
@@ -535,12 +561,12 @@
     "log_path": "Път до журналния файл",
     "log_path_desc": "Файлът, в който се запазва текущия журнал на Vibepollo.",
     "min_log_level": "Ниво на съобщенията в журнала",
-    "min_log_level_0": "Verbose",
-    "min_log_level_1": "Debug",
-    "min_log_level_2": "Info",
-    "min_log_level_3": "Warning",
-    "min_log_level_4": "Error",
-    "min_log_level_5": "Fatal",
+    "min_log_level_0": "Подробно",
+    "min_log_level_1": "Отстраняване на грешки",
+    "min_log_level_2": "Информация",
+    "min_log_level_3": "Предупреждение",
+    "min_log_level_4": "Грешка",
+    "min_log_level_5": "Фатална грешка",
     "min_log_level_6": "Нищо",
     "min_log_level_desc": "Минималното ниво на съобщения в журнала, извеждан на стандартния изход",
     "max_bitrate": "Максимална побитова скорост",
@@ -957,7 +983,22 @@
       "browser_failed": "Неуспешно отваряне на този път.",
       "rescan": "Сканирайте отново",
       "use_path": "Използвайте този път"
-    }
+    },
+    "display_devices_load_failed": "Неуспешно зареждане на устройствата за показване",
+    "dd_snapshot_restore_hotkey_placeholder": "Щракнете и натиснете клавишна комбинация",
+    "capture_wgc_constant": "Windows Graphics Capture (постоянно)",
+    "amd_section_title": "AMD AMF енкодер",
+    "qsv_section_title": "Intel Quick Sync енкодер",
+    "vt_section_title": "VideoToolbox енкодер",
+    "vaapi_section_title": "VA-API енкодер",
+    "vulkan_section_title": "Vulkan енкодер",
+    "sw_section_title": "Софтуерен енкодер",
+    "dd_validation_resolution_or_blank": "Невалидно. Използвайте ШИРИНАxВИСОЧИНА (напр. {example}, x или ×) или оставете празно.",
+    "dd_validation_positive_or_blank": "Невалидно. Използвайте положително число или оставете празно.",
+    "dd_validation_mixed_final_required": "За смесени съпоставяния задайте поне едно крайно поле.",
+    "dd_validation_resolution": "Невалиден формат. Използвайте ШИРИНАxВИСОЧИНА, напр. {example} (x или ×).",
+    "dd_validation_refresh_rate": "Невалидна честота на опресняване. Използвайте положително число, напр. 60 или 59.94.",
+    "dd_manual_enforcement_notice": "Настройките по-долу са деактивирани, докато е наложена ръчна разделителна способност или честота на опресняване. Ръчните честоти на опресняване се прилагат принудително и имат предимство пред съобразеното с играта превключване на честотата на виртуалните дисплеи."
   },
   "index": {
     "description": "Vibepollo е сървър за собствено поточно предаване на игри, предназначен за ползване с Moonlight.",
@@ -981,7 +1022,8 @@
     "version_behind": "Your build is {behind} commits behind the latest release; consider updating.",
     "version_compare_unknown": "Unable to determine commit distance to latest release.",
     "version_branch": "Branch: {branch} (commit {commit})",
-    "view_logs": "Open Troubleshooting — Logs"
+    "view_logs": "Open Troubleshooting — Logs",
+    "web_links": "Уеб връзки"
   },
   "navbar": {
     "applications": "Приложения",
@@ -1657,7 +1699,9 @@
     "fullscreen_launcher_entry": "запис за стартиране на Playnite (на цял екран)",
     "entries": "записи на Playnite",
     "missing_plugin_message": "Открито е {details}, но плъгинът за Playnite вече не е инсталиран. Преинсталирайте плъгина, за да възстановите интеграцията, или изчистете игрите на Playnite, за да премахнете всички записи на Playnite от Vibepollo.",
-    "fullscreen_entry_removed": "Записът за стартиране на Playnite (на цял екран) е премахнат. Опцията Playnite Desktop е изключена в Настройки → Playnite."
+    "fullscreen_entry_removed": "Записът за стартиране на Playnite (на цял екран) е премахнат. Опцията Playnite Desktop е изключена в Настройки → Playnite.",
+    "fullscreen_entry": "Добавяне на „Playnite (цял екран)“ към приложенията",
+    "fullscreen_entry_desc": "Когато е включено, Vibepollo добавя запис за стартиране, който отваря Playnite в режим на цял екран."
   },
   "auth": {
     "title": "API Token Management",

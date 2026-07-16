@@ -55,7 +55,10 @@
     "inherited": "Inherited",
     "no_results": "No results",
     "options": "Options",
-    "retry": "Retry"
+    "retry": "Retry",
+    "display": "Display",
+    "default_parenthetical": "(default)",
+    "change": "Change"
   },
   "apps": {
     "actions": "Actions",
@@ -277,7 +280,8 @@
       "health_display_120_stutter": "Current refresh is {hz} Hz. 120 FPS frame generation may stutter without a higher refresh display. Use the display override below to switch to the Vibepollo virtual display or move the stream to a higher-refresh monitor.",
       "health_display_switch_if_active": "Vibepollo can switch up to {hz} Hz if Display Device Step 1 keeps only that monitor active.",
       "health_display_tops_out": "Display tops out at {hz} Hz. Use the display override below to switch to the Vibepollo virtual display or switch to a 240 Hz display for frame generation.",
-      "health_display_switch_if_configured": "Vibepollo can switch up to {hz} Hz if configured in Display Device Step 1."
+      "health_display_switch_if_configured": "Vibepollo can switch up to {hz} Hz if configured in Display Device Step 1.",
+      "provider_game_provided": "Game Provided"
     },
     "add_application": "Add Application",
     "no_applications_yet": "No applications yet",
@@ -353,7 +357,29 @@
     "terminate_on_pause": "Terminate on pause",
     "allow_client_commands": "Allow client commands",
     "use_app_identity": "Use app identity",
-    "per_client_app_identity": "Per-client app identity"
+    "per_client_app_identity": "Per-client app identity",
+    "name_search_placeholder": "Type to search or enter a custom name",
+    "linked_to_playnite": "Linked to Playnite",
+    "custom_application": "Custom application",
+    "cmd_placeholder": "Executable command line",
+    "cmd_runtime_desc": "Vibepollo waits for this process. When it closes, the stream ends.",
+    "detached_cmds_runtime_desc": "Optional commands that run first and keep the stream alive when they finish.",
+    "detached_cmds_empty": "No detached commands yet. Use Add to set up prep scripts or launchers.",
+    "detached_cmd_number": "Detached Command #{number}",
+    "detached_cmd_placeholder": "Command to execute before the stream",
+    "detached_cmd_runtime_desc": "Runs before the primary command. Vibepollo continues even if this command exits.",
+    "image_storage_desc": "Optional; stored only and not fetched by Vibepollo.",
+    "lossless": {
+      "scaling_bcas": "BCAS (Anime)",
+      "scaling_sharp_bilinear": "Sharp Bilinear",
+      "scaling_integer": "Integer Scale",
+      "scaling_nearest": "Nearest Neighbor",
+      "anime_size_s": "Small",
+      "anime_size_m": "Medium",
+      "anime_size_l": "Large",
+      "anime_size_vl": "Very Large",
+      "anime_size_ul": "Ultra Large"
+    }
   },
   "config": {
     "adapter_name": "Adapter Name",
@@ -884,7 +910,7 @@
     "dd_display_helper_engine_legacy": "Legacy engine",
     "vulkan_hdr_layer": "Vulkan HDR layer for virtual displays",
     "vulkan_hdr_layer_desc": "Registers a system-wide Vulkan layer that exposes HDR surface formats on virtual displays. Disable this if Vulkan games or apps crash with an access violation after the display driver is installed.",
-    "rtx_hdr_title": "RTX HDR (AI SDR ? HDR)",
+    "rtx_hdr_title": "RTX HDR (AI SDR → HDR)",
     "rtx_hdr_intro": "Default tuning values for app-enabled RTX HDR conversion. During an RTX HDR stream, desktop and non-matching frames use SDR Brightness with neutral contrast and saturation.",
     "rtx_hdr": "RTX HDR",
     "rtx_hdr_desc": "Enables RTX HDR when an app or client runtime override opts the stream in.",
@@ -893,13 +919,13 @@
     "rtx_hdr_peak_brightness": "Peak Brightness (nits)",
     "rtx_hdr_peak_brightness_desc": "Client display peak luminance in nits (400–2000, default 1000). This value is used consistently for RTX HDR conversion, virtual-display EDID, and HDR10 stream metadata.",
     "rtx_hdr_sdr_brightness": "SDR Brightness",
-    "rtx_hdr_sdr_brightness_desc": "Brightness boost for desktop/non-matching frames in RTX HDR streams (0?100, 0 = neutral). HDR streams that are not opted into RTX HDR are unchanged.",
+    "rtx_hdr_sdr_brightness_desc": "Brightness boost for desktop/non-matching frames in RTX HDR streams (0–100, 0 = neutral). HDR streams that are not opted into RTX HDR are unchanged.",
     "rtx_hdr_middle_gray": "Middle Gray",
-    "rtx_hdr_middle_gray_desc": "Mid-tone brightness target (10?100, default 50). Higher values brighten the overall image.",
+    "rtx_hdr_middle_gray_desc": "Mid-tone brightness target (10–100, default 50). Higher values brighten the overall image.",
     "rtx_hdr_contrast": "Contrast",
-    "rtx_hdr_contrast_desc": "HDR contrast (-100?100, 0 = neutral).",
+    "rtx_hdr_contrast_desc": "HDR contrast (-100–100, 0 = neutral).",
     "rtx_hdr_saturation": "Saturation",
-    "rtx_hdr_saturation_desc": "HDR color saturation (-100?100, 0 = neutral).",
+    "rtx_hdr_saturation_desc": "HDR color saturation (-100–100, 0 = neutral).",
     "vibeshine_file_state": "Vibepollo state file",
     "realtime_stats_enabled": "Enable Realtime Stats",
     "realtime_stats_enabled_desc": "Collect live host metrics (CPU, GPU, RAM, VRAM, network) for the Stats page. Disabling stops the background sampler entirely and also omits host metrics from session history samples.",
@@ -957,7 +983,22 @@
       "browser_failed": "Could not browse this path.",
       "rescan": "Rescan",
       "use_path": "Use This Path"
-    }
+    },
+    "display_devices_load_failed": "Failed to load display devices",
+    "dd_snapshot_restore_hotkey_placeholder": "Click and press a combo",
+    "capture_wgc_constant": "Windows Graphics Capture (constant)",
+    "amd_section_title": "AMD AMF Encoder",
+    "qsv_section_title": "Intel Quick Sync Encoder",
+    "vt_section_title": "VideoToolbox Encoder",
+    "vaapi_section_title": "VA-API Encoder",
+    "vulkan_section_title": "Vulkan Encoder",
+    "sw_section_title": "Software Encoder",
+    "dd_validation_resolution_or_blank": "Invalid. Use WIDTHxHEIGHT (e.g., {example}, x or ×) or leave blank.",
+    "dd_validation_positive_or_blank": "Invalid. Use a positive number or leave blank.",
+    "dd_validation_mixed_final_required": "For mixed mappings, specify at least one Final field.",
+    "dd_validation_resolution": "Invalid format. Use WIDTHxHEIGHT, e.g., {example} (x or ×).",
+    "dd_validation_refresh_rate": "Invalid refresh rate. Use a positive number, e.g., 60 or 59.94.",
+    "dd_manual_enforcement_notice": "Overrides below are disabled while manual resolution or refresh rate is enforced. Manual refresh rates are applied forcefully and override game-aware refresh switching on virtual displays."
   },
   "index": {
     "description": "Vibepollo is a self-hosted game stream host for Moonlight.",
@@ -981,7 +1022,8 @@
     "version_behind": "Your build is {behind} commits behind the latest release; consider updating.",
     "version_compare_unknown": "Unable to determine commit distance to latest release.",
     "version_branch": "Branch: {branch} (commit {commit})",
-    "view_logs": "Open Troubleshooting — Logs"
+    "view_logs": "Open Troubleshooting — Logs",
+    "web_links": "Web Links"
   },
   "navbar": {
     "applications": "Applications",
@@ -1231,7 +1273,7 @@
     "sync_limiter_help_blurb": "Async is recommended. It adds a small amount of latency but all but removes microstuttering, which is usually more noticeable to viewers.",
     "sync_limiter_help_mode": "Mode",
     "sync_limiter_help_latency": "Added latency",
-    "sync_limiter_help_stutter": "Microstutter",
+    "sync_limiter_help_stutter": "Microstutter / Pacing",
     "sync_limiter_help_usage": "Best for",
     "sync_limiter_async_short": "Async",
     "sync_limiter_async_latency": "Slightly higher (~1-2 ms)",
@@ -1240,7 +1282,7 @@
     "sync_limiter_front_short": "Front edge",
     "sync_limiter_front_latency": "Lowest possible",
     "sync_limiter_front_stutter": "May reintroduce minor microstutter",
-    "sync_limiter_front_use": "Latency-critical sessions that can tolerate occasional judder",
+    "sync_limiter_front_use": "Lossless Scaling, NVIDIA Smooth Motion, AMD frame generation, and mixed-GPU framegen pacing. DLSS/FSR game-provided frame generation requires virtual display for reliable WGC capture.",
     "sync_limiter_back_short": "Back edge",
     "sync_limiter_back_latency": "Moderate (~2-3 ms)",
     "sync_limiter_back_stutter": "Reduced tearing but stutter when frametimes spike",
@@ -1823,7 +1865,9 @@
     "fullscreen_launcher_entry": "a Playnite (Fullscreen) launcher entry",
     "entries": "Playnite entries",
     "missing_plugin_message": "Detected {details}, but the Playnite plugin is no longer installed. Reinstall the plugin to restore integration, or purge Playnite games to remove all Playnite entries from Vibepollo.",
-    "fullscreen_entry_removed": "Playnite Fullscreen entry removed. The Playnite Desktop option was turned off in Settings → Playnite."
+    "fullscreen_entry_removed": "Playnite Fullscreen entry removed. The Playnite Desktop option was turned off in Settings → Playnite.",
+    "fullscreen_entry": "Add 'Playnite (Fullscreen)' to Applications",
+    "fullscreen_entry_desc": "When enabled, Vibepollo adds a launcher entry that opens Playnite in fullscreen desktop mode."
   },
   "auth": {
     "title": "API Token Management",
