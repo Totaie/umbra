@@ -379,7 +379,8 @@
       "anime_size_l": "Large",
       "anime_size_vl": "Very Large",
       "anime_size_ul": "Ultra Large"
-    }
+    },
+    "exclude_global_state_cmd": "Exclude Global State Commands"
   },
   "offline": {
     "title": "Lost Connection to Vibepollo",

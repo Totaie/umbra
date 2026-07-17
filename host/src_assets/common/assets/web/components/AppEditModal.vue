@@ -414,14 +414,14 @@
           <section class="space-y-3">
             <div class="flex items-center justify-between">
               <h3 class="text-xs font-semibold uppercase tracking-wider opacity-70">
-                State Commands
+                {{ t('apps.cmd_state_name') }}
               </h3>
               <n-button size="small" type="primary" @click="addState">
                 <i class="fas fa-plus" /> Add
               </n-button>
             </div>
             <n-checkbox v-model:checked="form.excludeGlobalStateCmd" size="small">
-              Exclude Global State Commands
+              {{ t('apps.exclude_global_state_cmd') }}
             </n-checkbox>
             <div v-if="form.stateCmd.length === 0" class="text-[12px] opacity-60">None</div>
             <div v-else class="space-y-2">
@@ -440,14 +440,14 @@
                 </div>
                 <div class="grid grid-cols-1 gap-2">
                   <div>
-                    <label class="text-[11px] opacity-60">Do Command</label>
+                    <label class="text-[11px] opacity-60">{{ t('_common.do_cmd') }}</label>
                     <n-input v-model:value="s.do" type="textarea" :autosize="{ minRows: 1, maxRows: 3 }"
-                      class="font-mono" placeholder="Command to run when stream starts" />
+                      class="font-mono" :placeholder="t('_common.do_cmd')" />
                   </div>
                   <div>
-                    <label class="text-[11px] opacity-60">Undo Command</label>
+                    <label class="text-[11px] opacity-60">{{ t('_common.undo_cmd') }}</label>
                     <n-input v-model:value="s.undo" type="textarea" :autosize="{ minRows: 1, maxRows: 3 }"
-                      class="font-mono" placeholder="Command to run when stream stops" />
+                      class="font-mono" :placeholder="t('_common.undo_cmd')" />
                   </div>
                 </div>
               </div>

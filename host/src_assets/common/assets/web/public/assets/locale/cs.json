@@ -379,7 +379,8 @@
       "anime_size_l": "Velká",
       "anime_size_vl": "Velmi velká",
       "anime_size_ul": "Mimořádně velká"
-    }
+    },
+    "exclude_global_state_cmd": "Vyloučit globální stavové příkazy"
   },
   "offline": {
     "title": "Ztratilo se spojení se Vibepollo",
