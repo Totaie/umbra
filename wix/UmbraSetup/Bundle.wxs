@@ -64,7 +64,7 @@
     <BootstrapperApplication>
       <bal:WixStandardBootstrapperApplication ShowVersion="yes"
                                               LicenseFile="license.rtf"
-                                              LogoFile="..\..\app\moonlight_wix.png"
+                                              LogoFile="..\..\app\umbra_wix.png"
                                               LaunchTarget="[InstallFolder]\Umbra.exe"
                                               ThemeFile="RtfTheme.xml"
                                               Theme="rtfLicense" />
