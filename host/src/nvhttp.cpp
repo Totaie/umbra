@@ -2810,6 +2810,14 @@ namespace nvhttp {
 
       tree.put("root.appversion", VERSION);
       tree.put("root.GfeVersion", GFE_VERSION);
+
+      // Advertise which host software this actually is. appversion above is the
+      // GameStream compatibility version and is identical across Sunshine, Apollo,
+      // Vibepollo and this, so a client cannot otherwise tell them apart. Umbra shows
+      // this on the machine's card, which is what makes "the host answering is not the
+      // one I installed" visible instead of surfacing later as pairing mysteriously
+      // falling back to a PIN. Other clients ignore fields they don't know.
+      tree.put("root.UmbraHostVersion", PROJECT_VERSION);
       tree.put("root.uniqueid", http::unique_id);
       tree.put("root.HttpsPort", net::map_port(PORT_HTTPS));
       tree.put("root.ExternalPort", net::map_port(PORT_HTTP));
