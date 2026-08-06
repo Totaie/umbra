@@ -4,9 +4,9 @@ cmake_minimum_required(VERSION 3.20)
 # `cmake_path(CONVERT ... TO_NATIVE_PATH_LIST ...)` requires 3.20
 # todo - set this conditionally
 
-project(Vibepollo VERSION 0.0.0
-        DESCRIPTION "Self-hosted game stream host for Moonlight"
-        HOMEPAGE_URL "https://github.com/Nonary/Vibepollo")
+project(UmbraHost VERSION 0.0.0
+        DESCRIPTION "Umbra Host - remote desktop and game streaming host"
+        HOMEPAGE_URL "https://github.com/Totaie/umbra-host")
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

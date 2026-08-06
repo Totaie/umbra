@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Umbra Host</title>
+  <path d="M16 14 L16 30 A16 16 0 0 0 48 30 L48 14"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="11"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>

@@ -102,7 +102,10 @@ echo "Configuring..."
 # host would quietly check Vibepollo for its updates instead of Umbra.
 cmake -B "${BUILD_DIR}" -G Ninja -S "${SOURCE_ROOT}" \
       -DSUNSHINE_REPO_OWNER=Totaie \
-      -DSUNSHINE_REPO_NAME=umbra-host
+      -DSUNSHINE_REPO_NAME=umbra-host \
+      -DSUNSHINE_PUBLISHER_NAME="Umbra Project" \
+      -DSUNSHINE_PUBLISHER_WEBSITE="https://github.com/Totaie/umbra-host" \
+      -DSUNSHINE_PUBLISHER_ISSUE_URL="https://github.com/Totaie/umbra-host/issues"
 
 # Cap parallelism. Ninja defaults to CPU count + 2, which is 14 jobs on a 12 thread
 # machine, and this codebase compiles Boost and C++23 templates that can take well

@@ -102,7 +102,7 @@ install(FILES ${SUDOVDA_DRIVER_FILES}
         DESTINATION "drivers/sudovda"
         COMPONENT sudovda)
 
-# Drivers (Vibepollo Display Driver)
+# Drivers (Umbra Display Driver)
 set(SUNSHINE_VIRTUAL_DISPLAY_DRIVER_SOURCE_DIR "${SUNSHINE_SOURCE_ASSETS_DIR}/windows/drivers/sunshine")
 set(SUNSHINE_VIRTUAL_DISPLAY_DRIVER_REFRESH_SCRIPT "${CMAKE_SOURCE_DIR}/packaging/windows/virtual_display_driver/refresh_driver_package.ps1")
 set(SUNSHINE_LIBVIRTUALDISPLAY_PREBUILT_DIR "" CACHE PATH "GitHub Actions only: path to a prebuilt libvirtualdisplay package root with driver/ and tools/")
@@ -139,11 +139,11 @@ unset(_sunshine_driver_optional_file)
 
 foreach(_sunshine_driver_file IN LISTS SUNSHINE_VIRTUAL_DISPLAY_PACKAGE_FILES)
     if (NOT EXISTS "${_sunshine_driver_file}")
-        message(FATAL_ERROR "Required Vibepollo Display Driver artifact missing: ${_sunshine_driver_file}")
+        message(FATAL_ERROR "Required Umbra Display Driver artifact missing: ${_sunshine_driver_file}")
     endif()
     file(SIZE "${_sunshine_driver_file}" _sunshine_driver_file_size)
     if (_sunshine_driver_file_size EQUAL 0)
-        message(FATAL_ERROR "Required Vibepollo Display Driver artifact is empty (0 bytes): ${_sunshine_driver_file}")
+        message(FATAL_ERROR "Required Umbra Display Driver artifact is empty (0 bytes): ${_sunshine_driver_file}")
     endif()
 endforeach()
 unset(_sunshine_driver_file_size)
@@ -159,7 +159,7 @@ if(EXISTS "${SUNSHINE_VIRTUAL_DISPLAY_DRIVER_REFRESH_SCRIPT}")
                 -PackageDir "${SUNSHINE_VIRTUAL_DISPLAY_DRIVER_SOURCE_DIR}"
         DEPENDS "${SUNSHINE_VIRTUAL_DISPLAY_DRIVER_REFRESH_SCRIPT}"
                 ${SUNSHINE_VIRTUAL_DISPLAY_PACKAGE_FILES}
-        COMMENT "Validating Vibepollo Display Driver package assets"
+        COMMENT "Validating Umbra Display Driver package assets"
         VERBATIM)
 
     add_custom_target(refresh_sunshine_virtual_display_driver_assets
@@ -171,7 +171,7 @@ if(EXISTS "${SUNSHINE_VIRTUAL_DISPLAY_DRIVER_REFRESH_SCRIPT}")
                 -PackageDir "${SUNSHINE_VIRTUAL_DISPLAY_DRIVER_SOURCE_DIR}"
                 ${SUNSHINE_VIRTUAL_DISPLAY_DRIVER_SIGNING_ARGS}
         DEPENDS "${SUNSHINE_VIRTUAL_DISPLAY_DRIVER_REFRESH_SCRIPT}"
-        COMMENT "Building and refreshing Vibepollo Display Driver package assets"
+        COMMENT "Building and refreshing Umbra Display Driver package assets"
         VERBATIM)
 
     if(TARGET package_msi)
@@ -240,11 +240,11 @@ if(NOT EXISTS "${CMAKE_BINARY_DIR}/assets/shaders")
     execute_process(COMMAND cmd.exe /c mklink /J "${shaders_in_build_dest_native}" "${shaders_in_build_src_native}")
 endif()
 
-set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}\\\\apollo.ico")
+set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}\\\\umbra.ico")
 
 # The name of the directory that will be created in C:/Program Files/
 # Match the legacy NSIS layout by installing under Apollo
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "Apollo")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Umbra Host")
 
 # Setting components groups and dependencies
 set(CPACK_COMPONENT_GROUP_CORE_EXPANDED true)
@@ -260,7 +260,7 @@ set(CPACK_COMPONENT_APPLICATION_DEPENDS assets)
 
 # service auto-start script
 set(CPACK_COMPONENT_AUTOSTART_DISPLAY_NAME "Launch on Startup")
-set(CPACK_COMPONENT_AUTOSTART_DESCRIPTION "If enabled, launches Vibepollo automatically on system startup.")
+set(CPACK_COMPONENT_AUTOSTART_DESCRIPTION "If enabled, launches Umbra Host automatically on system startup.")
 set(CPACK_COMPONENT_AUTOSTART_GROUP "Core")
 
 # assets
@@ -275,7 +275,7 @@ set(CPACK_COMPONENT_SUDOVDA_DESCRIPTION "Bundled rollback virtual display driver
 set(CPACK_COMPONENT_SUDOVDA_GROUP "Drivers")
 set(CPACK_COMPONENT_SUDOVDA_REQUIRED true)
 
-set(CPACK_COMPONENT_VIRTUAL_DISPLAY_DRIVER_DISPLAY_NAME "Vibepollo Display Driver")
+set(CPACK_COMPONENT_VIRTUAL_DISPLAY_DRIVER_DISPLAY_NAME "Umbra Display Driver")
 set(CPACK_COMPONENT_VIRTUAL_DISPLAY_DRIVER_DESCRIPTION "Default virtual display driver.")
 set(CPACK_COMPONENT_VIRTUAL_DISPLAY_DRIVER_GROUP "Drivers")
 set(CPACK_COMPONENT_VIRTUAL_DISPLAY_DRIVER_REQUIRED true)

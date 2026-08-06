@@ -136,10 +136,10 @@ set(CPACK_RPM_PACKAGE_AUTOREQ ON)
 
 # application icon
 if(NOT ${SUNSHINE_BUILD_FLATPAK})
-    install(FILES "${CMAKE_SOURCE_DIR}/apollo.svg"
+    install(FILES "${CMAKE_SOURCE_DIR}/umbra.svg"
             DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps")
 else()
-    install(FILES "${CMAKE_SOURCE_DIR}/apollo.svg"
+    install(FILES "${CMAKE_SOURCE_DIR}/umbra.svg"
             DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps"
             RENAME "${PROJECT_FQDN}.svg")
 endif()
@@ -147,7 +147,7 @@ endif()
 # tray icon
 if(${SUNSHINE_TRAY} STREQUAL 1)
     if(NOT ${SUNSHINE_BUILD_FLATPAK})
-        install(FILES "${CMAKE_SOURCE_DIR}/apollo.svg"
+        install(FILES "${CMAKE_SOURCE_DIR}/umbra.svg"
                 DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/status"
                 RENAME "apollo-tray.svg")
         install(FILES "${SUNSHINE_SOURCE_ASSETS_DIR}/common/assets/web/public/images/apollo-playing.svg"
@@ -158,7 +158,7 @@ if(${SUNSHINE_TRAY} STREQUAL 1)
                 DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/status")
     else()
         # flatpak icons must be prefixed with the app id or they will not be included in the flatpak
-        install(FILES "${CMAKE_SOURCE_DIR}/apollo.svg"
+        install(FILES "${CMAKE_SOURCE_DIR}/umbra.svg"
                 DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/status"
                 RENAME "${PROJECT_FQDN}-tray.svg")
         install(FILES "${SUNSHINE_SOURCE_ASSETS_DIR}/common/assets/web/public/images/apollo-playing.svg"

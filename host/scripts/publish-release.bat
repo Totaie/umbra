@@ -84,16 +84,21 @@ for /f "usebackq tokens=2 delims= " %%v in (`findstr /c:"CPACK_PACKAGE_FILE_NAME
 set PKG_BASE=!PKG_BASE:"=!
 set PKG_BASE=!PKG_BASE:)=!
 
-set PACKAGE=%SOURCE_ROOT%\build\!PKG_BASE!.exe
+rem CPACK_PACKAGE_DIRECTORY puts the output under build\cpack_artifacts, not build\.
+set PACKAGE=%SOURCE_ROOT%\build\cpack_artifacts\!PKG_BASE!.exe
 if not exist "!PACKAGE!" (
-    echo cpack completed but !PACKAGE! was not produced.
+    rem Fall back to build\ in case CPACK_PACKAGE_DIRECTORY is ever changed back.
+    set PACKAGE=%SOURCE_ROOT%\build\!PKG_BASE!.exe
+)
+if not exist "!PACKAGE!" (
+    echo cpack completed but !PKG_BASE!.exe was not found in build\cpack_artifacts or build.
     exit /b 1
 )
 
 set TAG=v!VERSION!
 
 set ASSET_NAME=UmbraHostSetup-%ARCH%-!VERSION!.exe
-set ASSET=%SOURCE_ROOT%\build\!ASSET_NAME!
+set ASSET=%SOURCE_ROOT%\build\cpack_artifacts\!ASSET_NAME!
 copy /y "!PACKAGE!" "!ASSET!" >nul
 
 for %%f in ("!ASSET!") do set ASSET_SIZE=%%~zf

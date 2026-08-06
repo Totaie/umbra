@@ -5,8 +5,8 @@
 set(CPACK_GENERATOR "WIX")
 
 # Product identity and visuals
-set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/src_assets/common/assets/web/public/images/apollo.ico")
-set(CPACK_WIX_PROGRAM_MENU_FOLDER "Vibepollo")
+set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/src_assets/common/assets/web/public/images/umbra.ico")
+set(CPACK_WIX_PROGRAM_MENU_FOLDER "Umbra Host")
 
 # Stable Upgrade GUID to enable in-place upgrades
 # NOTE: Do not change once released, or upgrades will break.
@@ -14,7 +14,7 @@ set(CPACK_WIX_UPGRADE_GUID "{E3FA501A-85F8-4187-85A7-D6E6BDC7EDA1}")
 
 # Generate a fresh sortable ProductCode for every CPack WiX invocation.  The
 # Upgrade GUID above intentionally remains stable so Windows Installer still
-# treats all Vibepollo MSIs as the same product family.
+# treats all Umbra Host MSIs as the same product family.
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_SOURCE_DIR}/packaging/windows/wix/generate_sortable_product_guid.cmake")
 
 # Start Menu shortcut is now defined in custom_actions.wxs with --shortcut argument
