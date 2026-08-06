@@ -107,7 +107,21 @@ if !ERRORLEVEL! NEQ 0 (
 )
 
 echo Compiling Umbra ^(%BUILD_CONFIG%^)...
-"%SOURCE_ROOT%\scripts\jom.exe" %BUILD_CONFIG%
+rem Cap parallelism. jom defaults to one job per logical core, which saturates the
+rem machine and makes it unusable for the duration. Compilation is memory hungry as
+rem well as CPU hungry, so the default leaves real headroom rather than assuming the
+rem build is the only thing running. Override with UMBRA_BUILD_JOBS.
+set JOBS=%UMBRA_BUILD_JOBS%
+if "%JOBS%"=="" (
+    set /a JOBS=%NUMBER_OF_PROCESSORS%/3
+    if !JOBS! LSS 1 set JOBS=1
+    if !JOBS! GTR 6 set JOBS=6
+)
+echo Compiling with !JOBS! parallel jobs ^(set UMBRA_BUILD_JOBS to change^)...
+
+rem /low keeps the desktop responsive while those jobs run; /wait so we still see
+rem the exit code.
+start /low /b /wait "" "%SOURCE_ROOT%\scripts\jom.exe" /J !JOBS! %BUILD_CONFIG%
 if !ERRORLEVEL! NEQ 0 (
     popd
     goto Error
