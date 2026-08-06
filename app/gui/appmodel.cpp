@@ -1,4 +1,5 @@
 #include "appmodel.h"
+#include "settings/streamingpreferences.h"
 
 AppModel::AppModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -49,9 +50,22 @@ Session* AppModel::createSessionForApp(int appIndex)
 
 int AppModel::getDirectLaunchAppIndex()
 {
+    // An app the user explicitly pinned always wins.
     for (int i = 0; i < m_VisibleApps.count(); i++) {
         if (m_VisibleApps[i].directLaunch) {
             return i;
+        }
+    }
+
+    // Umbra is desktop-oriented: with nothing pinned, go straight to the host's desktop
+    // rather than stopping at the app grid to pick between Desktop, Steam Big Picture and
+    // friends. If the host doesn't publish a Desktop app (e.g. GeForce Experience), fall
+    // through and show the grid as usual.
+    if (StreamingPreferences::get()->directConnectDesktop) {
+        for (int i = 0; i < m_VisibleApps.count(); i++) {
+            if (m_VisibleApps[i].name.compare(QLatin1String("Desktop"), Qt::CaseInsensitive) == 0) {
+                return i;
+            }
         }
     }
 

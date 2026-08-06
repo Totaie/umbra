@@ -1019,6 +1019,24 @@ Flickable {
                 anchors.fill: parent
                 spacing: 5
 
+                CheckBox {
+                    id: directConnectDesktopCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Connect straight to the desktop")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.directConnectDesktop
+                    onCheckedChanged: {
+                        StreamingPreferences.directConnectDesktop = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Selecting a PC starts streaming its desktop immediately instead of showing the app list first.") + "\n\n" +
+                                  qsTr("The full app list is still available from the PC's context menu under \"View All Apps\".")
+                }
+
                 Label {
                     width: parent.width
                     id: languageTitle
@@ -1354,7 +1372,7 @@ Flickable {
                     CheckBox {
                         id: captureSysKeysCheck
                         hoverEnabled: true
-                        text: qsTr("Capture system keyboard shortcuts")
+                        text: qsTr("Immersive mode: send the Windows key and system shortcuts to the host")
                         font.pointSize: 12
                         enabled: SystemProperties.hasDesktopEnvironment
                         checked: StreamingPreferences.captureSysKeysMode !== StreamingPreferences.CSK_OFF || !SystemProperties.hasDesktopEnvironment
@@ -1362,7 +1380,7 @@ Flickable {
                         ToolTip.delay: 1000
                         ToolTip.timeout: 10000
                         ToolTip.visible: hovered
-                        ToolTip.text: qsTr("This enables the capture of system-wide keyboard shortcuts like Alt+Tab that would normally be handled by the client OS while streaming.") + "\n\n" +
+                        ToolTip.text: qsTr("Sends system-wide shortcuts like the Windows key and Alt+Tab to the host instead of letting the client OS handle them, so the host's Start menu opens rather than your own.") + "\n\n" +
                                       qsTr("NOTE: Certain keyboard shortcuts like Ctrl+Alt+Del on Windows cannot be intercepted by any application, including Umbra.")
                     }
 

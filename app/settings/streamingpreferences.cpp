@@ -50,6 +50,7 @@
 #define SER_SWAPFACEBUTTONS "swapfacebuttons"
 #define SER_CAPTURESYSKEYS "capturesyskeys"
 #define SER_KEEPAWAKE "keepawake"
+#define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
 #define SER_LANGUAGE "language"
 #define SER_RENDERER "renderer"
 
@@ -151,9 +152,17 @@ void StreamingPreferences::reload()
     reverseScrollDirection = settings.value(SER_REVERSESCROLL, false).toBool();
     swapFaceButtons = settings.value(SER_SWAPFACEBUTTONS, false).toBool();
     keepAwake = settings.value(SER_KEEPAWAKE, true).toBool();
+    // Umbra is desktop-oriented, so selecting a PC goes straight to its desktop instead
+    // of stopping at the app grid. The full app list is still reachable from the PC's
+    // context menu ("View All Apps").
+    directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
     enableHdr = settings.value(SER_HDR, false).toBool();
+    // Umbra defaults this on (Moonlight defaults it off). Without it, the host never
+    // receives the Meta/Windows key or combos like Win+Tab, so pressing Win opens the
+    // *client's* Start menu instead of the host's. Defaulting to CSK_FULLSCREEN rather
+    // than CSK_ALWAYS so we only take over system keys once the stream is fullscreen.
     captureSysKeysMode = static_cast<CaptureSysKeysMode>(settings.value(SER_CAPTURESYSKEYS,
-                                                         static_cast<int>(CaptureSysKeysMode::CSK_OFF)).toInt());
+                                                         static_cast<int>(CaptureSysKeysMode::CSK_FULLSCREEN)).toInt());
     audioConfig = static_cast<AudioConfig>(settings.value(SER_AUDIOCFG,
                                                   static_cast<int>(AudioConfig::AC_STEREO)).toInt());
     videoCodecConfig = static_cast<VideoCodecConfig>(settings.value(SER_VIDEOCFG,
@@ -362,6 +371,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_SWAPFACEBUTTONS, swapFaceButtons);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
+    settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
 }
 
 int StreamingPreferences::getDefaultBitrate(int width, int height, int fps, bool yuv444)
