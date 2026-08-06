@@ -4532,7 +4532,19 @@ namespace confighttp {
       nlohmann::json output_tree;
       std::string pin = input_tree.value("pin", "");
       std::string name = input_tree.value("name", "");
-      output_tree["status"] = nvhttp::pin(pin, name);
+      // Optional, but strongly recommended for anything submitting a PIN without a
+      // human watching the host. It binds the PIN to one specific pending pairing
+      // session; see the note on nvhttp::pin(). Absent it, the PIN goes to whichever
+      // session is newest, which an attacker can arrange to be their own.
+      std::string unique_id = input_tree.value("uniqueid", "");
+
+      // Advertise that this host honours uniqueid, so a client can tell the difference
+      // between "bound to my session" and "handed to whoever was newest" before it
+      // decides to submit PINs automatically.
+      output_tree["session_bound_supported"] = true;
+      output_tree["session_bound"] = !unique_id.empty();
+
+      output_tree["status"] = nvhttp::pin(pin, name, unique_id);
       if (!output_tree["status"].get<bool>()) {
         BOOST_LOG(warning) << "SavePin: no pending Moonlight pairing request accepted the submitted PIN";
       }

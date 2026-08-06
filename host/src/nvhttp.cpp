@@ -2625,7 +2625,7 @@ namespace nvhttp {
       }
     }
 
-    bool pin(std::string pin, std::string name) {
+    bool pin(std::string pin, std::string name, std::string unique_id) {
       pt::ptree tree;
       if (map_id_sess.empty()) {
         BOOST_LOG(warning) << "PIN submitted but no pending pairing session exists";
@@ -2659,12 +2659,34 @@ namespace nvhttp {
       });
 
       auto sess_it = map_id_sess.end();
-      for (auto it = map_id_sess.begin(); it != map_id_sess.end(); ++it) {
-        if (it->second.last_phase != PAIR_PHASE::NONE) {
-          continue;
-        }
-        if (sess_it == map_id_sess.end() || sess_it->second.created_at < it->second.created_at) {
+      if (!unique_id.empty()) {
+        // The caller told us which client this PIN belongs to, so apply it to exactly
+        // that session and nothing else.
+        //
+        // This matters because opening a pairing session requires no authentication:
+        // anyone who can reach the host can create one. Without this binding, a PIN
+        // submitted programmatically lands on whichever session happens to be newest,
+        // so an attacker who keeps a session open can be handed a legitimate user's
+        // PIN and then brute force the 4 digits against the challenge.
+        auto it = map_id_sess.find(unique_id);
+        if (it != map_id_sess.end() && it->second.last_phase == PAIR_PHASE::NONE) {
           sess_it = it;
+        } else {
+          BOOST_LOG(warning) << "PIN submitted for client '"sv << unique_id
+                             << "' but no pending pairing session matches it";
+          return false;
+        }
+      } else {
+        // No client specified: fall back to the newest pending session. This is the
+        // path the web UI uses, where a human is looking at the host and typed the PIN
+        // from the one client they are deliberately pairing.
+        for (auto it = map_id_sess.begin(); it != map_id_sess.end(); ++it) {
+          if (it->second.last_phase != PAIR_PHASE::NONE) {
+            continue;
+          }
+          if (sess_it == map_id_sess.end() || sess_it->second.created_at < it->second.created_at) {
+            sess_it = it;
+          }
         }
       }
 

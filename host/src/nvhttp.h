@@ -202,12 +202,19 @@ namespace nvhttp {
    * @brief Compare the user supplied pin to the Moonlight pin.
    * @param pin The user supplied pin.
    * @param name The user supplied name.
+   * @param unique_id Optional client unique ID to bind the PIN to a specific pending
+   *                  pairing session. When empty, the PIN is applied to the most
+   *                  recently created pending session, which is the historical
+   *                  behaviour and is only safe when a human is typing the PIN and can
+   *                  see which client is asking. Clients submitting a PIN
+   *                  programmatically must pass this, otherwise an attacker who opens
+   *                  their own pairing session can receive somebody else's PIN.
    * @return `true` if the pin is correct, `false` otherwise.
    * @examples
    * bool pin_status = nvhttp::pin("1234", "laptop");
    * @examples_end
    */
-  bool pin(std::string pin, std::string name);
+  bool pin(std::string pin, std::string name, std::string unique_id = {});
 
   /**
    * @brief Pick the client label used for display-facing behavior.
