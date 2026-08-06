@@ -104,8 +104,30 @@ cmake -B "${BUILD_DIR}" -G Ninja -S "${SOURCE_ROOT}" \
       -DSUNSHINE_REPO_OWNER=Totaie \
       -DSUNSHINE_REPO_NAME=umbra-host
 
-echo "Building..."
-ninja -C "${BUILD_DIR}"
+# Cap parallelism. Ninja defaults to CPU count + 2, which is 14 jobs on a 12 thread
+# machine, and this codebase compiles Boost and C++23 templates that can take well
+# over a gigabyte per cc1plus. That exhausts RAM long before it saturates the CPU,
+# and the machine spends the build swapping instead of compiling.
+#
+# Memory is the binding constraint here, not cores, so the default is deliberately
+# well below the core count. Raise it with UMBRA_BUILD_JOBS if you have headroom.
+JOBS="${UMBRA_BUILD_JOBS:-}"
+if [[ -z "$JOBS" ]]; then
+    CORES="$(nproc 2>/dev/null || echo 4)"
+    JOBS=$(( CORES / 3 ))
+    (( JOBS < 1 )) && JOBS=1
+    (( JOBS > 6 )) && JOBS=6
+fi
+
+echo "Building with ${JOBS} parallel jobs (set UMBRA_BUILD_JOBS to change)..."
+
+# Run at low priority too, so an interactive session stays responsive even while
+# every one of those jobs is busy.
+if command -v nice >/dev/null 2>&1; then
+    nice -n 19 ninja -C "${BUILD_DIR}" -j "${JOBS}"
+else
+    ninja -C "${BUILD_DIR}" -j "${JOBS}"
+fi
 
 if [[ "$DO_PACKAGE" == "1" ]]; then
     echo "Packaging..."

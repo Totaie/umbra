@@ -29,14 +29,27 @@ popd
 
 set PRERELEASE=0
 set DRYRUN=0
+set VERSION=
 
 :parse
 if "%~1"=="" goto parsed
-if /I "%~1"=="prerelease" set PRERELEASE=1
-if /I "%~1"=="dry-run"    set DRYRUN=1
+if /I "%~1"=="prerelease" (set PRERELEASE=1) else (
+    if /I "%~1"=="dry-run" (set DRYRUN=1) else (
+        set VERSION=%~1
+    )
+)
 shift
 goto parse
 :parsed
+
+if "%VERSION%"=="" (
+    echo Usage: scripts\publish-release.bat ^<version^> [prerelease] [dry-run]
+    echo   e.g. scripts\publish-release.bat 0.1.0 prerelease
+    echo.
+    echo The version is baked into the binary as PROJECT_VERSION and reused as the tag,
+    echo so the host's update check compares like with like.
+    exit /b 1
+)
 
 set ARCH=x64
 
@@ -50,36 +63,34 @@ if "%DRYRUN%"=="0" (
 )
 
 rem --- build and package -----------------------------------------------------
+rem Bake the release version into the binary so PROJECT_VERSION matches the tag we
+rem are about to create. Without this the host compares its own version against a
+rem differently-derived tag, concludes it is permanently out of date, and updates
+rem in a loop.
+set UMBRA_BUILD_VERSION=!VERSION!
 call "%SOURCE_ROOT%\scripts\umbra-build.bat" package
 if !ERRORLEVEL! NEQ 0 (
     echo Build failed.
     exit /b 1
 )
 
-rem Read the version CMake configured, so the tag matches what a running host
-rem reports and the update comparison comes out right.
-set VERSION=
-for /f "usebackq tokens=2 delims= " %%v in (`findstr /c:"CPACK_PACKAGE_VERSION " "%SOURCE_ROOT%\build\CPackConfig.cmake"`) do (
-    if not defined VERSION set VERSION=%%~v
+rem cpack writes the installer as <CPACK_PACKAGE_FILE_NAME>.exe. Read that name from
+rem the generated config rather than scanning for the newest .exe, because sunshine.exe
+rem and uninstall.exe also live in build\ and would be picked instead.
+set PKG_BASE=
+for /f "usebackq tokens=2 delims= " %%v in (`findstr /c:"CPACK_PACKAGE_FILE_NAME " "%SOURCE_ROOT%\build\CPackConfig.cmake"`) do (
+    if not defined PKG_BASE set PKG_BASE=%%~v
 )
-if "!VERSION!"=="" (
-    echo Could not read CPACK_PACKAGE_VERSION from build\CPackConfig.cmake.
+set PKG_BASE=!PKG_BASE:"=!
+set PKG_BASE=!PKG_BASE:)=!
+
+set PACKAGE=%SOURCE_ROOT%\build\!PKG_BASE!.exe
+if not exist "!PACKAGE!" (
+    echo cpack completed but !PACKAGE! was not produced.
     exit /b 1
 )
-set VERSION=!VERSION:"=!
-set VERSION=!VERSION:)=!
 
 set TAG=v!VERSION!
-
-rem cpack names the installer from the project version; take the newest match.
-set PACKAGE=
-for /f "usebackq delims=" %%f in (`dir /b /o-d "%SOURCE_ROOT%\build\*.exe" 2^>nul`) do (
-    if not defined PACKAGE set PACKAGE=%SOURCE_ROOT%\build\%%f
-)
-if "!PACKAGE!"=="" (
-    echo cpack completed but no installer was found in build\.
-    exit /b 1
-)
 
 set ASSET_NAME=UmbraHostSetup-%ARCH%-!VERSION!.exe
 set ASSET=%SOURCE_ROOT%\build\!ASSET_NAME!

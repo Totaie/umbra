@@ -59,9 +59,20 @@ set UNIX_ROOT=/%DRIVE_LETTER%%UNIX_ROOT:~2%
 echo Building the Umbra host via MSYS2 at %MSYS2_ROOT%...
 echo.
 
+rem Pin the version when the caller asked for one. build_version.cmake takes
+rem PROJECT_VERSION from BUILD_VERSION (and requires BRANCH alongside it), and that
+rem is the value the host's update check compares against release tags. Letting it
+rem default while tagging a release something else makes every host believe it is
+rem perpetually out of date.
+set VERSION_EXPORT=
+if not "%UMBRA_BUILD_VERSION%"=="" (
+    set VERSION_EXPORT=export BRANCH=umbra-host-main; export BUILD_VERSION=%UMBRA_BUILD_VERSION%;
+    echo Building as version %UMBRA_BUILD_VERSION%
+)
+
 rem MSYSTEM must be set before /etc/profile is sourced, or the UCRT64 toolchain
 rem won't be on PATH.
-"%MSYS2_ROOT%\usr\bin\bash.exe" -lc "export MSYSTEM=UCRT64; source /etc/profile; cd '%UNIX_ROOT%' && ./scripts/umbra_windows_build.sh%SH_ARGS%"
+"%MSYS2_ROOT%\usr\bin\bash.exe" -lc "export MSYSTEM=UCRT64; source /etc/profile; %VERSION_EXPORT% cd '%UNIX_ROOT%' && ./scripts/umbra_windows_build.sh%SH_ARGS%"
 if !ERRORLEVEL! NEQ 0 (
     echo.
     echo Build failed.
