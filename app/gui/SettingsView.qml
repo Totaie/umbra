@@ -18,8 +18,9 @@ Flickable {
 
     boundsBehavior: Flickable.OvershootBounds
 
-    contentWidth: settingsColumn1.width > settingsColumn2.width ? settingsColumn1.width : settingsColumn2.width
-    contentHeight: settingsColumn1.height > settingsColumn2.height ? settingsColumn1.height : settingsColumn2.height
+    // One pane is visible at a time, so the scrollable extent is just that pane.
+    contentWidth: settingsPage.width
+    contentHeight: settingsColumn1.height
 
     ScrollBar.vertical: ScrollBar {
         anchors {
@@ -95,14 +96,77 @@ Flickable {
         StreamingPreferences.save()
     }
 
+    // Sections, so the page is navigated rather than scrolled past. Every control
+    // below is unchanged; only which group is visible changes.
+    ListModel {
+        id: sectionsModel
+        ListElement { label: qsTr("Video") }
+        ListElement { label: qsTr("Audio") }
+        ListElement { label: qsTr("Host") }
+        ListElement { label: qsTr("Appearance") }
+        ListElement { label: qsTr("Input") }
+        ListElement { label: qsTr("Gamepad") }
+        ListElement { label: qsTr("Advanced") }
+        ListElement { label: qsTr("Umbra") }
+    }
+
+    property int currentSection: 0
+
+    Column {
+        id: sectionNav
+        width: 168
+        padding: 10
+        spacing: 2
+
+        Repeater {
+            model: sectionsModel
+
+            NavigableItemDelegate {
+                width: sectionNav.width - 20
+                height: 34
+
+                onClicked: settingsPage.currentSection = index
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 6
+                    color: settingsPage.currentSection === index ? "#1B202A" : "transparent"
+
+                    // A gold edge marks the current section without shouting.
+                    Rectangle {
+                        visible: settingsPage.currentSection === index
+                        width: 2
+                        height: parent.height - 12
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        radius: 1
+                        color: "#E8B54B"
+                    }
+
+                    Label {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: label
+                        font.pointSize: 11
+                        color: settingsPage.currentSection === index ? "#C9D1E0" : "#8891A5"
+                    }
+                }
+            }
+        }
+    }
+
     Column {
         padding: 10
+        rightPadding: 20
         id: settingsColumn1
-        width: settingsPage.width / 2
+        anchors.left: sectionNav.right
+        width: settingsPage.width - sectionNav.width
         spacing: 15
 
         GroupBox {
             id: basicSettingsGroupBox
+            visible: settingsPage.currentSection === 0
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
             title: "<font color=\"skyblue\">" + qsTr("Basic Settings") + "</font>"
@@ -879,6 +943,7 @@ Flickable {
         GroupBox {
 
             id: audioSettingsGroupBox
+            visible: settingsPage.currentSection === 1
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
             title: "<font color=\"skyblue\">" + qsTr("Audio Settings") + "</font>"
@@ -972,6 +1037,7 @@ Flickable {
 
         GroupBox {
             id: hostSettingsGroupBox
+            visible: settingsPage.currentSection === 2
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
             title: "<font color=\"skyblue\">" + qsTr("Host Settings") + "</font>"
@@ -1012,6 +1078,7 @@ Flickable {
 
         GroupBox {
             id: uiSettingsGroupBox
+            visible: settingsPage.currentSection === 3
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
             title: "<font color=\"skyblue\">" + qsTr("UI Settings") + "</font>"
@@ -1309,18 +1376,9 @@ Flickable {
                 }
             }
         }
-    }
-
-    Column {
-        padding: 10
-        rightPadding: 20
-        anchors.left: settingsColumn1.right
-        id: settingsColumn2
-        width: settingsPage.width / 2
-        spacing: 15
-
         GroupBox {
             id: inputSettingsGroupBox
+            visible: settingsPage.currentSection === 4
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
             title: "<font color=\"skyblue\">" + qsTr("Input Settings") + "</font>"
@@ -1469,6 +1527,7 @@ Flickable {
 
         GroupBox {
             id: gamepadSettingsGroupBox
+            visible: settingsPage.currentSection === 5
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
             title: "<font color=\"skyblue\">" + qsTr("Gamepad Settings") + "</font>"
@@ -1544,6 +1603,7 @@ Flickable {
 
         GroupBox {
             id: advancedSettingsGroupBox
+            visible: settingsPage.currentSection === 6
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
             title: "<font color=\"skyblue\">" + qsTr("Advanced Settings") + "</font>"
@@ -1819,6 +1879,7 @@ Flickable {
         // scattered through the sections above, so the familiar settings stay put.
         GroupBox {
             id: umbraSettingsGroupBox
+            visible: settingsPage.currentSection === 7
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12
             title: "<font color=\"skyblue\">" + qsTr("Umbra Settings") + "</font>"

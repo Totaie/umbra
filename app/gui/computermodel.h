@@ -16,7 +16,12 @@ class ComputerModel : public QAbstractListModel
         WakeableRole,
         StatusUnknownRole,
         ServerSupportedRole,
-        DetailsRole
+        DetailsRole,
+        // Surface enough on the card to answer "can I connect, and to what?"
+        // without opening a details dialog.
+        HostSoftwareRole,
+        AddressRole,
+        HasPairingTokenRole
     };
 
 public:

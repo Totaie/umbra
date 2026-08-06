@@ -24,12 +24,15 @@ ApplicationWindow {
 
     // This function runs prior to creation of the initial StackView item
     function doEarlyInit() {
-        // Override the background color to Material 2 colors for Qt 6.5+
-        // in order to improve contrast between GFE's placeholder box art
-        // and the background of the app grid.
-        if (SystemProperties.usesMaterial3Theme) {
-            Material.background = "#303030"
-        }
+        // Umbra's palette, applied to the whole window rather than letting the
+        // Material theme pick its own. Moonlight left the titlebar, header and body
+        // as three unrelated colours; these are one ramp from the logo work, with
+        // gold reserved for whatever currently wants attention.
+        Material.theme = Material.Dark
+        Material.background = "#14171F"   // Shadow
+        Material.foreground = "#C9D1E0"   // Silver
+        Material.accent = "#E8B54B"       // Corona
+        Material.primary = "#07090E"      // Void, used for the toolbar
 
         SdlGamepadKeyNavigation.enable()
     }

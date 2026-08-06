@@ -60,6 +60,7 @@ NvComputer::NvComputer(QSettings& settings)
     this->state = CS_UNKNOWN;
     this->gfeVersion = nullptr;
     this->appVersion = nullptr;
+    this->umbraHostVersion = nullptr;
     this->maxLumaPixelsHEVC = 0;
     this->serverCodecModeSupport = 0;
     this->pendingQuit = false;
@@ -211,6 +212,7 @@ NvComputer::NvComputer(NvHTTP& http, QString serverInfo)
                 PS_PAIRED : PS_NOT_PAIRED;
     this->currentGameId = NvHTTP::getCurrentGame(serverInfo);
     this->appVersion = NvHTTP::getXmlString(serverInfo, "appversion");
+    this->umbraHostVersion = NvHTTP::getXmlString(serverInfo, "UmbraHostVersion");
     this->gfeVersion = NvHTTP::getXmlString(serverInfo, "GfeVersion");
     this->gpuModel = NvHTTP::getXmlString(serverInfo, "gputype");
     this->activeAddress = http.address();

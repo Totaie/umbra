@@ -46,6 +46,27 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
         return computer->state == NvComputer::CS_UNKNOWN;
     case ServerSupportedRole:
         return computer->isSupportedServerVersion;
+    case HostSoftwareRole:
+        // Naming the host software is what makes "the machine answering isn't the one
+        // I installed" visible. Only an Umbra host reports its product version, so
+        // anything else is identified generically rather than guessed at.
+        if (computer->state != NvComputer::CS_ONLINE) {
+            return tr("Offline");
+        }
+        else if (!computer->umbraHostVersion.isEmpty()) {
+            return tr("Umbra Host %1").arg(computer->umbraHostVersion);
+        }
+        else if (computer->isNvidiaServerSoftware) {
+            return tr("GeForce Experience");
+        }
+        else {
+            return tr("Other host software");
+        }
+    case AddressRole:
+        return computer->activeAddress.isNull() ? tr("Not reachable")
+                                                : computer->activeAddress.toString();
+    case HasPairingTokenRole:
+        return !computer->pairingPassphrase.isEmpty();
     case DetailsRole: {
         QString state, pairState;
 
@@ -114,6 +135,9 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     names[StatusUnknownRole] = "statusUnknown";
     names[ServerSupportedRole] = "serverSupported";
     names[DetailsRole] = "details";
+    names[HostSoftwareRole] = "hostSoftware";
+    names[AddressRole] = "address";
+    names[HasPairingTokenRole] = "hasPairingToken";
 
     return names;
 }

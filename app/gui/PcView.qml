@@ -17,7 +17,7 @@ CenteredGridView {
     activeFocusOnTab: true
     topMargin: 20
     bottomMargin: 5
-    cellWidth: 310; cellHeight: 330;
+    cellWidth: 268; cellHeight: 172;
     objectName: qsTr("Computers")
 
     Component.onCompleted: {
@@ -107,57 +107,118 @@ CenteredGridView {
     model: computerModel
 
     delegate: NavigableItemDelegate {
-        width: 300; height: 320;
+        width: 258; height: 162;
         grid: pcGrid
 
         property alias pcContextMenu : pcContextMenuLoader.item
 
-        Image {
-            id: pcIcon
-            anchors.horizontalCenter: parent.horizontalCenter
-            source: "qrc:/res/desktop_windows-48px.svg"
-            sourceSize {
-                width: 200
-                height: 200
+        // A card, rather than a large glyph with a name under it. The point is to
+        // answer the questions asked before clicking: is it reachable, am I paired,
+        // and what host software is actually answering.
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 4
+            radius: 9
+            color: "#171B24"
+            border.width: 1
+            border.color: parent.highlighted ? "#7A6636" : "#333A49"
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 6
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    // Reachability as a dot, so it reads without being parsed.
+                    Rectangle {
+                        Layout.alignment: Qt.AlignVCenter
+                        width: 8; height: 8; radius: 4
+                        visible: !model.statusUnknown
+                        color: model.online ? "#4FB286" : "#4A5163"
+                    }
+
+                    BusyIndicator {
+                        Layout.alignment: Qt.AlignVCenter
+                        implicitWidth: 14; implicitHeight: 14
+                        visible: model.statusUnknown
+                        running: visible
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: model.name
+                        font.pointSize: 13
+                        font.bold: true
+                        color: "#C9D1E0"
+                        elide: Text.ElideRight
+                    }
+                }
+
+                // Pairing state and host software. The second is what makes "the host
+                // answering isn't the one I installed" visible at a glance.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 5
+
+                    Rectangle {
+                        visible: model.online
+                        radius: 4
+                        color: model.paired ? "#16412F" : "#41341460"
+                        implicitWidth: pairLabel.implicitWidth + 12
+                        implicitHeight: pairLabel.implicitHeight + 6
+                        Label {
+                            id: pairLabel
+                            anchors.centerIn: parent
+                            text: model.paired ? qsTr("Paired") : qsTr("Not paired")
+                            font.pointSize: 8
+                            color: model.paired ? "#4FB286" : "#E8B54B"
+                        }
+                    }
+
+                    Rectangle {
+                        radius: 4
+                        color: "#232937"
+                        Layout.fillWidth: true
+                        implicitHeight: hostLabel.implicitHeight + 6
+                        Label {
+                            id: hostLabel
+                            anchors.left: parent.left
+                            anchors.leftMargin: 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 12
+                            text: model.hostSoftware
+                            font.pointSize: 8
+                            color: "#8891A5"
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: model.address + (model.hasPairingToken ? qsTr(" · token set") : "")
+                    font.pointSize: 8
+                    color: "#6E7789"
+                    elide: Text.ElideRight
+                }
+
+                Item { Layout.fillHeight: true }
+
+                // Say what clicking does, rather than leaving the whole tile as an
+                // unlabelled target.
+                Label {
+                    Layout.fillWidth: true
+                    text: !model.online ? qsTr("Offline — open menu to wake")
+                                        : !model.paired ? qsTr("Click to pair")
+                                        : qsTr("Click to connect")
+                    font.pointSize: 8
+                    color: model.online && model.paired ? "#E8B54B" : "#6E7789"
+                    elide: Text.ElideRight
+                }
             }
-        }
-
-        Image {
-            // TODO: Tooltip
-            id: stateIcon
-            anchors.horizontalCenter: pcIcon.horizontalCenter
-            anchors.verticalCenter: pcIcon.verticalCenter
-            anchors.verticalCenterOffset: !model.online ? -18 : -16
-            visible: !model.statusUnknown && (!model.online || !model.paired)
-            source: !model.online ? "qrc:/res/warning_FILL1_wght300_GRAD200_opsz24.svg" : "qrc:/res/baseline-lock-24px.svg"
-            sourceSize {
-                width: !model.online ? 75 : 70
-                height: !model.online ? 75 : 70
-            }
-        }
-
-        BusyIndicator {
-            id: statusUnknownSpinner
-            anchors.horizontalCenter: pcIcon.horizontalCenter
-            anchors.verticalCenter: pcIcon.verticalCenter
-            anchors.verticalCenterOffset: -15
-            width: 75
-            height: 75
-            visible: model.statusUnknown
-            running: visible
-        }
-
-        Label {
-            id: pcNameText
-            text: model.name
-
-            width: parent.width
-            anchors.top: pcIcon.bottom
-            anchors.bottom: parent.bottom
-            font.pointSize: 36
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            elide: Text.ElideRight
         }
 
         Loader {

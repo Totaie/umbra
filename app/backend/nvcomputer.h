@@ -95,6 +95,10 @@ public:
     int currentGameId;
     QString gfeVersion;
     QString appVersion;
+    // Product version of an Umbra host, empty for any other host software. The
+    // GameStream appVersion above is identical across the whole Sunshine lineage, so
+    // this is the only way to tell what is actually answering.
+    QString umbraHostVersion;
     QVector<NvDisplayMode> displayModes;
     int maxLumaPixelsHEVC;
     int serverCodecModeSupport;
