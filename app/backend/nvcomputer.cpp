@@ -23,6 +23,7 @@
 #define SER_CUSTOMNAME "customname"
 #define SER_NVIDIASOFTWARE "nvidiasw"
 #define SER_APITOKEN "apitoken"
+#define SER_PAIRPASSPHRASE "pairpassphrase"
 
 NvComputer::NvComputer(QSettings& settings)
 {
@@ -41,6 +42,7 @@ NvComputer::NvComputer(QSettings& settings)
     this->serverCert = QSslCertificate(settings.value(SER_SRVCERT).toByteArray());
     this->isNvidiaServerSoftware = settings.value(SER_NVIDIASOFTWARE).toBool();
     this->apiToken = settings.value(SER_APITOKEN).toString();
+    this->pairingPassphrase = settings.value(SER_PAIRPASSPHRASE).toString();
 
     int appCount = settings.beginReadArray(SER_APPLIST);
     this->appList.reserve(appCount);
@@ -95,6 +97,7 @@ void NvComputer::serialize(QSettings& settings, bool serializeApps) const
     settings.setValue(SER_SRVCERT, serverCert.toPem());
     settings.setValue(SER_NVIDIASOFTWARE, isNvidiaServerSoftware);
     settings.setValue(SER_APITOKEN, apiToken);
+    settings.setValue(SER_PAIRPASSPHRASE, pairingPassphrase);
 
     // Avoid deleting an existing applist if we couldn't get one
     if (!appList.isEmpty() && serializeApps) {

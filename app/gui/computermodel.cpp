@@ -140,6 +140,28 @@ void ComputerModel::setApiToken(int computerIndex, QString token)
     m_ComputerManager->setHostApiToken(m_Computers[computerIndex], token);
 }
 
+QString ComputerModel::getPairingPassphrase(int computerIndex)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+    if (computerIndex >= m_Computers.count()) {
+        return QString();
+    }
+
+    NvComputer* computer = m_Computers[computerIndex];
+    QReadLocker lock(&computer->lock);
+    return computer->pairingPassphrase;
+}
+
+void ComputerModel::setPairingPassphrase(int computerIndex, QString passphrase)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+    if (computerIndex >= m_Computers.count()) {
+        return;
+    }
+
+    m_ComputerManager->setHostPairingPassphrase(m_Computers[computerIndex], passphrase);
+}
+
 int ComputerModel::getClientScreenCount()
 {
     return QGuiApplication::screens().count();

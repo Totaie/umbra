@@ -565,6 +565,16 @@ void ComputerManager::renameHost(NvComputer* computer, QString name)
     handleComputerStateChanged(computer);
 }
 
+void ComputerManager::setHostPairingPassphrase(NvComputer* computer, QString passphrase)
+{
+    {
+        QWriteLocker lock(&computer->lock);
+        computer->pairingPassphrase = passphrase.trimmed();
+    }
+
+    saveHost(computer);
+}
+
 void ComputerManager::setHostApiToken(NvComputer* computer, QString token)
 {
     {
@@ -617,7 +627,13 @@ private:
         NvPairingManager pairingManager(m_Computer);
 
         try {
-           NvPairingManager::PairState result = pairingManager.pair(m_Computer->appVersion, m_Pin, m_Computer->serverCert);
+           QString passphrase;
+           {
+               QReadLocker lock(&m_Computer->lock);
+               passphrase = m_Computer->pairingPassphrase;
+           }
+
+           NvPairingManager::PairState result = pairingManager.pair(m_Computer->appVersion, m_Pin, m_Computer->serverCert, passphrase);
            switch (result)
            {
            case NvPairingManager::PairState::PIN_WRONG:
@@ -827,7 +843,8 @@ void ComputerManager::pairHost(NvComputer* computer, QString pin)
     bool hasToken;
     {
         QReadLocker lock(&computer->lock);
-        hasToken = !computer->apiToken.isEmpty();
+        // A passphrase authorises the pairing on its own, so there is no PIN to submit.
+        hasToken = !computer->apiToken.isEmpty() && computer->pairingPassphrase.isEmpty();
     }
     if (hasToken) {
         QThreadPool::globalInstance()->start(new SubmitPinTask(computer, pin));

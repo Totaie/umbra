@@ -207,6 +207,14 @@ CenteredGridView {
                 }
 
                 NavigableMenuItem {
+                    text: qsTr("Set Pairing Token…")
+                    onTriggered: {
+                        passphraseDialog.pcIndex = index
+                        passphraseDialog.existingPassphrase = computerModel.getPairingPassphrase(index)
+                        passphraseDialog.open()
+                    }
+                }
+                NavigableMenuItem {
                     text: qsTr("Set Host API Token…")
                     onTriggered: {
                         apiTokenDialog.pcIndex = index
@@ -364,6 +372,59 @@ CenteredGridView {
 
             // Stop showing the spinner and show the image instead
             showSpinner = false
+        }
+    }
+
+    NavigableDialog {
+        id: passphraseDialog
+        property int pcIndex : -1;
+        property string existingPassphrase
+
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        onOpened: {
+            passphraseText.text = existingPassphrase
+            passphraseText.forceActiveFocus()
+        }
+
+        onClosed: {
+            passphraseText.clear()
+        }
+
+        onAccepted: {
+            computerModel.setPairingPassphrase(pcIndex, passphraseText.text)
+        }
+
+        ColumnLayout {
+            Label {
+                text: qsTr("Paste this host's pairing token:")
+                font.bold: true
+            }
+
+            Label {
+                Layout.maximumWidth: 460
+                wrapMode: Text.Wrap
+                text: qsTr("With a token saved, pairing needs nothing entered on the host at all. The token is never sent over the network — Umbra proves it knows it without revealing it.") + "\n\n" +
+                      qsTr("Get it from the host's web interface, or run: curl -k -X POST https://<host>:47990/api/pairing-passphrase") + "\n\n" +
+                      qsTr("Leave this empty to pair with a 4-digit PIN instead, which is what other Moonlight clients use.")
+            }
+
+            TextField {
+                id: passphraseText
+                Layout.fillWidth: true
+                Layout.minimumWidth: 460
+                placeholderText: qsTr("64-character pairing token")
+                font.family: "monospace"
+                focus: true
+
+                Keys.onReturnPressed: {
+                    passphraseDialog.accept()
+                }
+
+                Keys.onEnterPressed: {
+                    passphraseDialog.accept()
+                }
+            }
         }
     }
 

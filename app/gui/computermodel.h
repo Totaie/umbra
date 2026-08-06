@@ -50,6 +50,10 @@ public:
     Q_INVOKABLE QString getApiToken(int computerIndex);
     Q_INVOKABLE void setApiToken(int computerIndex, QString token);
 
+    // Persistent pairing passphrase configured on the host, so pairing needs no PIN.
+    Q_INVOKABLE QString getPairingPassphrase(int computerIndex);
+    Q_INVOKABLE void setPairingPassphrase(int computerIndex, QString passphrase);
+
     // Number of screens attached to this PC, used to size the multi-display launcher.
     Q_INVOKABLE int getClientScreenCount();
 

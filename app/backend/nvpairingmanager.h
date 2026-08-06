@@ -21,8 +21,13 @@ public:
 
     ~NvPairingManager();
 
+    // When passphrase is non-empty, it is used as the pairing secret instead of the
+    // PIN and the host is asked to authorise the pairing from it directly, so nobody
+    // has to enter anything on the host. Falls back to the PIN flow when empty, which
+    // is what every other Moonlight client does.
     PairState
-    pair(QString appVersion, QString pin, QSslCertificate& serverCert);
+    pair(QString appVersion, QString pin, QSslCertificate& serverCert,
+         QString passphrase = QString());
 
 private:
     QByteArray

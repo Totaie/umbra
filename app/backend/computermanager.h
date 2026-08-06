@@ -244,6 +244,8 @@ public:
 
     void setHostApiToken(NvComputer* computer, QString token);
 
+    void setHostPairingPassphrase(NvComputer* computer, QString passphrase);
+
     void clientSideAttributeUpdated(NvComputer* computer);
 
 signals:

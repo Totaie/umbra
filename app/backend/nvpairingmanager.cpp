@@ -204,7 +204,8 @@ NvPairingManager::saltPin(const QByteArray& salt, QString pin)
 }
 
 NvPairingManager::PairState
-NvPairingManager::pair(QString appVersion, QString pin, QSslCertificate& serverCert)
+NvPairingManager::pair(QString appVersion, QString pin, QSslCertificate& serverCert,
+                       QString passphrase)
 {
     int serverMajorVersion = NvHTTP::parseQuad(appVersion).at(0);
     qInfo() << "Pairing with server generation:" << serverMajorVersion;
@@ -225,15 +226,36 @@ NvPairingManager::pair(QString appVersion, QString pin, QSslCertificate& serverC
     }
 
     QByteArray salt = generateRandomBytes(16);
-    QByteArray saltedPin = saltPin(salt, pin);
+
+    // A passphrase takes the place of the PIN as the shared secret. Everything after
+    // this point is identical either way: the secret is only ever used to derive the
+    // key, and is never transmitted.
+    QString secret = passphrase.isEmpty() ? pin : passphrase;
+
+    QByteArray saltedPin = saltPin(salt, secret);
 
     QByteArray aesKey = QCryptographicHash::hash(saltedPin, hashAlgo).constData();
     aesKey.truncate(16);
 
+    QString pairArgs = "devicename=roth&updateState=1&phrase=getservercert&salt=" +
+                       salt.toHex() + "&clientcert=" + IdentityManager::get()->getCertificate().toHex();
+
+    if (!passphrase.isEmpty()) {
+        // Prove we know the passphrase without sending it. The host recomputes
+        // SHA256(passphrase + salt) over the salt exactly as we transmitted it, which
+        // is its lowercase hex form. A fresh salt each attempt stops this being
+        // replayable, and hosts that don't understand pskauth simply ignore it and
+        // wait for a PIN, so nothing breaks against stock Sunshine.
+        QByteArray pskAuth = QCryptographicHash::hash(passphrase.toUtf8() + salt.toHex(),
+                                                      QCryptographicHash::Sha256).toHex();
+        pairArgs += "&pskauth=" + pskAuth;
+
+        qInfo() << "Pairing using the host's passphrase rather than a PIN";
+    }
+
     QString getCert = m_Http.openConnectionToString(m_Http.m_BaseUrlHttp,
                                                     "pair",
-                                                    "devicename=roth&updateState=1&phrase=getservercert&salt=" +
-                                                    salt.toHex() + "&clientcert=" + IdentityManager::get()->getCertificate().toHex(),
+                                                    pairArgs,
                                                     0);
     NvHTTP::verifyResponseStatus(getCert);
     if (NvHTTP::getXmlString(getCert, "paired") != "1")

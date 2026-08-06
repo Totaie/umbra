@@ -118,6 +118,10 @@ public:
     // on the user's behalf so they don't have to type it on the host. Generated in the
     // host's web UI (Apollo/Vibepollo/Sunshine) and scoped to POST /api/pin.
     QString apiToken;
+
+    // Persistent pairing passphrase configured on this host. When set, Umbra pairs
+    // with it directly and nobody has to enter a PIN on the host.
+    QString pairingPassphrase;
     // Remember to update isEqualSerialized() when adding fields here!
 
     // Synchronization
