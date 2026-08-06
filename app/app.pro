@@ -580,3 +580,6 @@ macx {
 
 VERSION = "$$cat(version.txt)"
 DEFINES += VERSION_STR=\\\"$$cat(version.txt)\\\"
+
+# GitHub repo the update checker reads releases from
+DEFINES += UMBRA_UPDATE_REPO=\\\"Totaie/umbra\\\"

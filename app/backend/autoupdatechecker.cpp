@@ -43,18 +43,14 @@ void AutoUpdateChecker::start()
     QT_WARNING_POP
 #endif
 
-    // Umbra does not publish an update feed yet. Deliberately left empty rather than
-    // pointed at Moonlight's feed, which would advertise Moonlight releases as updates
-    // for this fork. Set this to an Umbra-hosted qt.json to re-enable update checks.
-    const QString k_UpdateFeedUrl = QStringLiteral("");
-    if (k_UpdateFeedUrl.isEmpty()) {
-        qInfo() << "Update checking is disabled (no Umbra update feed configured)";
-        return;
-    }
-
-    // We'll get a callback when this is finished
-    QUrl url(k_UpdateFeedUrl);
+    // Umbra publishes builds to GitHub Releases rather than hosting a manifest, so we
+    // read the releases API directly. /releases/latest deliberately ignores drafts and
+    // prereleases, so pushing a prerelease won't offer itself to everyone.
+    QUrl url(QStringLiteral("https://api.github.com/repos/" UMBRA_UPDATE_REPO "/releases/latest"));
     QNetworkRequest request(url);
+    request.setRawHeader("Accept", "application/vnd.github+json");
+    // GitHub rejects API requests without one
+    request.setRawHeader("User-Agent", "Umbra");
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
 #else
@@ -142,83 +138,63 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
             return;
         }
 
-        QJsonArray array = jsonDoc.array();
-        if (array.isEmpty()) {
-            qWarning() << "Update manifest doesn't contain an array";
+        // GitHub's releases API returns a single release object, not an array.
+        QJsonObject release = jsonDoc.object();
+        if (release.isEmpty()) {
+            qWarning() << "Release data was not an object";
             return;
         }
 
-        for (const auto& updateEntry : std::as_const(array)) {
-            if (updateEntry.isObject()) {
-                QJsonObject updateObj = updateEntry.toObject();
-                if (!updateObj.contains("platform") ||
-                        !updateObj.contains("arch") ||
-                        !updateObj.contains("version") ||
-                        !updateObj.contains("browser_url")) {
-                    qWarning() << "Update manifest entry missing vital field";
-                    continue;
-                }
+        // Tags are conventionally v1.2.3; the version comparison wants bare digits.
+        QString latestVersion = release["tag_name"].toString();
+        if (latestVersion.startsWith('v') || latestVersion.startsWith('V')) {
+            latestVersion.remove(0, 1);
+        }
+        if (latestVersion.isEmpty()) {
+            qWarning() << "Release is missing a tag name";
+            return;
+        }
 
-                if (!updateObj["platform"].isString() ||
-                        !updateObj["arch"].isString() ||
-                        !updateObj["version"].isString() ||
-                        !updateObj["browser_url"].isString()) {
-                    qWarning() << "Update manifest entry has unexpected vital field type";
-                    continue;
-                }
+        QVector<int> latestVersionQuad;
+        parseStringToVersionQuad(latestVersion, latestVersionQuad);
 
-                if (updateObj["arch"] == QSysInfo::buildCpuArchitecture() &&
-                        updateObj["platform"] == getPlatform()) {
+        int res = compareVersion(m_CurrentVersionQuad, latestVersionQuad);
+        if (res > 0) {
+            qDebug() << "Running a newer build than the latest release:" << latestVersion;
+            return;
+        }
+        else if (res == 0) {
+            qDebug() << "Already running the latest release:" << latestVersion;
+            return;
+        }
 
-                    // Check the kernel version minimum if one exists
-                    if (updateObj.contains("kernel_version_at_least") && updateObj["kernel_version_at_least"].isString()) {
-                        QVector<int> requiredVersionQuad;
-                        QVector<int> actualVersionQuad;
-
-                        QString requiredVersion = updateObj["kernel_version_at_least"].toString();
-                        QString actualVersion = QSysInfo::kernelVersion();
-                        parseStringToVersionQuad(requiredVersion, requiredVersionQuad);
-                        parseStringToVersionQuad(actualVersion, actualVersionQuad);
-
-                        if (compareVersion(actualVersionQuad, requiredVersionQuad) < 0) {
-                            qDebug() << "Skipping manifest entry due to kernel version (" << actualVersion << "<" << requiredVersion << ")";
-                            continue;
-                        }
-                    }
-
-                    qDebug() << "Found update manifest match for current platform";
-
-                    QString latestVersion = updateObj["version"].toString();
-                    qDebug() << "Latest version of Moonlight for this platform is:" << latestVersion;
-
-                    QVector<int> latestVersionQuad;
-                    parseStringToVersionQuad(latestVersion, latestVersionQuad);
-
-                    int res = compareVersion(m_CurrentVersionQuad, latestVersionQuad);
-                    if (res < 0) {
-                        // m_CurrentVersionQuad < latestVersionQuad
-                        qDebug() << "Update available";
-                        emit onUpdateAvailable(updateObj["version"].toString(),
-                                               updateObj["browser_url"].toString());
-                        return;
-                    }
-                    else if (res > 0) {
-                        qDebug() << "Update manifest version lower than current version";
-                        return;
-                    }
-                    else {
-                        qDebug() << "Update manifest version equal to current version";
-                        return;
-                    }
-                }
+        // Find the installer built for this machine. Asset names carry the architecture
+        // so one release can serve x64 and ARM64; see scripts/publish-release.ps1.
+        QString arch = QSysInfo::buildCpuArchitecture();
+        QString downloadUrl;
+        const QJsonArray assets = release["assets"].toArray();
+        for (const auto& assetEntry : assets) {
+            QJsonObject asset = assetEntry.toObject();
+            QString name = asset["name"].toString();
+            if (!name.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
+                continue;
             }
-            else {
-                qWarning() << "Update manifest contained unrecognized entry:" << updateEntry.toString();
+            if (name.contains(arch, Qt::CaseInsensitive)) {
+                downloadUrl = asset["browser_download_url"].toString();
+                break;
             }
         }
 
-        qWarning() << "No entry in update manifest found for current platform:"
-                   << QSysInfo::buildCpuArchitecture() << getPlatform() << QSysInfo::kernelVersion();
+        if (downloadUrl.isEmpty()) {
+            // A release with no installer for this architecture is not an update we can
+            // offer, so stay quiet rather than nagging with a link that goes nowhere.
+            qWarning() << "Release" << latestVersion << "has no installer for" << arch;
+            return;
+        }
+
+        qDebug() << "Update available:" << latestVersion;
+        emit onUpdateAvailable(latestVersion, downloadUrl);
+        return;
     }
     else {
         qWarning() << "Update checking failed with error:" << reply->error();
