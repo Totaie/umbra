@@ -536,7 +536,7 @@ unix:!macx: {
     desktop.files = deploy/linux/com.moonlight_stream.Moonlight.desktop
     desktop.path = $$PREFIX/$$DATADIR/applications/
 
-    icons.files = res/moonlight.svg
+    icons.files = res/umbra.svg
     icons.path = $$PREFIX/$$DATADIR/icons/hicolor/scalable/apps/
 
     appstream.files = deploy/linux/com.moonlight_stream.Moonlight.appdata.xml
@@ -545,7 +545,7 @@ unix:!macx: {
     INSTALLS += target desktop icons appstream
 }
 win32 {
-    RC_ICONS = moonlight.ico
+    RC_ICONS = umbra.ico
     QMAKE_TARGET_COMPANY = Umbra Project
     QMAKE_TARGET_DESCRIPTION = Umbra Remote Desktop Client
     QMAKE_TARGET_PRODUCT = Umbra

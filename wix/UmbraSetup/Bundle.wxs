@@ -20,7 +20,7 @@
           HelpUrl="https://github.com/Totaie/umbra"
           UpdateUrl="https://github.com/Totaie/umbra/releases"
           DisableModify="yes"
-          IconSourceFile="..\..\app\moonlight.ico">
+          IconSourceFile="..\..\app\umbra.ico">
 
     <bal:Condition Message="Umbra requires Windows 10 or later." Condition="VersionNT &gt;= v10.0" />
     <bal:Condition Message="Umbra requires a 64-bit version of Windows." Condition="NativeMachine &lt;&gt; 332" />
@@ -68,7 +68,7 @@
                                               LaunchTarget="[InstallFolder]\Umbra.exe"
                                               ThemeFile="RtfTheme.xml"
                                               Theme="rtfLicense" />
-      <Payload Name="Umbra.ico" SourceFile="..\..\app\moonlight.ico" Compressed="yes" />
+      <Payload Name="Umbra.ico" SourceFile="..\..\app\umbra.ico" Compressed="yes" />
     </BootstrapperApplication>
 
     <Chain>

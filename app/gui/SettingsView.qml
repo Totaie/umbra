@@ -1020,96 +1020,6 @@ Flickable {
                 anchors.fill: parent
                 spacing: 5
 
-                CheckBox {
-                    id: directConnectDesktopCheck
-                    hoverEnabled: true
-                    width: parent.width
-                    text: qsTr("Connect straight to the desktop")
-                    font.pointSize: 12
-                    checked: StreamingPreferences.directConnectDesktop
-                    onCheckedChanged: {
-                        StreamingPreferences.directConnectDesktop = checked
-                    }
-
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 10000
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Selecting a PC starts streaming its desktop immediately instead of showing the app list first.") + "\n\n" +
-                                  qsTr("The full app list is still available from the PC's context menu under \"View All Apps\".")
-                }
-
-                Label {
-                    width: parent.width
-                    text: qsTr("Background image")
-                    font.pointSize: 12
-                    wrapMode: Text.Wrap
-                }
-
-                FileDialog {
-                    id: backgroundImageDialog
-                    title: qsTr("Choose a background image")
-                    nameFilters: [qsTr("Image files") + " (*.png *.jpg *.jpeg *.bmp *.webp)"]
-                    onAccepted: {
-                        StreamingPreferences.backgroundImageUrl = selectedFile.toString()
-                        StreamingPreferences.save()
-                    }
-                }
-
-                Row {
-                    spacing: 5
-                    width: parent.width
-
-                    Button {
-                        id: chooseBackgroundButton
-                        text: qsTr("Choose image…")
-                        font.pointSize: 12
-                        onClicked: backgroundImageDialog.open()
-                    }
-
-                    Button {
-                        text: qsTr("Clear")
-                        font.pointSize: 12
-                        enabled: StreamingPreferences.backgroundImageUrl !== ""
-                        onClicked: {
-                            StreamingPreferences.backgroundImageUrl = ""
-                            StreamingPreferences.save()
-                        }
-                    }
-
-                    Label {
-                        anchors.verticalCenter: chooseBackgroundButton.verticalCenter
-                        width: parent.width - chooseBackgroundButton.width - 120
-                        elide: Text.ElideMiddle
-                        font.pointSize: 10
-                        text: StreamingPreferences.backgroundImageUrl === ""
-                                  ? qsTr("None")
-                                  : decodeURIComponent(StreamingPreferences.backgroundImageUrl.split("/").pop())
-                    }
-                }
-
-                Label {
-                    width: parent.width
-                    text: qsTr("Background image brightness: %1%").arg(backgroundOpacitySlider.value.toFixed(0))
-                    font.pointSize: 12
-                    enabled: StreamingPreferences.backgroundImageUrl !== ""
-                    wrapMode: Text.Wrap
-                }
-
-                Slider {
-                    id: backgroundOpacitySlider
-                    width: parent.width
-                    from: 0
-                    to: 100
-                    stepSize: 5
-                    snapMode: Slider.SnapAlways
-                    enabled: StreamingPreferences.backgroundImageUrl !== ""
-                    value: StreamingPreferences.backgroundImageOpacity
-
-                    onValueChanged: {
-                        StreamingPreferences.backgroundImageOpacity = value
-                    }
-                }
-
                 Label {
                     width: parent.width
                     id: languageTitle
@@ -1438,65 +1348,6 @@ Flickable {
                                   qsTr("NOTE: Due to a bug in GeForce Experience, this option may not work properly if your host PC has multiple monitors.")
                 }
 
-                CheckBox {
-                    id: clientSideCursorCheck
-                    hoverEnabled: true
-                    width: parent.width
-                    text: qsTr("Draw the mouse cursor on this PC instead of the host")
-                    font.pointSize: 12
-                    checked: StreamingPreferences.clientSideCursor
-                    onCheckedChanged: {
-                        StreamingPreferences.clientSideCursor = checked
-                    }
-
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 12000
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("The host normally draws its cursor into the video, so the pointer only moves once per encoded frame and feels laggy. This asks the host to stop drawing it and shows your own cursor instead, which tracks the mouse instantly.") + "\n\n" +
-                                  qsTr("Only applies in remote desktop mouse mode. Requires an Apollo, Vibepollo or Sunshine host. If the cursor ends up inverted, press Ctrl+Alt+Shift+N while streaming to flip it back.")
-                }
-
-                Label {
-                    width: parent.width
-                    text: qsTr("Host display to stream")
-                    font.pointSize: 12
-                    wrapMode: Text.Wrap
-                }
-
-                AutoResizingComboBox {
-                    id: preferredHostDisplayComboBox
-                    textRole: "text"
-                    model: ListModel {
-                        id: preferredHostDisplayListModel
-                        ListElement { text: qsTr("Leave unchanged"); val: 0 }
-                        ListElement { text: qsTr("Display 1"); val: 1 }
-                        ListElement { text: qsTr("Display 2"); val: 2 }
-                        ListElement { text: qsTr("Display 3"); val: 3 }
-                        ListElement { text: qsTr("Display 4"); val: 4 }
-                    }
-
-                    Component.onCompleted: {
-                        var saved = StreamingPreferences.preferredHostDisplay
-                        currentIndex = 0
-                        for (var i = 0; i < preferredHostDisplayListModel.count; i++) {
-                            if (preferredHostDisplayListModel.get(i).val === saved) {
-                                currentIndex = i
-                                break
-                            }
-                        }
-                    }
-
-                    onActivated: {
-                        StreamingPreferences.preferredHostDisplay = preferredHostDisplayListModel.get(currentIndex).val
-                    }
-
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 12000
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Switches the host to this display when the stream starts.") + "\n\n" +
-                                  qsTr("You can also switch displays at any time while streaming with Ctrl+Alt+Shift+F1 through F13, where F1 is the host's first display. Requires an Apollo, Vibepollo or Sunshine host.")
-                }
-
                 Row {
                     spacing: 5
                     width: parent.width
@@ -1504,7 +1355,7 @@ Flickable {
                     CheckBox {
                         id: captureSysKeysCheck
                         hoverEnabled: true
-                        text: qsTr("Immersive mode: send the Windows key and system shortcuts to the host")
+                        text: qsTr("Capture system keyboard shortcuts")
                         font.pointSize: 12
                         enabled: SystemProperties.hasDesktopEnvironment
                         checked: StreamingPreferences.captureSysKeysMode !== StreamingPreferences.CSK_OFF || !SystemProperties.hasDesktopEnvironment
@@ -1512,7 +1363,7 @@ Flickable {
                         ToolTip.delay: 1000
                         ToolTip.timeout: 10000
                         ToolTip.visible: hovered
-                        ToolTip.text: qsTr("Sends system-wide shortcuts like the Windows key and Alt+Tab to the host instead of letting the client OS handle them, so the host's Start menu opens rather than your own.") + "\n\n" +
+                        ToolTip.text: qsTr("This enables the capture of system-wide keyboard shortcuts like Alt+Tab that would normally be handled by the client OS while streaming.") + "\n\n" +
                                       qsTr("NOTE: Certain keyboard shortcuts like Ctrl+Alt+Del on Windows cannot be intercepted by any application, including Umbra.")
                     }
 
@@ -1959,6 +1810,170 @@ Flickable {
                     ToolTip.text: qsTr("Display real-time stream performance information while streaming.") + "\n\n" +
                                   qsTr("You can toggle it at any time while streaming using Ctrl+Alt+Shift+S or Select+L1+R1+X.") + "\n\n" +
                                   qsTr("The performance overlay is not supported on Steam Link or Raspberry Pi.")
+                }
+            }
+        }
+
+        // Everything Umbra adds on top of Moonlight lives here rather than being
+        // scattered through the sections above, so the familiar settings stay put.
+        GroupBox {
+            id: umbraSettingsGroupBox
+            width: (parent.width - (parent.leftPadding + parent.rightPadding))
+            padding: 12
+            title: "<font color=\"skyblue\">" + qsTr("Umbra Settings") + "</font>"
+            font.pointSize: 12
+
+            Column {
+                anchors.fill: parent
+                spacing: 5
+
+                CheckBox {
+                    id: directConnectDesktopCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Connect straight to the desktop")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.directConnectDesktop
+                    onCheckedChanged: {
+                        StreamingPreferences.directConnectDesktop = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Selecting a PC starts streaming its desktop immediately instead of showing the app list first.") + "\n\n" +
+                                  qsTr("The full app list is still available from the PC's context menu under \"View All Apps\".")
+                }
+
+                CheckBox {
+                    id: clientSideCursorCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Draw the mouse cursor on this PC instead of the host")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.clientSideCursor
+                    onCheckedChanged: {
+                        StreamingPreferences.clientSideCursor = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 12000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("The host normally draws its cursor into the video, so the pointer only moves once per encoded frame and feels laggy. This asks the host to stop drawing it and shows your own cursor instead, which tracks the mouse instantly.") + "\n\n" +
+                                  qsTr("Only applies in remote desktop mouse mode. Requires an Apollo, Vibepollo or Sunshine host. If the cursor ends up inverted, press Ctrl+Alt+Shift+N while streaming to flip it back.")
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Host display to stream")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                AutoResizingComboBox {
+                    id: preferredHostDisplayComboBox
+                    textRole: "text"
+                    model: ListModel {
+                        id: preferredHostDisplayListModel
+                        ListElement { text: qsTr("Leave unchanged"); val: 0 }
+                        ListElement { text: qsTr("Display 1"); val: 1 }
+                        ListElement { text: qsTr("Display 2"); val: 2 }
+                        ListElement { text: qsTr("Display 3"); val: 3 }
+                        ListElement { text: qsTr("Display 4"); val: 4 }
+                    }
+
+                    Component.onCompleted: {
+                        var saved = StreamingPreferences.preferredHostDisplay
+                        currentIndex = 0
+                        for (var i = 0; i < preferredHostDisplayListModel.count; i++) {
+                            if (preferredHostDisplayListModel.get(i).val === saved) {
+                                currentIndex = i
+                                break
+                            }
+                        }
+                    }
+
+                    onActivated: {
+                        StreamingPreferences.preferredHostDisplay = preferredHostDisplayListModel.get(currentIndex).val
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 12000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Switches the host to this display when the stream starts.") + "\n\n" +
+                                  qsTr("You can also switch displays at any time while streaming with Ctrl+Alt+Shift+F1 through F13, where F1 is the host's first display. Requires an Apollo, Vibepollo or Sunshine host.")
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Background image")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                FileDialog {
+                    id: backgroundImageDialog
+                    title: qsTr("Choose a background image")
+                    nameFilters: [qsTr("Image files") + " (*.png *.jpg *.jpeg *.bmp *.webp)"]
+                    onAccepted: {
+                        StreamingPreferences.backgroundImageUrl = selectedFile.toString()
+                        StreamingPreferences.save()
+                    }
+                }
+
+                Row {
+                    spacing: 5
+                    width: parent.width
+
+                    Button {
+                        id: chooseBackgroundButton
+                        text: qsTr("Choose image…")
+                        font.pointSize: 12
+                        onClicked: backgroundImageDialog.open()
+                    }
+
+                    Button {
+                        text: qsTr("Clear")
+                        font.pointSize: 12
+                        enabled: StreamingPreferences.backgroundImageUrl !== ""
+                        onClicked: {
+                            StreamingPreferences.backgroundImageUrl = ""
+                            StreamingPreferences.save()
+                        }
+                    }
+
+                    Label {
+                        anchors.verticalCenter: chooseBackgroundButton.verticalCenter
+                        width: parent.width - chooseBackgroundButton.width - 120
+                        elide: Text.ElideMiddle
+                        font.pointSize: 10
+                        text: StreamingPreferences.backgroundImageUrl === ""
+                                  ? qsTr("None")
+                                  : decodeURIComponent(StreamingPreferences.backgroundImageUrl.split("/").pop())
+                    }
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Background image brightness: %1%").arg(backgroundOpacitySlider.value.toFixed(0))
+                    font.pointSize: 12
+                    enabled: StreamingPreferences.backgroundImageUrl !== ""
+                    wrapMode: Text.Wrap
+                }
+
+                Slider {
+                    id: backgroundOpacitySlider
+                    width: parent.width
+                    from: 0
+                    to: 100
+                    stepSize: 5
+                    snapMode: Slider.SnapAlways
+                    enabled: StreamingPreferences.backgroundImageUrl !== ""
+                    value: StreamingPreferences.backgroundImageOpacity
+
+                    onValueChanged: {
+                        StreamingPreferences.backgroundImageOpacity = value
+                    }
                 }
             }
         }
