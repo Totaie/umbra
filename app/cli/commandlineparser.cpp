@@ -351,6 +351,8 @@ void StreamCommandLineParser::parse(const QStringList &args, StreamingPreference
     parser.addValueOption("bitrate", "bitrate in Kbps");
     parser.addValueOption("packet-size", "video packet size");
     parser.addChoiceOption("display-mode", "display mode", m_WindowModeMap.keys());
+    parser.addValueOption("host-display", "1-based host display to stream");
+    parser.addValueOption("client-screen", "1-based screen on this PC to open the stream on");
     parser.addChoiceOption("audio-config", "audio config", m_AudioConfigMap.keys());
     parser.addToggleOption("multi-controller", "multiple controller support");
     parser.addToggleOption("quit-after", "quit app after session");
@@ -441,6 +443,17 @@ void StreamCommandLineParser::parse(const QStringList &args, StreamingPreference
     // Resolve --audio-config option
     if (parser.isSet("audio-config")) {
         preferences->audioConfig = mapValue(m_AudioConfigMap, parser.getChoiceOptionValue("audio-config"));
+    }
+
+    // Resolve --host-display option
+    if (parser.isSet("host-display")) {
+        preferences->preferredHostDisplay = parser.getIntOption("host-display");
+    }
+
+    // Resolve --client-screen option. Stored zero-based internally but specified
+    // 1-based on the command line to match how the OS numbers monitors.
+    if (parser.isSet("client-screen")) {
+        preferences->clientScreenIndex = parser.getIntOption("client-screen") - 1;
     }
 
     // Resolve --multi-controller and --no-multi-controller options

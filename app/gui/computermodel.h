@@ -45,6 +45,16 @@ public:
 
     Q_INVOKABLE Session* createSessionForCurrentGame(int computerIndex);
 
+    // Number of screens attached to this PC, used to size the multi-display launcher.
+    Q_INVOKABLE int getClientScreenCount();
+
+    // Streams the first screenCount host displays, one per screen on this PC.
+    //
+    // moonlight-common-c keeps its connection state in file-scope statics, so a
+    // process can only ever hold one stream. Each display therefore gets its own
+    // Umbra process, launched with --host-display/--client-screen.
+    Q_INVOKABLE bool launchMultiDisplay(int computerIndex, int screenCount);
+
 signals:
     void pairingCompleted(QVariant error);
     void connectionTestCompleted(int result, QString blockedPorts);

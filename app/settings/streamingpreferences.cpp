@@ -162,6 +162,9 @@ void StreamingPreferences::reload()
     directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
     clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
     preferredHostDisplay = settings.value(SER_PREFERREDHOSTDISPLAY, 0).toInt();
+    // Runtime-only: set by --client-screen for multi-display child processes and never
+    // persisted, so a one-off launch can't strand the user's window on a dead monitor.
+    clientScreenIndex = -1;
     backgroundImageUrl = settings.value(SER_BACKGROUNDIMAGEURL, QString()).toString();
     backgroundImageOpacity = qBound(0, settings.value(SER_BACKGROUNDIMAGEOPACITY, 35).toInt(), 100);
     enableHdr = settings.value(SER_HDR, false).toBool();

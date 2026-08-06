@@ -1320,7 +1320,16 @@ void Session::getWindowDimensions(int& x, int& y,
 {
     int displayIndex = 0;
 
-    if (m_Window != nullptr) {
+    // An explicitly requested client screen wins over everything else. This is how the
+    // multi-display launcher pins each child stream to its own monitor.
+    if (m_Preferences->clientScreenIndex >= 0 &&
+        m_Preferences->clientScreenIndex < SDL_GetNumVideoDisplays()) {
+        displayIndex = m_Preferences->clientScreenIndex;
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Using explicitly requested client screen %d",
+                    displayIndex);
+    }
+    else if (m_Window != nullptr) {
         displayIndex = SDL_GetWindowDisplayIndex(m_Window);
         SDL_assert(displayIndex >= 0);
     }

@@ -152,6 +152,7 @@ public:
     Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY directConnectDesktopChanged)
     Q_PROPERTY(bool clientSideCursor MEMBER clientSideCursor NOTIFY clientSideCursorChanged)
     Q_PROPERTY(int preferredHostDisplay MEMBER preferredHostDisplay NOTIFY preferredHostDisplayChanged)
+    Q_PROPERTY(int clientScreenIndex MEMBER clientScreenIndex NOTIFY preferredHostDisplayChanged)
     Q_PROPERTY(QString backgroundImageUrl MEMBER backgroundImageUrl NOTIFY backgroundImageChanged)
     Q_PROPERTY(int backgroundImageOpacity MEMBER backgroundImageOpacity NOTIFY backgroundImageChanged)
     Q_PROPERTY(bool swapMouseButtons MEMBER swapMouseButtons NOTIFY mouseButtonsChanged)
@@ -199,6 +200,10 @@ public:
     // 0 means "leave the host on whatever display it is already capturing".
     // Otherwise it is a 1-based display number to switch to when the stream starts.
     int preferredHostDisplay;
+    // Which of *this* PC's screens to put the stream window on. -1 keeps the stock
+    // behaviour of following whichever screen the Umbra window is on. Used by the
+    // multi-display launcher to pin each child stream to its own monitor.
+    int clientScreenIndex;
     // Empty means "no wallpaper", which leaves the stock flat background in place.
     // Stored as a URL rather than a filesystem path so it can be handed straight to
     // Image.source without having to escape Windows paths in QML.

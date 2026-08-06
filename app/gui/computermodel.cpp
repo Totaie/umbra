@@ -1,5 +1,9 @@
 #include "computermodel.h"
 
+#include <QCoreApplication>
+#include <QGuiApplication>
+#include <QProcess>
+#include <QScreen>
 #include <QThreadPool>
 
 ComputerModel::ComputerModel(QObject* object)
@@ -112,6 +116,62 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     names[DetailsRole] = "details";
 
     return names;
+}
+
+int ComputerModel::getClientScreenCount()
+{
+    return QGuiApplication::screens().count();
+}
+
+bool ComputerModel::launchMultiDisplay(int computerIndex, int screenCount)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+    if (computerIndex >= m_Computers.count()) {
+        return false;
+    }
+
+    NvComputer* computer = m_Computers[computerIndex];
+
+    QString host;
+    {
+        QReadLocker lock(&computer->lock);
+        // Prefer the UUID so the child doesn't have to re-discover the host, and so
+        // this keeps working if the address changes between launches.
+        host = computer->uuid.isEmpty() ? computer->activeAddress.address()
+                                        : computer->uuid;
+    }
+
+    if (host.isEmpty()) {
+        qWarning() << "Cannot launch multi-display: no usable address for host";
+        return false;
+    }
+
+    const int availableScreens = QGuiApplication::screens().count();
+    screenCount = qBound(1, screenCount, availableScreens);
+
+    // The first display is streamed by this process through the normal path, so only
+    // the additional ones need a child. Launching every display as a child instead
+    // keeps the code simple and means this window stays usable as a launcher.
+    bool allStarted = true;
+    for (int i = 0; i < screenCount; i++) {
+        QStringList args;
+        args << QStringLiteral("stream")
+             << host
+             << QStringLiteral("Desktop")
+             << QStringLiteral("--host-display") << QString::number(i + 1)
+             << QStringLiteral("--client-screen") << QString::number(i + 1)
+             << QStringLiteral("--display-mode") << QStringLiteral("fullscreen");
+
+        qInfo() << "Launching multi-display child for host display" << (i + 1)
+                << "on client screen" << (i + 1);
+
+        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args)) {
+            qWarning() << "Failed to launch multi-display child for display" << (i + 1);
+            allStarted = false;
+        }
+    }
+
+    return allStarted;
 }
 
 Session* ComputerModel::createSessionForCurrentGame(int computerIndex)

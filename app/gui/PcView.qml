@@ -181,6 +181,19 @@ CenteredGridView {
                     visible: model.online && model.paired
                 }
                 NavigableMenuItem {
+                    text: qsTr("Stream All Displays")
+                    onTriggered: {
+                        if (!computerModel.launchMultiDisplay(index, computerModel.getClientScreenCount())) {
+                            errorDialog.text = qsTr("Umbra could not start one or more of the display streams.")
+                            errorDialog.helpText = ""
+                            errorDialog.open()
+                        }
+                    }
+                    // Only worth offering when this PC actually has more than one screen
+                    // to spread the host's displays across.
+                    visible: model.online && model.paired && computerModel.getClientScreenCount() > 1
+                }
+                NavigableMenuItem {
                     text: qsTr("Wake PC")
                     onTriggered: computerModel.wakeComputer(index)
                     visible: !model.online && model.wakeable
