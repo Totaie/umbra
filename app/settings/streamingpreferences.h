@@ -151,6 +151,7 @@ public:
     Q_PROPERTY(UIDisplayMode uiDisplayMode MEMBER uiDisplayMode NOTIFY uiDisplayModeChanged)
     Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY directConnectDesktopChanged)
     Q_PROPERTY(bool clientSideCursor MEMBER clientSideCursor NOTIFY clientSideCursorChanged)
+    Q_PROPERTY(bool checkForUpdates MEMBER checkForUpdates NOTIFY checkForUpdatesChanged)
     Q_PROPERTY(int preferredHostDisplay MEMBER preferredHostDisplay NOTIFY preferredHostDisplayChanged)
     Q_PROPERTY(int clientScreenIndex MEMBER clientScreenIndex NOTIFY preferredHostDisplayChanged)
     Q_PROPERTY(QString backgroundImageUrl MEMBER backgroundImageUrl NOTIFY backgroundImageChanged)
@@ -197,6 +198,8 @@ public:
     bool directConnectDesktop;
     // Draw the cursor locally instead of letting the host composite it into the video.
     bool clientSideCursor;
+    // Check GitHub Releases for a newer Umbra on startup.
+    bool checkForUpdates;
     // 0 means "leave the host on whatever display it is already capturing".
     // Otherwise it is a 1-based display number to switch to when the stream starts.
     int preferredHostDisplay;
@@ -259,6 +262,7 @@ signals:
     void keepAwakeChanged();
     void directConnectDesktopChanged();
     void clientSideCursorChanged();
+    void checkForUpdatesChanged();
     void preferredHostDisplayChanged();
     void backgroundImageChanged();
     void languageChanged();

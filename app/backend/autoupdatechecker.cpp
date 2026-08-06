@@ -115,6 +115,23 @@ void AutoUpdateChecker::start()
 #endif
 }
 
+void AutoUpdateChecker::checkNow()
+{
+    // The automatic check deletes its QNetworkAccessManager once finished, so a manual
+    // check has to stand one back up. Doing so also means an on-demand check works even
+    // when automatic checks are switched off.
+    if (!m_Nam) {
+        m_Nam = new QNetworkAccessManager(this);
+        m_Nam->setStrictTransportSecurityEnabled(true);
+        m_Nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+        connect(m_Nam, &QNetworkAccessManager::finished,
+                this, &AutoUpdateChecker::handleUpdateCheckRequestFinished);
+    }
+
+    m_ManualCheck = true;
+    start();
+}
+
 void AutoUpdateChecker::parseStringToVersionQuad(QString& string, QVector<int>& version)
 {
     QStringList list = string.split('.');
@@ -216,10 +233,14 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         int res = compareVersion(m_CurrentVersionQuad, latestVersionQuad);
         if (res > 0) {
             qDebug() << "Running a newer build than the latest release:" << latestVersion;
+            emit onUpToDate(QString(VERSION_STR));
+            m_ManualCheck = false;
             return;
         }
         else if (res == 0) {
             qDebug() << "Already running the latest release:" << latestVersion;
+            emit onUpToDate(latestVersion);
+            m_ManualCheck = false;
             return;
         }
 
@@ -240,6 +261,7 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
             }
         }
 
+        m_ManualCheck = false;
         if (downloadUrl.isEmpty()) {
             // A release with no installer for this architecture is not an update we can
             // offer, so stay quiet rather than nagging with a link that goes nowhere.
@@ -248,6 +270,7 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         }
 
         qDebug() << "Update available:" << latestVersion;
+        m_ManualCheck = false;
         emit onUpdateAvailable(latestVersion, downloadUrl);
         return;
     }
@@ -262,6 +285,17 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         else {
             qWarning() << "Update checking failed with error:" << reply->error();
         }
+
+        if (m_ManualCheck) {
+            // Silence is indistinguishable from success when the user pressed a button,
+            // so always say something.
+            emit onCheckFailed(status == 404 && m_CheckedWithoutToken
+                                   ? QObject::tr("No releases found. If the repository is private, "
+                                                 "sign in with the GitHub CLI or set UMBRA_GITHUB_TOKEN.")
+                                   : reply->errorString());
+            m_ManualCheck = false;
+        }
+
         reply->deleteLater();
     }
 }

@@ -98,6 +98,22 @@ if "%DO_CLEAN%"=="1" (
 if not exist "%BUILD_FOLDER%" mkdir "%BUILD_FOLDER%"
 if not exist "%DEPLOY_FOLDER%" mkdir "%DEPLOY_FOLDER%"
 
+rem app.pro bakes the version into a compiler define with $$cat(version.txt), but
+rem version.txt is not a dependency of the generated app Makefile. Editing it alone
+rem therefore changes nothing: qmake is only re-run for the subdirectory when its
+rem .pro file changes, so the build keeps the version it was first configured with
+rem and ships a binary whose version disagrees with its release tag.
+rem
+rem Discard the app Makefiles when version.txt is newer than them, so qmake
+rem regenerates with the current version.
+if exist "%BUILD_FOLDER%\app\Makefile" (
+    for /f %%i in ('powershell -NoProfile -Command "if ((Get-Item '%SOURCE_ROOT%\app\version.txt').LastWriteTime -gt (Get-Item '%BUILD_FOLDER%\app\Makefile').LastWriteTime) { 'stale' } else { 'ok' }"') do set VER_STATE=%%i
+    if "!VER_STATE!"=="stale" (
+        echo Version changed since the last configure; regenerating makefiles...
+        del /q "%BUILD_FOLDER%\app\Makefile*" 2>nul
+    )
+)
+
 echo Configuring...
 pushd "%BUILD_FOLDER%"
 qmake.exe "%SOURCE_ROOT%\umbra.pro"

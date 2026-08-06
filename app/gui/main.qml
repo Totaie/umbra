@@ -321,6 +321,29 @@ ApplicationWindow {
 
 
             NavigableToolButton {
+                id: hostUiButton
+                visible: SystemProperties.hasBrowser && stackView.currentItem instanceof PcView
+
+                iconSource: "qrc:/res/desktop_windows-48px.svg"
+
+                ToolTip.delay: 1000
+                ToolTip.timeout: 5000
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Open this PC's host settings in a browser")
+
+                onClicked: {
+                    // The host's web interface listens one port above its base HTTP port.
+                    // Opened on localhost because this button configures the host running
+                    // here, not whichever PC happens to be selected in the grid.
+                    Qt.openUrlExternally("https://localhost:47990")
+                }
+
+                Keys.onDownPressed: {
+                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
+                }
+            }
+
+            NavigableToolButton {
                 id: addPcButton
                 visible: stackView.currentItem instanceof PcView
 
@@ -376,7 +399,11 @@ ApplicationWindow {
 
                 Component.onCompleted: {
                     AutoUpdateChecker.onUpdateAvailable.connect(updateAvailable)
-                    AutoUpdateChecker.start()
+
+                    // Respect the user's choice rather than phoning home regardless.
+                    if (StreamingPreferences.checkForUpdates) {
+                        AutoUpdateChecker.start()
+                    }
                 }
 
                 Keys.onDownPressed: {

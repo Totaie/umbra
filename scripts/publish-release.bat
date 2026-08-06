@@ -121,6 +121,23 @@ if not exist "!BUILT!" (
     exit /b 1
 )
 
+rem Verify the binary actually carries the version we are about to tag. A stale
+rem configure silently ships the previous version, which then disagrees with the
+rem release, and the update checker compares the wrong number. Checking the linked
+rem binary is the only way to know rather than assume.
+set BUILT_VERSION=
+for /f %%v in ('powershell -NoProfile -Command "(Get-Item '%SOURCE_ROOT%\build\deploy-%ARCH%-release\Umbra.exe').VersionInfo.ProductVersion"') do set BUILT_VERSION=%%v
+if not "!BUILT_VERSION!"=="!VERSION!.0" (
+    if not "!BUILT_VERSION!"=="!VERSION!" (
+        echo.
+        echo Version mismatch: Umbra.exe reports '!BUILT_VERSION!' but this release is '!VERSION!'.
+        echo The build did not pick up app\version.txt. Re-run with a clean build:
+        echo     scripts\umbra-build.bat release clean
+        exit /b 1
+    )
+)
+echo Verified Umbra.exe reports version !BUILT_VERSION!
+
 rem The update checker matches assets on architecture, so it has to be in the name.
 set ASSET_NAME=UmbraSetup-%ARCH%-!VERSION!.exe
 set ASSET=%SOURCE_ROOT%\build\installer-%ARCH%-release\!ASSET_NAME!

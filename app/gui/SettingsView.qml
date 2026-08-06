@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.2
 import QtQuick.Window 2.2
 
 import StreamingPreferences 1.0
+import AutoUpdateChecker 1.0
 import ComputerManager 1.0
 import SdlGamepadKeyNavigation 1.0
 import SystemProperties 1.0
@@ -1826,6 +1827,61 @@ Flickable {
             Column {
                 anchors.fill: parent
                 spacing: 5
+
+                CheckBox {
+                    id: checkForUpdatesCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Check for updates automatically")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.checkForUpdates
+                    onCheckedChanged: {
+                        StreamingPreferences.checkForUpdates = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Looks for a newer Umbra release on startup and tells you if one is available. Nothing is downloaded or installed without you asking.")
+                }
+
+                Row {
+                    spacing: 8
+                    width: parent.width
+
+                    Button {
+                        id: checkNowButton
+                        text: qsTr("Check for updates now")
+                        font.pointSize: 12
+                        onClicked: {
+                            updateCheckStatus.text = qsTr("Checking…")
+                            AutoUpdateChecker.checkNow()
+                        }
+                    }
+
+                    Label {
+                        id: updateCheckStatus
+                        anchors.verticalCenter: checkNowButton.verticalCenter
+                        width: parent.width - checkNowButton.width - 20
+                        wrapMode: Text.Wrap
+                        font.pointSize: 10
+                        text: ""
+                    }
+
+                    Component.onCompleted: {
+                        // Report the outcome either way: a button that does nothing
+                        // visible on success reads as broken.
+                        AutoUpdateChecker.onUpdateAvailable.connect(function(version, url) {
+                            updateCheckStatus.text = qsTr("Umbra %1 is available.").arg(version)
+                        })
+                        AutoUpdateChecker.onUpToDate.connect(function(version) {
+                            updateCheckStatus.text = qsTr("Up to date (%1).").arg(version)
+                        })
+                        AutoUpdateChecker.onCheckFailed.connect(function(error) {
+                            updateCheckStatus.text = qsTr("Check failed: %1").arg(error)
+                        })
+                    }
+                }
 
                 CheckBox {
                     id: directConnectDesktopCheck

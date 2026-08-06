@@ -44,11 +44,12 @@
          choice rather than something that happens silently. -->
     <Variable Name="InstallHostCheckbox" Type="numeric" Value="1" />
 
-    <!-- Don't offer to install a host that's already present. Vibepollo and its
-         Apollo/Sunshine ancestors register their service under this key. -->
+    <!-- Don't offer to install a host that's already present. The service is named
+         ApolloService, inherited from Apollo: Sunshine's own name is not what this
+         lineage registers, so checking for SunshineService silently never matched. -->
     <util:RegistrySearch Variable="HostAlreadyInstalled"
                          Root="HKLM"
-                         Key="SYSTEM\CurrentControlSet\Services\SunshineService"
+                         Key="SYSTEM\CurrentControlSet\Services\ApolloService"
                          Result="exists" />
 
     <util:ProductSearch Id="VCREDIST_14_x64"

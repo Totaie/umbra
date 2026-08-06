@@ -52,6 +52,7 @@
 #define SER_KEEPAWAKE "keepawake"
 #define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
 #define SER_CLIENTSIDECURSOR "clientsidecursor"
+#define SER_CHECKFORUPDATES "checkforupdates"
 #define SER_PREFERREDHOSTDISPLAY "preferredhostdisplay"
 #define SER_BACKGROUNDIMAGEURL "backgroundimageurl"
 #define SER_BACKGROUNDIMAGEOPACITY "backgroundimageopacity"
@@ -161,6 +162,7 @@ void StreamingPreferences::reload()
     // context menu ("View All Apps").
     directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
     clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
+    checkForUpdates = settings.value(SER_CHECKFORUPDATES, true).toBool();
     preferredHostDisplay = settings.value(SER_PREFERREDHOSTDISPLAY, 0).toInt();
     // Runtime-only: set by --client-screen for multi-display child processes and never
     // persisted, so a one-off launch can't strand the user's window on a dead monitor.
@@ -384,6 +386,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_KEEPAWAKE, keepAwake);
     settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
     settings.setValue(SER_CLIENTSIDECURSOR, clientSideCursor);
+    settings.setValue(SER_CHECKFORUPDATES, checkForUpdates);
     settings.setValue(SER_PREFERREDHOSTDISPLAY, preferredHostDisplay);
     settings.setValue(SER_BACKGROUNDIMAGEURL, backgroundImageUrl);
     settings.setValue(SER_BACKGROUNDIMAGEOPACITY, backgroundImageOpacity);
