@@ -813,7 +813,10 @@ namespace config {
     _CONVERT_(per_client);
     _CONVERT_(shared);
 #undef _CONVERT_
-    return video_t::virtual_display_mode_e::per_client;  // Default to virtual display when unspecified
+    // Match the compiled-in default above: an unrecognised or absent value means the
+    // physical display, not a virtual one. Leaving this as per_client meant a typo in
+    // the config silently switched the host to virtual displays.
+    return video_t::virtual_display_mode_e::disabled;
   }
 
   video_t::virtual_display_layout_e virtual_display_layout_from_view(const ::std::string_view value) {
@@ -913,7 +916,11 @@ namespace config {
     {},  // adapter_pnp_id
     {},  // output_name
 
-    video_t::virtual_display_mode_e::per_client,  // virtual_display_mode
+    // Physical display by default. Upstream defaults to creating a virtual display
+    // per client, which is the right choice for headless hosts but surprising on a
+    // machine with monitors attached: you connect and get an empty desktop rather
+    // than the one you were looking at. Virtual displays remain a per-host setting.
+    video_t::virtual_display_mode_e::disabled,  // virtual_display_mode
     video_t::virtual_display_layout_e::exclusive,  // virtual_display_layout
 
     {

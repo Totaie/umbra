@@ -59,6 +59,15 @@ endif()
 install(TARGETS dxgi-info RUNTIME DESTINATION "tools" COMPONENT dxgi)
 install(TARGETS audio-info RUNTIME DESTINATION "tools" COMPONENT audio)
 
+# The Windows service wrapper. This is built and listed as a packaging dependency,
+# but had no install rule, so it never reached the installer. Without it there is no
+# service to register: an install could only ever work if some earlier Apollo or
+# Vibepollo had already left one behind, and uninstalling that took the host down
+# with it.
+if (TARGET sunshinesvc)
+    install(TARGETS sunshinesvc RUNTIME DESTINATION "tools" COMPONENT application)
+endif()
+
 # Helpers and tools
 # - Playnite launcher helper used for Playnite-managed app launches
 # - WGC capture helper used by the WGC display backend
