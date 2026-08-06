@@ -24,6 +24,9 @@ private:
 
     QString getPlatform();
 
+    static QString getGitHubToken();
+
     QVector<int> m_CurrentVersionQuad;
+    bool m_CheckedWithoutToken = false;
     QNetworkAccessManager* m_Nam;
 };

@@ -4,6 +4,51 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QProcess>
+#include <QSettings>
+#include <QStandardPaths>
+
+#define SER_GITHUBTOKEN "githubtoken"
+
+QString AutoUpdateChecker::getGitHubToken()
+{
+    // A private repo's releases API returns 404 without credentials, so update checks
+    // need a token. Being signed into github.com in a browser doesn't help here: Umbra
+    // is a separate application and has no access to that session. (The *download* is
+    // different — that opens in the browser and does ride your session.)
+    //
+    // Checked in order of how explicit the user was about it.
+
+    QByteArray envToken = qgetenv("UMBRA_GITHUB_TOKEN");
+    if (!envToken.isEmpty()) {
+        return QString::fromUtf8(envToken).trimmed();
+    }
+
+    QSettings settings;
+    QString savedToken = settings.value(SER_GITHUBTOKEN).toString().trimmed();
+    if (!savedToken.isEmpty()) {
+        return savedToken;
+    }
+
+    // Fall back to the GitHub CLI's token if it's installed and logged in. This is what
+    // makes "I'm already authenticated on this device" actually work, without Umbra
+    // storing a second copy of a credential.
+    QString ghPath = QStandardPaths::findExecutable(QStringLiteral("gh"));
+    if (!ghPath.isEmpty()) {
+        QProcess gh;
+        gh.start(ghPath, {QStringLiteral("auth"), QStringLiteral("token")});
+        // Short timeout: a hung gh must not delay startup.
+        if (gh.waitForFinished(3000) && gh.exitCode() == 0) {
+            QString token = QString::fromUtf8(gh.readAllStandardOutput()).trimmed();
+            if (!token.isEmpty()) {
+                qInfo() << "Using the GitHub CLI's token for update checks";
+                return token;
+            }
+        }
+    }
+
+    return QString();
+}
 
 AutoUpdateChecker::AutoUpdateChecker(QObject *parent) :
     QObject(parent)
@@ -51,6 +96,16 @@ void AutoUpdateChecker::start()
     request.setRawHeader("Accept", "application/vnd.github+json");
     // GitHub rejects API requests without one
     request.setRawHeader("User-Agent", "Umbra");
+
+    // Only needed while the repo is private, but harmless when it isn't: an authenticated
+    // request also gets a far higher rate limit than the anonymous 60/hour.
+    QString token = getGitHubToken();
+    if (!token.isEmpty()) {
+        request.setRawHeader("Authorization", ("Bearer " + token).toUtf8());
+    }
+    else {
+        m_CheckedWithoutToken = true;
+    }
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
 #else
@@ -197,7 +252,16 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         return;
     }
     else {
-        qWarning() << "Update checking failed with error:" << reply->error();
+        int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status == 404 && m_CheckedWithoutToken) {
+            // A private repo is indistinguishable from a missing one when unauthenticated,
+            // so say what to do rather than leaving a bare 404 in the log.
+            qWarning() << "Update check got 404. If" << UMBRA_UPDATE_REPO << "is private, Umbra needs a "
+                          "token: set UMBRA_GITHUB_TOKEN, or log in with the GitHub CLI (gh auth login).";
+        }
+        else {
+            qWarning() << "Update checking failed with error:" << reply->error();
+        }
         reply->deleteLater();
     }
 }

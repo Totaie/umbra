@@ -82,7 +82,7 @@ rem ---------------------------------------------------------------------------
 if "%WITH_HOST%"=="1" (
     if not exist "%BUILD_ROOT%\host\UmbraHostSetup.exe" (
         echo Fetching Umbra host installer...
-        powershell -NoProfile -ExecutionPolicy Bypass -File "%SOURCE_ROOT%\scripts\fetch-host.ps1"
+        call "%SOURCE_ROOT%\scripts\fetch-host.bat"
         if !ERRORLEVEL! NEQ 0 (
             echo Failed to fetch the host installer.
             echo Re-run with --no-host to build a client-only installer.
