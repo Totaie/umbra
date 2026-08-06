@@ -68,6 +68,16 @@ set VERSION_EXPORT=
 if not "%UMBRA_BUILD_VERSION%"=="" (
     set VERSION_EXPORT=export BRANCH=umbra-host-main; export BUILD_VERSION=%UMBRA_BUILD_VERSION%;
     echo Building as version %UMBRA_BUILD_VERSION%
+
+    rem emit_windows_versioninfo derives a time-based FILEVERSION revision and refuses
+    rem to emit one lower than what it cached, to avoid manufacturing a version that
+    rem looks newer than it is. Switching version series leaves a much higher revision
+    rem cached from the previous series, so a pinned build aborts with "Refusing to
+    rem manufacture a future FILEVERSION". The cache is derived state, so drop it.
+    if exist "%SOURCE_ROOT%\build\generated_versioninfo" (
+        echo Clearing cached version info from the previous version series...
+        rmdir /s /q "%SOURCE_ROOT%\build\generated_versioninfo"
+    )
 )
 
 rem MSYSTEM must be set before /etc/profile is sourced, or the UCRT64 toolchain
