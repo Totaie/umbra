@@ -20,7 +20,7 @@ AutoUpdateChecker::AutoUpdateChecker(QObject *parent) :
             this, &AutoUpdateChecker::handleUpdateCheckRequestFinished);
 
     QString currentVersion(VERSION_STR);
-    qDebug() << "Current Moonlight version:" << currentVersion;
+    qDebug() << "Current Umbra version:" << currentVersion;
     parseStringToVersionQuad(currentVersion, m_CurrentVersionQuad);
 
     // Should at least have a 1.0-style version number
@@ -43,8 +43,17 @@ void AutoUpdateChecker::start()
     QT_WARNING_POP
 #endif
 
+    // Umbra does not publish an update feed yet. Deliberately left empty rather than
+    // pointed at Moonlight's feed, which would advertise Moonlight releases as updates
+    // for this fork. Set this to an Umbra-hosted qt.json to re-enable update checks.
+    const QString k_UpdateFeedUrl = QStringLiteral("");
+    if (k_UpdateFeedUrl.isEmpty()) {
+        qInfo() << "Update checking is disabled (no Umbra update feed configured)";
+        return;
+    }
+
     // We'll get a callback when this is finished
-    QUrl url("https://moonlight-stream.org/updates/qt.json");
+    QUrl url(k_UpdateFeedUrl);
     QNetworkRequest request(url);
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);

@@ -2,10 +2,10 @@ QT += core quick network quickcontrols2 svg
 CONFIG += c++17
 
 unix:!macx {
-    TARGET = moonlight
+    TARGET = umbra
 } else {
     # On macOS, this is the name displayed in the global menu bar
-    TARGET = Moonlight
+    TARGET = Umbra
 }
 
 include(../globaldefs.pri)
@@ -546,12 +546,12 @@ unix:!macx: {
 }
 win32 {
     RC_ICONS = moonlight.ico
-    QMAKE_TARGET_COMPANY = Moonlight Game Streaming Project
-    QMAKE_TARGET_DESCRIPTION = Moonlight Game Streaming Client
-    QMAKE_TARGET_PRODUCT = Moonlight
+    QMAKE_TARGET_COMPANY = Umbra Project
+    QMAKE_TARGET_DESCRIPTION = Umbra Remote Desktop Client
+    QMAKE_TARGET_PRODUCT = Umbra
 
     CONFIG -= embed_manifest_exe
-    QMAKE_LFLAGS += /MANIFEST:embed /MANIFESTINPUT:$${PWD}/Moonlight.exe.manifest
+    QMAKE_LFLAGS += /MANIFEST:embed /MANIFESTINPUT:$${PWD}/Umbra.exe.manifest
 }
 macx {
     # Create Info.plist in object dir with the correct version string

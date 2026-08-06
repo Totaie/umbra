@@ -161,7 +161,7 @@ set LDFLAGS=/LTCG
 
 echo Configuring the project
 pushd %BUILD_FOLDER%
-%QMAKE_CMD% %SOURCE_ROOT%\moonlight-qt.pro
+%QMAKE_CMD% %SOURCE_ROOT%\umbra.pro
 if !ERRORLEVEL! NEQ 0 goto Error
 popd
 
@@ -230,7 +230,7 @@ if not x%QT_PATH:\5.=%==x%QT_PATH% (
 )
 
 echo Deploying Qt dependencies
-%WINDEPLOYQT_CMD% --dir %DEPLOY_FOLDER% --%BUILD_CONFIG% --qmldir %SOURCE_ROOT%\app\gui --no-opengl-sw --no-compiler-runtime --no-sql %WINDEPLOYQT_ARGS% %BUILD_FOLDER%\app\%BUILD_CONFIG%\Moonlight.exe
+%WINDEPLOYQT_CMD% --dir %DEPLOY_FOLDER% --%BUILD_CONFIG% --qmldir %SOURCE_ROOT%\app\gui --no-opengl-sw --no-compiler-runtime --no-sql %WINDEPLOYQT_ARGS% %BUILD_FOLDER%\app\%BUILD_CONFIG%\Umbra.exe
 if !ERRORLEVEL! NEQ 0 goto Error
 
 echo Deleting unused files
@@ -250,7 +250,7 @@ del %DEPLOY_FOLDER%\icuuc.dll
 
 if "%SIGN%"=="1" (
     echo Signing deployed binaries
-    set FILES_TO_SIGN=%BUILD_FOLDER%\app\%BUILD_CONFIG%\Moonlight.exe
+    set FILES_TO_SIGN=%BUILD_FOLDER%\app\%BUILD_CONFIG%\Umbra.exe
     for /r "%DEPLOY_FOLDER%" %%f in (*.dll *.exe) do (
         set FILES_TO_SIGN=!FILES_TO_SIGN! %%f
     )
@@ -262,7 +262,7 @@ if "%ML_SYMBOL_STORE%" NEQ "" (
     echo Publishing binaries to symbol store: %ML_SYMBOL_STORE%
     symstore add /r /f %DEPLOY_FOLDER%\*.* /s %ML_SYMBOL_STORE% /t Moonlight
     if !ERRORLEVEL! NEQ 0 goto Error
-    symstore add /r /f %BUILD_FOLDER%\app\%BUILD_CONFIG%\Moonlight.exe /s %ML_SYMBOL_STORE% /t Moonlight
+    symstore add /r /f %BUILD_FOLDER%\app\%BUILD_CONFIG%\Umbra.exe /s %ML_SYMBOL_STORE% /t Moonlight
     if !ERRORLEVEL! NEQ 0 goto Error
 )
 
@@ -271,7 +271,7 @@ cmd /c "set VERSION= && msbuild -Restore %SOURCE_ROOT%\wix\Moonlight\Moonlight.w
 if !ERRORLEVEL! NEQ 0 goto Error
 
 echo Copying application binary to deployment directory
-copy %BUILD_FOLDER%\app\%BUILD_CONFIG%\Moonlight.exe %DEPLOY_FOLDER%
+copy %BUILD_FOLDER%\app\%BUILD_CONFIG%\Umbra.exe %DEPLOY_FOLDER%
 if !ERRORLEVEL! NEQ 0 goto Error
 
 echo Building portable package
