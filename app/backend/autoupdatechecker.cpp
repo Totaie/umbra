@@ -13,8 +13,8 @@
 #include <QTextStream>
 
 // GitHub repository for update checks
-#define GITHUB_OWNER "qiin2333"
-#define GITHUB_REPO  "moonlight-qt"
+#define GITHUB_OWNER "Totaie"
+#define GITHUB_REPO  "umbra"
 
 AutoUpdateChecker::AutoUpdateChecker(QObject *parent) :
     QObject(parent)
