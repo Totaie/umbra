@@ -142,19 +142,6 @@ Item {
         onTriggered: stageSpinner.visible = true
     }
 
-    Timer {
-        id: startSessionTimer
-        onTriggered: {
-            // Garbage collect QML stuff before we start streaming,
-            // since we'll probably be streaming for a while and we
-            // won't be able to GC during the stream.
-            gc()
-
-            // Run the streaming session to completion
-            session.start()
-        }
-    }
-
     Loader {
         id: streamLoader
         active: false
@@ -178,9 +165,6 @@ Item {
                 return;
             }
 
-            // Don't wait unless we have toasts to display
-            startSessionTimer.interval = 0
-
             // Display the toasts together in a vertical centered arrangement
             var yOffset = 0
             for (var i = 0; i < session.launchWarnings.length; i++) {
@@ -196,13 +180,21 @@ Item {
 
                 // Offset the next toast below the previous one
                 yOffset = toast.y + toast.padding + toast.height
-
-                // Allow an extra 500 ms for the tooltip's fade-out animation to finish
-                startSessionTimer.interval = toast.timeout + 500;
             }
 
-            // Start the timer to wait for toasts (or start the session immediately)
-            startSessionTimer.start()
+            // Garbage collect QML stuff before we start streaming, since we'll probably
+            // be streaming for a while and we won't be able to GC during the stream.
+            gc()
+
+            // Start connecting immediately, even when there are warnings to read.
+            //
+            // Moonlight held the connection back until every toast had faded, costing
+            // 3.5 seconds before the first packet was sent. Session.start() only kicks
+            // off the connection thread and returns to the event loop, so the toasts
+            // animate perfectly well while the host is launching the app and
+            // negotiating. Session.exec() takes over once that finishes, which is
+            // exactly the point at which the warnings stop being actionable anyway.
+            session.start()
         }
 
         sourceComponent: Item {}

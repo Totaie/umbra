@@ -33,6 +33,7 @@
 
 #include <QtEndian>
 #include <QCoreApplication>
+#include <QElapsedTimer>
 #include <QThreadPool>
 #include <QSvgRenderer>
 #include <QPainter>
@@ -1618,6 +1619,13 @@ bool Session::startConnectionAsync()
 
     QString rtspSessionUrl;
 
+    // Time the two halves of the connection separately. The host's app launch (which
+    // may also be creating a virtual display and changing the display mode) and the
+    // streaming handshake fail in completely different ways, and knowing which one ate
+    // the time is the difference between tuning the host and tuning the client.
+    QElapsedTimer launchTimer;
+    launchTimer.start();
+
     try {
         NvHTTP http(m_Computer);
         http.startApp(m_Computer->currentGameId != 0 ? "resume" : "launch",
@@ -1712,9 +1720,22 @@ bool Session::startConnectionAsync()
                                                                          false);
     }
 
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Host app launch took %lld ms",
+                (long long)launchTimer.elapsed());
+
+    QElapsedTimer handshakeTimer;
+    handshakeTimer.start();
+
     int err = LiStartConnection(&hostInfo, &m_StreamConfig, &k_ConnCallbacks,
                                 &m_VideoCallbacks, &m_AudioCallbacks,
                                 NULL, 0, NULL, 0);
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Stream handshake took %lld ms (total connect %lld ms)",
+                (long long)handshakeTimer.elapsed(),
+                (long long)launchTimer.elapsed());
+
     if (err != 0) {
         // We already displayed an error dialog in the stage failure
         // listener.
