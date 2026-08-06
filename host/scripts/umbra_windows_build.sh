@@ -96,7 +96,13 @@ if [[ "$DO_CLEAN" == "1" ]]; then
 fi
 
 echo "Configuring..."
-cmake -B "${BUILD_DIR}" -G Ninja -S "${SOURCE_ROOT}"
+# The repo used for update checks is passed explicitly rather than relying on the
+# defaults in cmake/prep/build_version.cmake. Those are CACHE variables, so a build
+# directory first configured against upstream keeps upstream's values forever and the
+# host would quietly check Vibepollo for its updates instead of Umbra.
+cmake -B "${BUILD_DIR}" -G Ninja -S "${SOURCE_ROOT}" \
+      -DSUNSHINE_REPO_OWNER=Totaie \
+      -DSUNSHINE_REPO_NAME=umbra-host
 
 echo "Building..."
 ninja -C "${BUILD_DIR}"
