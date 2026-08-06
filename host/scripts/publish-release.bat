@@ -51,6 +51,12 @@ if "%VERSION%"=="" (
     exit /b 1
 )
 
+rem gh resolves the repo from git remotes, and this clone also has an 'upstream'
+rem remote pointing at Nonary/Vibepollo, which gh picks in preference. Every gh call
+rem must therefore name the repo, or the release is attempted against upstream, where
+rem we have no write access and the failure looks like a token scope problem.
+set REPO=Totaie/umbra-host
+
 set ARCH=x64
 
 if "%DRYRUN%"=="0" (
@@ -118,7 +124,7 @@ if "%DRYRUN%"=="1" (
     exit /b 0
 )
 
-gh release view "!TAG!" >nul 2>&1
+gh release view "!TAG!" --repo %REPO% >nul 2>&1
 if !ERRORLEVEL! EQU 0 (
     echo Release !TAG! already exists. Bump the project version or delete it first.
     exit /b 1
@@ -137,9 +143,9 @@ set NOTES=%TEMP%\umbra-host-notes-!VERSION!.md
 echo.
 echo Publishing !TAG!...
 if "%PRERELEASE%"=="1" (
-    gh release create "!TAG!" "!ASSET!" --title "Umbra Host !VERSION!" --notes-file "!NOTES!" --prerelease
+    gh release create "!TAG!" "!ASSET!" --repo %REPO% --title "Umbra Host !VERSION!" --notes-file "!NOTES!" --prerelease
 ) else (
-    gh release create "!TAG!" "!ASSET!" --title "Umbra Host !VERSION!" --notes-file "!NOTES!"
+    gh release create "!TAG!" "!ASSET!" --repo %REPO% --title "Umbra Host !VERSION!" --notes-file "!NOTES!"
 )
 if !ERRORLEVEL! NEQ 0 (
     del /q "!NOTES!" 2>nul
