@@ -1438,6 +1438,65 @@ Flickable {
                                   qsTr("NOTE: Due to a bug in GeForce Experience, this option may not work properly if your host PC has multiple monitors.")
                 }
 
+                CheckBox {
+                    id: clientSideCursorCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Draw the mouse cursor on this PC instead of the host")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.clientSideCursor
+                    onCheckedChanged: {
+                        StreamingPreferences.clientSideCursor = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 12000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("The host normally draws its cursor into the video, so the pointer only moves once per encoded frame and feels laggy. This asks the host to stop drawing it and shows your own cursor instead, which tracks the mouse instantly.") + "\n\n" +
+                                  qsTr("Only applies in remote desktop mouse mode. Requires an Apollo, Vibepollo or Sunshine host. If the cursor ends up inverted, press Ctrl+Alt+Shift+N while streaming to flip it back.")
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Host display to stream")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                AutoResizingComboBox {
+                    id: preferredHostDisplayComboBox
+                    textRole: "text"
+                    model: ListModel {
+                        id: preferredHostDisplayListModel
+                        ListElement { text: qsTr("Leave unchanged"); val: 0 }
+                        ListElement { text: qsTr("Display 1"); val: 1 }
+                        ListElement { text: qsTr("Display 2"); val: 2 }
+                        ListElement { text: qsTr("Display 3"); val: 3 }
+                        ListElement { text: qsTr("Display 4"); val: 4 }
+                    }
+
+                    Component.onCompleted: {
+                        var saved = StreamingPreferences.preferredHostDisplay
+                        currentIndex = 0
+                        for (var i = 0; i < preferredHostDisplayListModel.count; i++) {
+                            if (preferredHostDisplayListModel.get(i).val === saved) {
+                                currentIndex = i
+                                break
+                            }
+                        }
+                    }
+
+                    onActivated: {
+                        StreamingPreferences.preferredHostDisplay = preferredHostDisplayListModel.get(currentIndex).val
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 12000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Switches the host to this display when the stream starts.") + "\n\n" +
+                                  qsTr("You can also switch displays at any time while streaming with Ctrl+Alt+Shift+F1 through F13, where F1 is the host's first display. Requires an Apollo, Vibepollo or Sunshine host.")
+                }
+
                 Row {
                     spacing: 5
                     width: parent.width

@@ -1957,6 +1957,24 @@ void Session::exec()
     // Toggle the stats overlay if requested by the user
     m_OverlayManager.setOverlayState(Overlay::OverlayDebug, m_Preferences->showPerformanceOverlay);
 
+    // Apply Umbra's host-side session preferences. Apollo/Sunshine-derived hosts expose
+    // these only as Ctrl+Alt+Shift chords, so we drive them through the input channel.
+    if (m_Preferences->preferredHostDisplay > 0) {
+        // The preference is 1-based so that 0 can mean "leave the host alone".
+        m_InputHandler->switchHostDisplay(m_Preferences->preferredHostDisplay - 1);
+    }
+
+    if (m_Preferences->clientSideCursor && m_Preferences->absoluteMouseMode) {
+        // Stop the host compositing its cursor into the video and draw ours instead.
+        // The host's cursor lags because its position only updates once per encoded
+        // frame, whereas a local cursor tracks the mouse with no round trip at all.
+        //
+        // Deliberately done before input capture is activated below, because
+        // setCaptureActive() is what actually applies the cursor visibility state.
+        m_InputHandler->hideHostCursor();
+        m_InputHandler->setLocalCursorVisible(true);
+    }
+
     // Switch to async logging mode when we enter the SDL loop
     StreamUtils::enterAsyncLoggingMode();
 

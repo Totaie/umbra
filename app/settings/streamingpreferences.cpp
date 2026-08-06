@@ -51,6 +51,8 @@
 #define SER_CAPTURESYSKEYS "capturesyskeys"
 #define SER_KEEPAWAKE "keepawake"
 #define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
+#define SER_CLIENTSIDECURSOR "clientsidecursor"
+#define SER_PREFERREDHOSTDISPLAY "preferredhostdisplay"
 #define SER_BACKGROUNDIMAGEURL "backgroundimageurl"
 #define SER_BACKGROUNDIMAGEOPACITY "backgroundimageopacity"
 #define SER_LANGUAGE "language"
@@ -158,6 +160,8 @@ void StreamingPreferences::reload()
     // of stopping at the app grid. The full app list is still reachable from the PC's
     // context menu ("View All Apps").
     directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
+    clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
+    preferredHostDisplay = settings.value(SER_PREFERREDHOSTDISPLAY, 0).toInt();
     backgroundImageUrl = settings.value(SER_BACKGROUNDIMAGEURL, QString()).toString();
     backgroundImageOpacity = qBound(0, settings.value(SER_BACKGROUNDIMAGEOPACITY, 35).toInt(), 100);
     enableHdr = settings.value(SER_HDR, false).toBool();
@@ -376,6 +380,8 @@ void StreamingPreferences::save()
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
     settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
+    settings.setValue(SER_CLIENTSIDECURSOR, clientSideCursor);
+    settings.setValue(SER_PREFERREDHOSTDISPLAY, preferredHostDisplay);
     settings.setValue(SER_BACKGROUNDIMAGEURL, backgroundImageUrl);
     settings.setValue(SER_BACKGROUNDIMAGEOPACITY, backgroundImageOpacity);
 }

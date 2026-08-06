@@ -146,6 +146,26 @@ public:
 
     void setCaptureActive(bool active);
 
+    // Sends a Ctrl+Alt+Shift+<key> chord to the host.
+    //
+    // Apollo/Sunshine-derived hosts (Vibepollo included) treat that modifier
+    // combination as a host-side shortcut rather than passing it to the focused
+    // application, so this is how we drive host features that have no other
+    // client-facing API. See apply_shortcut() in the host's src/input.cpp.
+    void sendHostShortcut(short keyCode);
+
+    // Asks the host to stop drawing its own cursor into the captured video, so the
+    // client can draw a local one that tracks the mouse without a round trip.
+    void hideHostCursor();
+
+    // Switches which host display is being captured, without reconnecting.
+    // displayIndex is zero-based.
+    void switchHostDisplay(int displayIndex);
+
+    // Controls whether the client's own cursor stays visible over the video while
+    // input is captured. Only meaningful in absolute (remote desktop) mouse mode.
+    void setLocalCursorVisible(bool visible);
+
     bool isMouseInVideoRegion(int mouseX, int mouseY, int windowWidth = -1, int windowHeight = -1);
 
     void updateKeyboardGrabState();

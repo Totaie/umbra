@@ -150,6 +150,8 @@ public:
     Q_PROPERTY(WindowMode recommendedFullScreenMode MEMBER recommendedFullScreenMode CONSTANT)
     Q_PROPERTY(UIDisplayMode uiDisplayMode MEMBER uiDisplayMode NOTIFY uiDisplayModeChanged)
     Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY directConnectDesktopChanged)
+    Q_PROPERTY(bool clientSideCursor MEMBER clientSideCursor NOTIFY clientSideCursorChanged)
+    Q_PROPERTY(int preferredHostDisplay MEMBER preferredHostDisplay NOTIFY preferredHostDisplayChanged)
     Q_PROPERTY(QString backgroundImageUrl MEMBER backgroundImageUrl NOTIFY backgroundImageChanged)
     Q_PROPERTY(int backgroundImageOpacity MEMBER backgroundImageOpacity NOTIFY backgroundImageChanged)
     Q_PROPERTY(bool swapMouseButtons MEMBER swapMouseButtons NOTIFY mouseButtonsChanged)
@@ -192,6 +194,11 @@ public:
     bool swapFaceButtons;
     bool keepAwake;
     bool directConnectDesktop;
+    // Draw the cursor locally instead of letting the host composite it into the video.
+    bool clientSideCursor;
+    // 0 means "leave the host on whatever display it is already capturing".
+    // Otherwise it is a 1-based display number to switch to when the stream starts.
+    int preferredHostDisplay;
     // Empty means "no wallpaper", which leaves the stock flat background in place.
     // Stored as a URL rather than a filesystem path so it can be handed straight to
     // Image.source without having to escape Windows paths in QML.
@@ -246,6 +253,8 @@ signals:
     void captureSysKeysModeChanged();
     void keepAwakeChanged();
     void directConnectDesktopChanged();
+    void clientSideCursorChanged();
+    void preferredHostDisplayChanged();
     void backgroundImageChanged();
     void languageChanged();
     void rendererSelectionChanged();
