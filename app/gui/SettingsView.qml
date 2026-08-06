@@ -1,5 +1,6 @@
 import QtQuick 2.9
 import QtQuick.Controls 2.2
+import QtQuick.Dialogs
 import QtQuick.Layouts 1.2
 import QtQuick.Window 2.2
 
@@ -1035,6 +1036,78 @@ Flickable {
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Selecting a PC starts streaming its desktop immediately instead of showing the app list first.") + "\n\n" +
                                   qsTr("The full app list is still available from the PC's context menu under \"View All Apps\".")
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Background image")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                FileDialog {
+                    id: backgroundImageDialog
+                    title: qsTr("Choose a background image")
+                    nameFilters: [qsTr("Image files") + " (*.png *.jpg *.jpeg *.bmp *.webp)"]
+                    onAccepted: {
+                        StreamingPreferences.backgroundImageUrl = selectedFile.toString()
+                        StreamingPreferences.save()
+                    }
+                }
+
+                Row {
+                    spacing: 5
+                    width: parent.width
+
+                    Button {
+                        id: chooseBackgroundButton
+                        text: qsTr("Choose image…")
+                        font.pointSize: 12
+                        onClicked: backgroundImageDialog.open()
+                    }
+
+                    Button {
+                        text: qsTr("Clear")
+                        font.pointSize: 12
+                        enabled: StreamingPreferences.backgroundImageUrl !== ""
+                        onClicked: {
+                            StreamingPreferences.backgroundImageUrl = ""
+                            StreamingPreferences.save()
+                        }
+                    }
+
+                    Label {
+                        anchors.verticalCenter: chooseBackgroundButton.verticalCenter
+                        width: parent.width - chooseBackgroundButton.width - 120
+                        elide: Text.ElideMiddle
+                        font.pointSize: 10
+                        text: StreamingPreferences.backgroundImageUrl === ""
+                                  ? qsTr("None")
+                                  : decodeURIComponent(StreamingPreferences.backgroundImageUrl.split("/").pop())
+                    }
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Background image brightness: %1%").arg(backgroundOpacitySlider.value.toFixed(0))
+                    font.pointSize: 12
+                    enabled: StreamingPreferences.backgroundImageUrl !== ""
+                    wrapMode: Text.Wrap
+                }
+
+                Slider {
+                    id: backgroundOpacitySlider
+                    width: parent.width
+                    from: 0
+                    to: 100
+                    stepSize: 5
+                    snapMode: Slider.SnapAlways
+                    enabled: StreamingPreferences.backgroundImageUrl !== ""
+                    value: StreamingPreferences.backgroundImageOpacity
+
+                    onValueChanged: {
+                        StreamingPreferences.backgroundImageOpacity = value
+                    }
                 }
 
                 Label {

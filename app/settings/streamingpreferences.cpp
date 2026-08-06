@@ -51,6 +51,8 @@
 #define SER_CAPTURESYSKEYS "capturesyskeys"
 #define SER_KEEPAWAKE "keepawake"
 #define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
+#define SER_BACKGROUNDIMAGEURL "backgroundimageurl"
+#define SER_BACKGROUNDIMAGEOPACITY "backgroundimageopacity"
 #define SER_LANGUAGE "language"
 #define SER_RENDERER "renderer"
 
@@ -156,6 +158,8 @@ void StreamingPreferences::reload()
     // of stopping at the app grid. The full app list is still reachable from the PC's
     // context menu ("View All Apps").
     directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
+    backgroundImageUrl = settings.value(SER_BACKGROUNDIMAGEURL, QString()).toString();
+    backgroundImageOpacity = qBound(0, settings.value(SER_BACKGROUNDIMAGEOPACITY, 35).toInt(), 100);
     enableHdr = settings.value(SER_HDR, false).toBool();
     // Umbra defaults this on (Moonlight defaults it off). Without it, the host never
     // receives the Meta/Windows key or combos like Win+Tab, so pressing Win opens the
@@ -372,6 +376,8 @@ void StreamingPreferences::save()
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
     settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
+    settings.setValue(SER_BACKGROUNDIMAGEURL, backgroundImageUrl);
+    settings.setValue(SER_BACKGROUNDIMAGEOPACITY, backgroundImageOpacity);
 }
 
 int StreamingPreferences::getDefaultBitrate(int width, int height, int fps, bool yuv444)

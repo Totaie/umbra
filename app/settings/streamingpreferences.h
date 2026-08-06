@@ -150,6 +150,8 @@ public:
     Q_PROPERTY(WindowMode recommendedFullScreenMode MEMBER recommendedFullScreenMode CONSTANT)
     Q_PROPERTY(UIDisplayMode uiDisplayMode MEMBER uiDisplayMode NOTIFY uiDisplayModeChanged)
     Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY directConnectDesktopChanged)
+    Q_PROPERTY(QString backgroundImageUrl MEMBER backgroundImageUrl NOTIFY backgroundImageChanged)
+    Q_PROPERTY(int backgroundImageOpacity MEMBER backgroundImageOpacity NOTIFY backgroundImageChanged)
     Q_PROPERTY(bool swapMouseButtons MEMBER swapMouseButtons NOTIFY mouseButtonsChanged)
     Q_PROPERTY(bool muteOnFocusLoss MEMBER muteOnFocusLoss NOTIFY muteOnFocusLossChanged)
     Q_PROPERTY(bool backgroundGamepad MEMBER backgroundGamepad NOTIFY backgroundGamepadChanged)
@@ -190,6 +192,11 @@ public:
     bool swapFaceButtons;
     bool keepAwake;
     bool directConnectDesktop;
+    // Empty means "no wallpaper", which leaves the stock flat background in place.
+    // Stored as a URL rather than a filesystem path so it can be handed straight to
+    // Image.source without having to escape Windows paths in QML.
+    QString backgroundImageUrl;
+    int backgroundImageOpacity;
     int packetSize;
     AudioConfig audioConfig;
     VideoCodecConfig videoCodecConfig;
@@ -239,6 +246,7 @@ signals:
     void captureSysKeysModeChanged();
     void keepAwakeChanged();
     void directConnectDesktopChanged();
+    void backgroundImageChanged();
     void languageChanged();
     void rendererSelectionChanged();
 

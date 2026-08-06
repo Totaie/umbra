@@ -106,6 +106,31 @@ ApplicationWindow {
         }
     }
 
+    // Optional user-chosen wallpaper. Sits above the window's flat background colour
+    // and below every view, so it shows through the gaps in the PC and app grids.
+    Image {
+        id: backgroundImage
+        anchors.fill: parent
+        visible: StreamingPreferences.backgroundImageUrl !== ""
+        source: StreamingPreferences.backgroundImageUrl
+        fillMode: Image.PreserveAspectCrop
+        opacity: StreamingPreferences.backgroundImageOpacity / 100.0
+        asynchronous: true
+        // Scale the decoded image down to the window rather than holding a full
+        // resolution wallpaper in memory.
+        sourceSize.width: window.width
+        sourceSize.height: window.height
+        onStatusChanged: {
+            if (status === Image.Error) {
+                // The file was moved or deleted since it was picked. Drop it rather
+                // than leaving a broken image configured forever.
+                console.log("Unable to load background image: " + source)
+                StreamingPreferences.backgroundImageUrl = ""
+                StreamingPreferences.save()
+            }
+        }
+    }
+
     StackView {
         id: stackView
         anchors.fill: parent
