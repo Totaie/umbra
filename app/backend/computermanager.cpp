@@ -10,6 +10,13 @@
 #include <QThreadPool>
 #include <QCoreApplication>
 #include <QRandomGenerator>
+#include <QEventLoop>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QSslConfiguration>
+#include <QSysInfo>
 
 #define SER_HOSTS "hosts"
 #define SER_HOSTS_BACKUP "hostsbackup"
@@ -557,6 +564,18 @@ void ComputerManager::renameHost(NvComputer* computer, QString name)
     handleComputerStateChanged(computer);
 }
 
+void ComputerManager::setHostApiToken(NvComputer* computer, QString token)
+{
+    {
+        QWriteLocker lock(&computer->lock);
+        computer->apiToken = token.trimmed();
+    }
+
+    // Persist immediately. The token is what makes pairing one-click, and losing it
+    // because the app didn't exit cleanly would be an unpleasant surprise.
+    saveHost(computer);
+}
+
 void ComputerManager::clientSideAttributeUpdated(NvComputer* computer)
 {
     // Notify the UI of the state change
@@ -633,12 +652,138 @@ private:
     QString m_Pin;
 };
 
+// Submits the pairing PIN to the host's own web API so the user doesn't have to walk
+// over to the host (or open its web UI) and type it in. This is what makes pairing a
+// single click on the client.
+//
+// This deliberately does not change the pairing protocol at all. The host exposes
+// POST /api/pin (see confighttp.cpp in Apollo/Vibepollo/Sunshine), which feeds the PIN
+// into exactly the same pairing session the client just opened. Stock Moonlight clients
+// and hosts without the API keep working unchanged; we simply fall back to the user
+// entering the PIN by hand.
+class SubmitPinTask : public QObject, public QRunnable
+{
+    Q_OBJECT
+
+public:
+    SubmitPinTask(NvComputer* computer, QString pin)
+        : m_Computer(computer),
+          m_Pin(pin)
+    {
+    }
+
+private:
+    void run()
+    {
+        QString token;
+        QString hostAddress;
+        quint16 httpPort;
+        QString clientName = QSysInfo::machineHostName();
+
+        {
+            QReadLocker lock(&m_Computer->lock);
+            token = m_Computer->apiToken;
+            hostAddress = m_Computer->activeAddress.address();
+            httpPort = m_Computer->activeAddress.port();
+        }
+
+        if (token.isEmpty() || hostAddress.isEmpty()) {
+            return;
+        }
+
+        // The host's web interface listens one port above the base HTTP port.
+        QUrl url;
+        url.setScheme("https");
+        url.setHost(hostAddress);
+        url.setPort((httpPort != 0 ? httpPort : DEFAULT_HTTP_PORT) + 1);
+        url.setPath("/api/pin");
+
+        QJsonObject body;
+        body.insert("pin", m_Pin);
+        body.insert("name", clientName.isEmpty() ? QStringLiteral("Umbra") : clientName);
+
+        QNetworkAccessManager nam;
+
+        // The host's web interface uses a self-signed certificate, exactly like its
+        // streaming endpoint does. Moonlight already pins the server cert for streaming;
+        // here we're only handing over a PIN that is useless without the pairing session
+        // it belongs to, so accepting the self-signed cert is acceptable.
+        QNetworkRequest request(url);
+        QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+        sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+        request.setSslConfiguration(sslConfig);
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        request.setRawHeader("Authorization", ("Bearer " + token).toUtf8());
+
+        // NB: Deliberately no Origin or Referer header. The host's CSRF check passes
+        // when neither is present, which is its carve-out for non-browser clients.
+
+        // The host rejects the PIN until the client's pairing request has created a
+        // pending session, and we're racing that request here, so retry briefly.
+        // The host expires pairing sessions after 10 minutes, so this window is safe.
+        const int k_MaxAttempts = 20;
+        const int k_RetryDelayMs = 500;
+
+        for (int attempt = 0; attempt < k_MaxAttempts; attempt++) {
+            QNetworkReply* reply = nam.post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
+
+            QEventLoop loop;
+            QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+            loop.exec();
+
+            QByteArray responseBody = reply->readAll();
+            QNetworkReply::NetworkError error = reply->error();
+            int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            reply->deleteLater();
+
+            if (error == QNetworkReply::NoError) {
+                // The endpoint returns 200 with {"status": false} when no pairing session
+                // has accepted the PIN yet, so a successful HTTP status isn't enough.
+                QJsonObject response = QJsonDocument::fromJson(responseBody).object();
+                if (response.value("status").toBool()) {
+                    qInfo() << "Submitted pairing PIN to host API after" << (attempt + 1) << "attempt(s)";
+                    return;
+                }
+            }
+            else if (status == 401 || status == 403) {
+                // A bad token will never start working, so don't spend 10 seconds on it.
+                qWarning() << "Host rejected our API token (HTTP" << status << "). "
+                              "Pair manually or update the token for this PC.";
+                return;
+            }
+            else if (attempt == 0) {
+                qInfo() << "Host API not reachable for PIN submission:" << reply->errorString()
+                        << "- will retry, or you can enter the PIN on the host";
+            }
+
+            QThread::msleep(k_RetryDelayMs);
+        }
+
+        qWarning() << "Gave up submitting the pairing PIN to the host API";
+    }
+
+    NvComputer* m_Computer;
+    QString m_Pin;
+};
+
 void ComputerManager::pairHost(NvComputer* computer, QString pin)
 {
     // Punt to a worker thread to avoid stalling the
     // UI while waiting for pairing to complete
     PendingPairingTask* pairing = new PendingPairingTask(this, computer, pin);
     QThreadPool::globalInstance()->start(pairing);
+
+    // If this host has an API token configured, hand it the PIN ourselves rather than
+    // making the user type it there. Runs alongside the pairing task above because the
+    // host only accepts a PIN once that task has opened a pairing session.
+    bool hasToken;
+    {
+        QReadLocker lock(&computer->lock);
+        hasToken = !computer->apiToken.isEmpty();
+    }
+    if (hasToken) {
+        QThreadPool::globalInstance()->start(new SubmitPinTask(computer, pin));
+    }
 }
 
 class PendingQuitTask : public QObject, public QRunnable

@@ -45,6 +45,11 @@ public:
 
     Q_INVOKABLE Session* createSessionForCurrentGame(int computerIndex);
 
+    // Per-host token for the host's web API, used to submit the pairing PIN for the
+    // user instead of making them type it on the host.
+    Q_INVOKABLE QString getApiToken(int computerIndex);
+    Q_INVOKABLE void setApiToken(int computerIndex, QString token);
+
     // Number of screens attached to this PC, used to size the multi-display launcher.
     Q_INVOKABLE int getClientScreenCount();
 

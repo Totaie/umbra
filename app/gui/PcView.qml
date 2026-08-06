@@ -207,6 +207,14 @@ CenteredGridView {
                 }
 
                 NavigableMenuItem {
+                    text: qsTr("Set Host API Token…")
+                    onTriggered: {
+                        apiTokenDialog.pcIndex = index
+                        apiTokenDialog.existingToken = computerModel.getApiToken(index)
+                        apiTokenDialog.open()
+                    }
+                }
+                NavigableMenuItem {
                     text: qsTr("Rename PC")
                     onTriggered: {
                         renamePcDialog.pcIndex = index
@@ -356,6 +364,57 @@ CenteredGridView {
 
             // Stop showing the spinner and show the image instead
             showSpinner = false
+        }
+    }
+
+    NavigableDialog {
+        id: apiTokenDialog
+        property int pcIndex : -1;
+        property string existingToken
+
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        onOpened: {
+            apiTokenText.text = existingToken
+            apiTokenText.forceActiveFocus()
+        }
+
+        onClosed: {
+            apiTokenText.clear()
+        }
+
+        onAccepted: {
+            computerModel.setApiToken(pcIndex, apiTokenText.text)
+        }
+
+        ColumnLayout {
+            Label {
+                text: qsTr("Paste an API token from this PC's host web interface:")
+                font.bold: true
+            }
+
+            Label {
+                Layout.maximumWidth: 420
+                wrapMode: Text.Wrap
+                text: qsTr("With a token saved, Umbra sends the pairing PIN to the host itself, so you never have to type it there. Generate one in the host's web interface and give it permission to POST /api/pin.") + "\n\n" +
+                      qsTr("Leave this empty to pair the normal way, by entering the PIN on the host.")
+            }
+
+            TextField {
+                id: apiTokenText
+                Layout.fillWidth: true
+                Layout.minimumWidth: 420
+                placeholderText: qsTr("API token")
+                focus: true
+
+                Keys.onReturnPressed: {
+                    apiTokenDialog.accept()
+                }
+
+                Keys.onEnterPressed: {
+                    apiTokenDialog.accept()
+                }
+            }
         }
     }
 

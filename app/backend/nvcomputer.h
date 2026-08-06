@@ -113,6 +113,11 @@ public:
     QSslCertificate serverCert;
     QVector<NvApp> appList;
     bool isNvidiaServerSoftware;
+
+    // Optional API token for the host's web interface, used to submit the pairing PIN
+    // on the user's behalf so they don't have to type it on the host. Generated in the
+    // host's web UI (Apollo/Vibepollo/Sunshine) and scoped to POST /api/pin.
+    QString apiToken;
     // Remember to update isEqualSerialized() when adding fields here!
 
     // Synchronization

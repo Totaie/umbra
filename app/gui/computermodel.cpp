@@ -118,6 +118,28 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     return names;
 }
 
+QString ComputerModel::getApiToken(int computerIndex)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+    if (computerIndex >= m_Computers.count()) {
+        return QString();
+    }
+
+    NvComputer* computer = m_Computers[computerIndex];
+    QReadLocker lock(&computer->lock);
+    return computer->apiToken;
+}
+
+void ComputerModel::setApiToken(int computerIndex, QString token)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+    if (computerIndex >= m_Computers.count()) {
+        return;
+    }
+
+    m_ComputerManager->setHostApiToken(m_Computers[computerIndex], token);
+}
+
 int ComputerModel::getClientScreenCount()
 {
     return QGuiApplication::screens().count();

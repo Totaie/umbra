@@ -242,6 +242,8 @@ public:
 
     void renameHost(NvComputer* computer, QString name);
 
+    void setHostApiToken(NvComputer* computer, QString token);
+
     void clientSideAttributeUpdated(NvComputer* computer);
 
 signals:
