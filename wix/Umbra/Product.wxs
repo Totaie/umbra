@@ -1,27 +1,29 @@
-﻿<?define ShortName = "Moonlight" ?>
-<?define FullName = "Moonlight Game Streaming Client" ?>
+<?define ShortName = "Umbra" ?>
+<?define FullName = "Umbra Remote Desktop Client" ?>
 
 <?define ShortcutName = "$(var.ShortName)" ?>
-<?define ShortcutDesc = "Stream games and other applications from another PC" ?>
-<?define InstallFolder = "Moonlight Game Streaming" ?>
+<?define ShortcutDesc = "Stream the desktop, games and other applications from another PC" ?>
+<?define InstallFolder = "Umbra" ?>
 
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:fire="http://wixtoolset.org/schemas/v4/wxs/firewall" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
+  <!-- NB: UpgradeCode is deliberately different from Moonlight's. Reusing theirs would
+       make this package upgrade over, and therefore uninstall, an existing Moonlight. -->
   <Package Name="$(var.FullName)"
            Language="1033"
-           Version="!(bind.fileVersion.MoonlightExe)"
-           Manufacturer="Moonlight Game Streaming Project"
-           UpgradeCode="5c09f94e-f809-4c6a-9b7b-597c99f041fe">
+           Version="!(bind.fileVersion.UmbraExe)"
+           Manufacturer="Umbra Project"
+           UpgradeCode="1f855f40-2960-4724-bcab-3f37695d8504">
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." Schedule="afterInstallInitialize" />
     <MediaTemplate CompressionLevel="high" EmbedCab="yes" />
 
-    <Property Id="APPDATAFOLDER" Value="%LOCALAPPDATA%\Moonlight Game Streaming Project" />
+    <Property Id="APPDATAFOLDER" Value="%LOCALAPPDATA%\Umbra Project" />
 
     <!-- There's no way to delete a registry key on uninstall but not major upgrade, so
         we have to roll our own deletion via custom action -->
     <CustomAction Id="DeleteRegistryKey"
                   Directory="ProgramFiles6432Folder"
-                  ExeCommand="reg.exe delete &quot;HKCU\Software\Moonlight Game Streaming Project&quot; /f"
+                  ExeCommand="reg.exe delete &quot;HKCU\Software\Umbra Project&quot; /f"
                   Execute="deferred"
                   Return="ignore"
                   Impersonate="yes" />
@@ -31,11 +33,11 @@
               Condition="Installed AND REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
     </InstallExecuteSequence>
 
-    <Component Id="MoonlightShortcuts" Directory="INSTALLFOLDER">
+    <Component Id="UmbraShortcuts" Directory="INSTALLFOLDER">
       <Shortcut Id="StartMenuShortcut"
                 Name="$(var.ShortcutName)"
                 Description="$(var.ShortcutDesc)"
-                Target="[#MoonlightExe]"
+                Target="[#UmbraExe]"
                 Directory="ApplicationProgramsFolder"
                 WorkingDirectory="INSTALLFOLDER" />
       <RemoveFolder Id="CleanupStartMenuShortcut"
@@ -45,25 +47,25 @@
                            On="uninstall"
                            Property="APPDATAFOLDER" />
       <RegistryValue Root="HKCU"
-                     Key="Software\Moonlight Game Streaming Project"
+                     Key="Software\Umbra Project"
                      Name="Installed"
                      Type="integer"
                      Value="1"
                      KeyPath="yes" />
     </Component>
 
-    <Component Id="MoonlightDesktopShortcut" Directory="INSTALLFOLDER" Condition="ADDDESKTOPSHORTCUT=1">
+    <Component Id="UmbraDesktopShortcut" Directory="INSTALLFOLDER" Condition="ADDDESKTOPSHORTCUT=1">
       <Shortcut Id="DesktopShortcut"
                 Name="$(var.ShortcutName)"
                 Description="$(var.ShortcutDesc)"
-                Target="[#MoonlightExe]"
+                Target="[#UmbraExe]"
                 Directory="DesktopFolder"
                 WorkingDirectory="INSTALLFOLDER" />
       <RemoveFolder Id="CleanupDesktopShortcut"
                     Directory="DesktopFolder"
                     On="uninstall" />
       <RegistryValue Root="HKCU"
-                     Key="Software\Moonlight Game Streaming Project"
+                     Key="Software\Umbra Project"
                      Name="DesktopShortcutInstalled"
                      Type="integer"
                      Value="1"
@@ -73,9 +75,9 @@
     <!-- Persist desktop shortcut's installed state to let Bundle.wxs know if
          the desktop shortcut should installed by default when upgrading the
          product -->
-    <Component Id="MoonlightDesktopShortcutState" Directory="INSTALLFOLDER">
+    <Component Id="UmbraDesktopShortcutState" Directory="INSTALLFOLDER">
       <RegistryValue Root="HKCU"
-                     Key="Software\Moonlight Game Streaming Project"
+                     Key="Software\Umbra Project"
                      Name="DesktopShortcutInstallState"
                      Type="integer"
                      Value="[ADDDESKTOPSHORTCUT]"
@@ -83,12 +85,12 @@
     </Component>
 
     <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="Moonlight">
-        <File Id="MoonlightExe"
+      <Component Id="Umbra">
+        <File Id="UmbraExe"
               KeyPath="yes"
               Checksum="yes"
-              Source="$(var.BuildDir)\app\$(var.Configuration)\Moonlight.exe">
-          <fire:FirewallException Id="MoonlightFirewallException"
+              Source="$(var.BuildDir)\app\$(var.Configuration)\Umbra.exe">
+          <fire:FirewallException Id="UmbraFirewallException"
                                   Scope="any"
                                   IgnoreFailure="yes"
                                   Name="$(var.FullName)" />
@@ -96,16 +98,23 @@
       </Component>
     </DirectoryRef>
 
-    <ComponentGroup Id="MoonlightDependencies" Directory="INSTALLFOLDER">
+    <ComponentGroup Id="UmbraDependencies" Directory="INSTALLFOLDER">
+      <!-- DeployDir must NOT contain Umbra.exe: it is installed by the component above
+           and harvesting it again produces two components sharing a generated GUID.
+           It must also not contain portable.dat, which would tell an installed Umbra to
+           keep its settings in Program Files.
+
+           scripts\umbra-installer.bat stages a clean directory for this rather than
+           pointing at the runnable deploy tree, which has both. -->
       <Files Include="$(var.DeployDir)\**" />
     </ComponentGroup>
 
-    <Feature Id="ProductFeature" Title="Moonlight" Level="1" ConfigurableDirectory="INSTALLFOLDER">
-      <ComponentRef Id="Moonlight" />
-      <ComponentRef Id="MoonlightShortcuts" />
-      <ComponentRef Id="MoonlightDesktopShortcutState" />
-      <ComponentRef Id="MoonlightDesktopShortcut" />
-      <ComponentGroupRef Id="MoonlightDependencies" />
+    <Feature Id="ProductFeature" Title="Umbra" Level="1" ConfigurableDirectory="INSTALLFOLDER">
+      <ComponentRef Id="Umbra" />
+      <ComponentRef Id="UmbraShortcuts" />
+      <ComponentRef Id="UmbraDesktopShortcutState" />
+      <ComponentRef Id="UmbraDesktopShortcut" />
+      <ComponentGroupRef Id="UmbraDependencies" />
     </Feature>
 
     <StandardDirectory Id="DesktopFolder" />

@@ -52,6 +52,10 @@
                 variable is defined in Bundle.wxs. -->
             <Checkbox Name="AddDesktopShortcutCheckbox" X="11" Y="178" Width="250" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">Add desktop shortcut</Checkbox>
 
+            <!-- Lets one install both connect to other PCs and be connected to.
+                 Checked by default; see InstallHostCheckbox in Bundle.wxs. -->
+            <Checkbox Name="InstallHostCheckbox" X="11" Y="200" Width="400" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">Also install the Umbra host, so this PC can be streamed from</Checkbox>
+
             <Button Name="OptionsOkButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
                 <Text>#(loc.OptionsOkButton)</Text>
                 <ChangePageAction Page="Install" />

@@ -165,7 +165,7 @@ pushd %BUILD_FOLDER%
 if !ERRORLEVEL! NEQ 0 goto Error
 popd
 
-echo Compiling Moonlight in %BUILD_CONFIG% configuration
+echo Compiling Umbra in %BUILD_CONFIG% configuration
 pushd %BUILD_FOLDER%
 %SOURCE_ROOT%\scripts\jom.exe %BUILD_CONFIG%
 if !ERRORLEVEL! NEQ 0 goto Error
@@ -178,12 +178,12 @@ for /r "%BUILD_FOLDER%" %%f in (*.pdb) do (
 )
 copy %SOURCE_ROOT%\libs\windows\lib\%ARCH%\*.pdb %SYMBOLS_FOLDER%
 if !ERRORLEVEL! NEQ 0 goto Error
-7z a %SYMBOLS_FOLDER%\MoonlightDebuggingSymbols-%ARCH%-%VERSION%.zip %SYMBOLS_FOLDER%\*.pdb
+7z a %SYMBOLS_FOLDER%\UmbraDebuggingSymbols-%ARCH%-%VERSION%.zip %SYMBOLS_FOLDER%\*.pdb
 if !ERRORLEVEL! NEQ 0 goto Error
 
 if "%ML_SYMBOL_STORE%" NEQ "" (
     echo Publishing PDBs to symbol store: %ML_SYMBOL_STORE%
-    symstore add /f %SYMBOLS_FOLDER%\*.pdb /s %ML_SYMBOL_STORE% /t Moonlight
+    symstore add /f %SYMBOLS_FOLDER%\*.pdb /s %ML_SYMBOL_STORE% /t Umbra
     if !ERRORLEVEL! NEQ 0 goto Error
 ) else (
     if "%MUST_DEPLOY_SYMBOLS%"=="1" (
@@ -194,7 +194,7 @@ if "%ML_SYMBOL_STORE%" NEQ "" (
 
 if "%ML_SYMBOL_ARCHIVE%" NEQ "" (
     echo Copying PDB ZIP to symbol archive: %ML_SYMBOL_ARCHIVE%
-    copy %SYMBOLS_FOLDER%\MoonlightDebuggingSymbols-%ARCH%-%VERSION%.zip %ML_SYMBOL_ARCHIVE%
+    copy %SYMBOLS_FOLDER%\UmbraDebuggingSymbols-%ARCH%-%VERSION%.zip %ML_SYMBOL_ARCHIVE%
     if !ERRORLEVEL! NEQ 0 goto Error
 ) else (
     if "%MUST_DEPLOY_SYMBOLS%"=="1" (
@@ -260,14 +260,14 @@ if "%SIGN%"=="1" (
 
 if "%ML_SYMBOL_STORE%" NEQ "" (
     echo Publishing binaries to symbol store: %ML_SYMBOL_STORE%
-    symstore add /r /f %DEPLOY_FOLDER%\*.* /s %ML_SYMBOL_STORE% /t Moonlight
+    symstore add /r /f %DEPLOY_FOLDER%\*.* /s %ML_SYMBOL_STORE% /t Umbra
     if !ERRORLEVEL! NEQ 0 goto Error
-    symstore add /r /f %BUILD_FOLDER%\app\%BUILD_CONFIG%\Umbra.exe /s %ML_SYMBOL_STORE% /t Moonlight
+    symstore add /r /f %BUILD_FOLDER%\app\%BUILD_CONFIG%\Umbra.exe /s %ML_SYMBOL_STORE% /t Umbra
     if !ERRORLEVEL! NEQ 0 goto Error
 )
 
 echo Building MSI
-cmd /c "set VERSION= && msbuild -Restore %SOURCE_ROOT%\wix\Moonlight\Moonlight.wixproj /p:Configuration=%BUILD_CONFIG% /p:Platform=%ARCH% /p:MSBuildProjectExtensionsPath=%BUILD_FOLDER%\"
+cmd /c "set VERSION= && msbuild -Restore %SOURCE_ROOT%\wix\Umbra\Umbra.wixproj /p:Configuration=%BUILD_CONFIG% /p:Platform=%ARCH% /p:MSBuildProjectExtensionsPath=%BUILD_FOLDER%\"
 if !ERRORLEVEL! NEQ 0 goto Error
 
 echo Copying application binary to deployment directory
@@ -287,15 +287,15 @@ if defined CI_VERSION (
     echo. > %DEPLOY_FOLDER%\portable.dat.inactive
     if !ERRORLEVEL! NEQ 0 goto Error
 ) else (
-    rem This file tells Moonlight that it's a portable installation
+    rem This file tells Umbra that it's a portable installation
     echo. > %DEPLOY_FOLDER%\portable.dat
     if !ERRORLEVEL! NEQ 0 goto Error
 )
 
-7z a %INSTALLER_FOLDER%\MoonlightPortable-%ARCH%-%VERSION%.zip %DEPLOY_FOLDER%\*
+7z a %INSTALLER_FOLDER%\UmbraPortable-%ARCH%-%VERSION%.zip %DEPLOY_FOLDER%\*
 if !ERRORLEVEL! NEQ 0 goto Error
 
-echo Build successful for Moonlight v%VERSION% %ARCH% binaries!
+echo Build successful for Umbra v%VERSION% %ARCH% binaries!
 exit /b 0
 
 :Error
