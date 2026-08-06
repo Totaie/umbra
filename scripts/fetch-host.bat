@@ -13,15 +13,15 @@ rem
 rem Usage:
 rem   scripts\fetch-host.bat [owner/repo] [tag]
 rem
-rem Defaults to the latest release of Nonary/vibepollo. Point it at
-rem Totaie/umbra-host once that publishes its own installer.
+rem Defaults to the latest release of Totaie/umbra-host, which is the host that
+rem supports passphrase pairing. Upstream Vibepollo does not.
 rem
 rem GPLv3: redistributing this binary in the Umbra installer obliges us to offer
 rem the corresponding source. Totaie/umbra-host is the public fork satisfying that.
 rem ---------------------------------------------------------------------------
 
 set REPO=%~1
-if "%REPO%"=="" set REPO=Nonary/vibepollo
+if "%REPO%"=="" set REPO=Totaie/umbra-host
 
 set TAG=%~2
 
@@ -43,12 +43,27 @@ if !ERRORLEVEL! NEQ 0 (
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 if exist "%OUT_FILE%" del /q "%OUT_FILE%"
 
+rem Resolve the newest release ourselves rather than letting gh pick "latest", which
+rem only considers full releases. While the host is still in beta every release is a
+rem prerelease, so gh would report "release not found" and the bundle would silently
+rem have no host to chain.
+if "%TAG%"=="" (
+    for /f "usebackq delims=" %%t in (`gh release list --repo "%REPO%" --limit 1 --json tagName --jq ".[0].tagName" 2^>nul`) do (
+        if not defined TAG set TAG=%%t
+    )
+    if "!TAG!"=="" (
+        echo No releases found in %REPO%.
+        exit /b 1
+    )
+    echo Resolved newest release: !TAG!
+)
+
 if "%TAG%"=="" (
     echo Downloading the latest host installer from %REPO%...
     gh release download --repo "%REPO%" --pattern "*Setup*.exe" --output "%OUT_FILE%" --clobber
 ) else (
-    echo Downloading the %TAG% host installer from %REPO%...
-    gh release download "%TAG%" --repo "%REPO%" --pattern "*Setup*.exe" --output "%OUT_FILE%" --clobber
+    echo Downloading the !TAG! host installer from %REPO%...
+    gh release download "!TAG!" --repo "%REPO%" --pattern "*Setup*.exe" --output "%OUT_FILE%" --clobber
 )
 if !ERRORLEVEL! NEQ 0 (
     echo Download failed. If %REPO% is private, check that 'gh auth status' shows an

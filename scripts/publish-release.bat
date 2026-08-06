@@ -50,6 +50,12 @@ shift
 goto parse
 :parsed
 
+rem gh resolves the repo from git remotes, and this clone also has an 'upstream'
+rem remote pointing at moonlight-stream/moonlight-qt, which gh picks in preference.
+rem Every gh call therefore has to name the repo explicitly, or releases get checked
+rem for (and attempted against) upstream instead of our fork.
+set REPO=Totaie/umbra
+
 set ARCH=x64
 set VERSION_FILE=%SOURCE_ROOT%\app\version.txt
 
@@ -89,7 +95,7 @@ set TAG=v!VERSION!
 
 rem Refuse to clobber an existing release rather than silently doing nothing.
 if "%DRYRUN%"=="0" (
-    gh release view "!TAG!" >nul 2>&1
+    gh release view "!TAG!" --repo %REPO% >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
         echo Release !TAG! already exists. Use bump-patch, or delete the existing release.
         exit /b 1
@@ -150,9 +156,9 @@ set NOTES=%TEMP%\umbra-release-notes-!VERSION!.md
 echo.
 echo Publishing !TAG!...
 if "%PRERELEASE%"=="1" (
-    gh release create "!TAG!" "!ASSET!" --title "Umbra !VERSION!" --notes-file "!NOTES!" --prerelease
+    gh release create "!TAG!" "!ASSET!" --repo %REPO% --title "Umbra !VERSION!" --notes-file "!NOTES!" --prerelease
 ) else (
-    gh release create "!TAG!" "!ASSET!" --title "Umbra !VERSION!" --notes-file "!NOTES!"
+    gh release create "!TAG!" "!ASSET!" --repo %REPO% --title "Umbra !VERSION!" --notes-file "!NOTES!"
 )
 if !ERRORLEVEL! NEQ 0 (
     del /q "!NOTES!" 2>nul
