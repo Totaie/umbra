@@ -2,6 +2,7 @@
 #include "boxartmanager.h"
 #include "nvhttp.h"
 #include "nvpairingmanager.h"
+#include "identitymanager.h"
 
 #include <Limelight.h>
 #include <QtEndian>
@@ -698,9 +699,15 @@ private:
         url.setPort((httpPort != 0 ? httpPort : DEFAULT_HTTP_PORT) + 1);
         url.setPath("/api/pin");
 
+        QString uniqueId = IdentityManager::get()->getUniqueId();
+
         QJsonObject body;
         body.insert("pin", m_Pin);
         body.insert("name", clientName.isEmpty() ? QStringLiteral("Umbra") : clientName);
+        // Binds the PIN to our pairing session specifically. Without this the host
+        // applies it to whichever pending session is newest, which is not ours to
+        // assume. See the safety check below.
+        body.insert("uniqueid", uniqueId);
 
         QNetworkAccessManager nam;
 
@@ -717,6 +724,47 @@ private:
 
         // NB: Deliberately no Origin or Referer header. The host's CSRF check passes
         // when neither is present, which is its carve-out for non-browser clients.
+
+        // Before handing over a real PIN, confirm this host binds it to our session.
+        //
+        // Opening a pairing session needs no authentication, so anyone who can reach
+        // the host can keep one open. On a host that doesn't honour "uniqueid", a PIN
+        // submitted programmatically is applied to whichever session was created most
+        // recently, meaning an attacker can be handed our PIN and then brute force the
+        // four digits against the challenge. A human typing the PIN at the host can see
+        // that happening; automation cannot, so we refuse to automate it.
+        //
+        // The probe sends an empty PIN, which the host rejects on its length check
+        // before it looks at any pairing session, so it cannot pair anything.
+        {
+            QJsonObject probeBody;
+            probeBody.insert("pin", QString());
+            probeBody.insert("uniqueid", uniqueId);
+
+            QNetworkReply* probe = nam.post(request, QJsonDocument(probeBody).toJson(QJsonDocument::Compact));
+            QEventLoop probeLoop;
+            QObject::connect(probe, &QNetworkReply::finished, &probeLoop, &QEventLoop::quit);
+            probeLoop.exec();
+
+            QByteArray probeBodyData = probe->readAll();
+            QNetworkReply::NetworkError probeError = probe->error();
+            int probeStatus = probe->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            QString probeErrorString = probe->errorString();
+            probe->deleteLater();
+
+            if (probeError != QNetworkReply::NoError && probeStatus != 400) {
+                qWarning() << "Could not reach the host API to submit the pairing PIN:"
+                           << probeErrorString << "- enter the PIN on the host instead";
+                return;
+            }
+
+            if (!QJsonDocument::fromJson(probeBodyData).object().value("session_bound_supported").toBool()) {
+                qWarning() << "Refusing to auto-submit the pairing PIN: this host does not bind a "
+                              "submitted PIN to the requesting client, so it could be handed to "
+                              "another pairing session. Enter the PIN on the host instead.";
+                return;
+            }
+        }
 
         // The host rejects the PIN until the client's pairing request has created a
         // pending session, and we're racing that request here, so retry briefly.
