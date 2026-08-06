@@ -2549,6 +2549,63 @@ namespace nvhttp {
 
           ptr->second.async_insert_pin.salt = std::move(get_arg(args, "salt"));
 
+          // Pairing with a persistent passphrase, so nobody has to be at this machine
+          // to type a PIN.
+          //
+          // The passphrase never crosses the wire. The client sends
+          // SHA256(passphrase + salt) and we recompute it; the salt is fresh for every
+          // attempt, so a captured hash can't be replayed. The passphrase is then used
+          // as the pairing secret exactly where a PIN would be, so the rest of the
+          // exchange is unchanged and a stock client is unaffected by any of this.
+          //
+          // This exists because a 4 digit PIN only has 10,000 possibilities and the key
+          // derived from it can be attacked offline by anyone who captured the pairing
+          // exchange. That is an acceptable risk on a trusted LAN with a human watching,
+          // and not an acceptable one for a host reachable from the internet.
+          auto psk_it = args.find("pskauth");
+          if (psk_it != std::end(args)) {
+            const std::string &passphrase = config::nvhttp.pairing_passphrase;
+            if (passphrase.empty()) {
+              tree.put("root.<xmlattr>.status_code", 503);
+              tree.put("root.<xmlattr>.status_message", "Passphrase pairing is not enabled on this host.");
+              // Fall through to the decoy below rather than returning, so a prober
+              // can't distinguish "not enabled" from "wrong passphrase" by timing.
+            } else {
+              auto expected = util::hex(crypto::hash(passphrase + ptr->second.async_insert_pin.salt), true);
+
+              // NB: constant-time compare. The hash is public once observed, but there
+              // is no reason to leak how much of it matched.
+              const std::string_view provided {psk_it->second};
+              const std::string_view computed {expected.to_string_view()};
+              bool match = provided.size() == computed.size();
+              unsigned char diff = match ? 0 : 1;
+              for (size_t i = 0; i < computed.size() && i < provided.size(); i++) {
+                diff |= static_cast<unsigned char>(computed[i] ^ provided[i]);
+              }
+
+              if (match && diff == 0) {
+                auto name_it = args.find("devicename");
+                if (name_it != std::end(args) && !name_it->second.empty()) {
+                  ptr->second.client.name = name_it->second;
+                }
+
+                BOOST_LOG(info) << "Pairing authorised by passphrase for client '"sv
+                                << ptr->second.client.name << '\'';
+                getservercert(ptr->second, tree, passphrase);
+                return;
+              }
+
+              BOOST_LOG(warning) << "Rejected a passphrase pairing attempt from '"sv
+                                 << ptr->second.client.name << '\'';
+            }
+
+            // Same decoy the OTP path uses: hand back a certificate derived from
+            // randomness so a failed attempt is indistinguishable from a successful
+            // one until the challenge step, where the attacker cannot proceed.
+            getservercert(ptr->second, tree, crypto::rand(16));
+            return;
+          }
+
           auto it = args.find("otpauth");
           if (it != std::end(args)) {
             if (one_time_pin.empty() || (std::chrono::steady_clock::now() - otp_creation_time > OTP_EXPIRE_DURATION)) {

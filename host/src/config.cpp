@@ -979,6 +979,7 @@ namespace config {
 
   nvhttp_t nvhttp {
     "lan",  // origin web manager
+    "",  // pairing_passphrase (empty = PIN pairing only)
 
     PRIVATE_KEY_FILE,
     CERTIFICATE_FILE,
@@ -2026,6 +2027,7 @@ namespace config {
     bool_f(vars, "auto_capture_sink", audio.auto_capture);
 
     string_restricted_f(vars, "origin_web_ui_allowed", nvhttp.origin_web_ui_allowed, {"pc"sv, "lan"sv, "wan"sv});
+    string_f(vars, "pairing_passphrase", nvhttp.pairing_passphrase);
     // reflect origin ACL update immediately in HTTP layer
     if (modified_config_settings.contains("origin_web_ui_allowed")) {
       http::refresh_origin_acl();

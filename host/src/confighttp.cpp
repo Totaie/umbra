@@ -5287,6 +5287,61 @@ namespace confighttp {
    * Response example:
    * { "token": "..." }
    */
+  /**
+   * @brief Read the pairing passphrase, generating one if it isn't set yet.
+   *
+   * The passphrase lets a client pair without anyone entering a PIN on this machine.
+   * It replaces a 4 digit PIN, whose 10,000 possibilities can be brute forced offline
+   * by anyone who captured a pairing exchange, with 256 bits that cannot.
+   *
+   * @api_examples{/api/pairing-passphrase| POST| {"regenerate":false}}
+   */
+  void pairingPassphrase(resp_https_t response, req_https_t request) {
+    if (!authenticate(response, request)) {
+      return;
+    }
+
+    print_req(request);
+
+    nlohmann::json output_tree;
+    try {
+      bool regenerate = false;
+      std::stringstream ss;
+      ss << request->content.rdbuf();
+      const std::string body = ss.str();
+      if (!body.empty()) {
+        auto input_tree = nlohmann::json::parse(body);
+        regenerate = input_tree.value("regenerate", false);
+      }
+
+      if (config::nvhttp.pairing_passphrase.empty() || regenerate) {
+        // 64 hex characters, i.e. 256 bits. Hex rather than a denser alphabet because
+        // this gets typed by hand on phones and TVs when a QR code isn't an option,
+        // and a case-insensitive alphabet without lookalike characters matters more
+        // there than saving twenty keystrokes.
+        std::string generated = crypto::rand_alphabet(64, "0123456789abcdef"sv);
+
+        auto current = config::parse_config(file_handler::read_file(config::sunshine.config_file.c_str()));
+        current["pairing_passphrase"] = generated;
+        std::stringstream config_stream;
+        for (const auto &kv : current) {
+          config_stream << kv.first << " = " << kv.second << std::endl;
+        }
+        file_handler::write_file(config::sunshine.config_file.c_str(), config_stream.str());
+        config::apply_config_now();
+
+        BOOST_LOG(info) << (regenerate ? "Regenerated"sv : "Generated"sv) << " the pairing passphrase"sv;
+      }
+
+      output_tree["passphrase"] = config::nvhttp.pairing_passphrase;
+      output_tree["status"] = true;
+      send_response(response, output_tree);
+    } catch (std::exception &e) {
+      BOOST_LOG(warning) << "PairingPassphrase: "sv << e.what();
+      bad_request(response, request, e.what());
+    }
+  }
+
   void generateApiToken(resp_https_t response, req_https_t request) {
     if (!authenticate(response, request)) {
       return;
@@ -5859,6 +5914,7 @@ namespace confighttp {
     server.resource["^/images/logo-apollo-45.png$"]["GET"] = getApolloLogoImage;
     server.resource["^/images/logo-sunshine-45.png$"]["GET"] = getApolloLogoImage;  // legacy alias
     server.resource["^/assets\\/.+$"]["GET"] = getNodeModules;
+    register_api_route("^/api/pairing-passphrase$", "POST", pairingPassphrase);
     register_api_route("^/api/token$", "POST", generateApiToken);
     register_api_route("^/api/tokens$", "GET", listApiTokens);
     register_api_route("^/api/token/routes$", "GET", listApiTokenRoutes);

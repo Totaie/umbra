@@ -285,6 +285,16 @@ namespace config {
     // pc|lan|wan
     std::string origin_web_ui_allowed;
 
+    // A persistent secret that lets a client pair without anyone entering a PIN on
+    // this machine. Empty disables it, which is the default.
+    //
+    // The passphrase is never transmitted: the client sends a hash of it salted with
+    // fresh per-attempt randomness, and it then derives the pairing key exactly as a
+    // PIN would. That makes it immune to the offline brute force a 4 digit PIN is
+    // wide open to, which matters because pairing is reachable by anyone who can
+    // reach this host.
+    std::string pairing_passphrase;
+
     std::string pkey;
     std::string cert;
 
