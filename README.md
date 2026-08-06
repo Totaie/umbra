@@ -1,14 +1,29 @@
-# Moonlight PC
+# Umbra
 
-[Moonlight PC](https://moonlight-stream.org) is an open source PC client for NVIDIA GameStream and [Sunshine](https://github.com/LizardByte/Sunshine).
+Umbra is a desktop-first fork of [Moonlight](https://github.com/moonlight-stream/moonlight-qt) for
+remote desktop and game streaming, aimed at using another PC as if you were sitting at it.
 
-Moonlight also has mobile versions for [Android](https://github.com/moonlight-stream/moonlight-android) and [iOS](https://github.com/moonlight-stream/moonlight-ios).
+It pairs with [Umbra Host](https://github.com/Totaie/umbra-host), a fork of
+[Vibepollo](https://github.com/Nonary/vibepollo) / [Apollo](https://github.com/ClassicOldSong/Apollo) /
+[Sunshine](https://github.com/LizardByte/Sunshine). The installer can set both up at once, so a single
+machine can stream to other PCs and be streamed from.
 
-You can follow development on our [Discord server](https://moonlight-stream.org/discord) and help translate Moonlight into your language on [Weblate](https://hosted.weblate.org/projects/moonlight/moonlight-qt/).
+Umbra installs alongside Moonlight rather than over it: separate product code, separate settings.
 
- [![Build](https://img.shields.io/github/actions/workflow/status/moonlight-stream/moonlight-qt/build.yml?branch=master)](https://github.com/moonlight-stream/moonlight-qt/actions/workflows/build.yml?query=branch%3Amaster)
- [![Downloads](https://img.shields.io/github/downloads/moonlight-stream/moonlight-qt/total)](https://github.com/moonlight-stream/moonlight-qt/releases)
- [![Translation Status](https://hosted.weblate.org/widgets/moonlight/-/moonlight-qt/svg-badge.svg)](https://hosted.weblate.org/projects/moonlight/moonlight-qt/)
+## What Umbra changes
+
+| | |
+|---|---|
+| **Immersive mode** | The Windows key, Alt+Tab and other system shortcuts go to the host, so pressing Windows opens the *host's* Start menu instead of your own. On by default. |
+| **Straight to the desktop** | Selecting a PC starts streaming its desktop immediately instead of stopping at an app grid. The full app list stays under the PC's context menu. |
+| **Client-drawn cursor** | The host stops compositing its cursor into the video and Umbra draws a local one, so the pointer tracks the mouse with no round trip. |
+| **Host display switching** | Choose which host display to stream on connect, or switch live with `Ctrl+Alt+Shift+F1`…`F13`. |
+| **Multi-display** | "Stream All Displays" puts each host display on its own monitor. |
+| **Custom background** | Pick any image as the app background, with a brightness slider. |
+| **Faster connect** | Connecting no longer waits several seconds for launch warnings to finish displaying. |
+
+Everything else is Moonlight's, including its excellent
+[troubleshooting documentation](https://github.com/moonlight-stream/moonlight-docs/wiki), which still applies.
 
 ## Features
  - Hardware accelerated video decoding on Windows, Mac, and Linux
@@ -22,31 +37,44 @@ You can follow development on our [Discord server](https://moonlight-stream.org/
  - Support for passing system-wide keyboard shortcuts like Alt+Tab to the host
  
 ## Downloads
-- [Windows, macOS, and Steam Link](https://github.com/moonlight-stream/moonlight-qt/releases)
-- [Snap (for Ubuntu-based Linux distros)](https://snapcraft.io/moonlight)
-- [Flatpak (for other Linux distros)](https://flathub.org/apps/details/com.moonlight_stream.Moonlight)
-- [AppImage](https://github.com/moonlight-stream/moonlight-qt/releases)
-- [Raspberry Pi 4 and 5](https://github.com/moonlight-stream/moonlight-docs/wiki/Installing-Moonlight-Qt-on-Raspberry-Pi-4)
-- [Generic ARM 32-bit and 64-bit Debian packages](https://github.com/moonlight-stream/moonlight-docs/wiki/Installing-Moonlight-Qt-on-ARM%E2%80%90based-Single-Board-Computers) (not for Raspberry Pi)
-- [Experimental RISC-V Debian packages](https://github.com/moonlight-stream/moonlight-docs/wiki/Installing-Moonlight-Qt-on-RISC%E2%80%90V-Single-Board-Computers)
-- [NVIDIA Jetson and Nintendo Switch (Ubuntu L4T)](https://github.com/moonlight-stream/moonlight-docs/wiki/Installing-Moonlight-Qt-on-Linux4Tegra-(L4T)-Ubuntu)
 
-### Nightly Builds
-- [Downloads](https://nightly.link/moonlight-stream/moonlight-qt/workflows/build/master)
-
-#### Special Thanks
-
-[![Hosted By: Cloudsmith](https://img.shields.io/badge/OSS%20hosting%20by-cloudsmith-blue?logo=cloudsmith&style=flat-square)](https://cloudsmith.com)
-
-Hosting for Moonlight's Debian and L4T package repositories is graciously provided for free by [Cloudsmith](https://cloudsmith.com).
+Umbra does not publish releases yet. Build it yourself with the instructions below.
 
 ## Building
 
+### Windows quick start
+
+```
+python -m pip install aqtinstall
+python scripts\setup-qt.py
+scripts\umbra-build.bat release
+```
+
+That produces a runnable `build\deploy-x64-release\Umbra.exe`. `umbra-build.bat` locates Qt and
+Visual Studio itself and fetches the prebuilt FFmpeg/SDL/OpenSSL dependencies, so it needs no Qt
+command prompt.
+
+To build the installer instead:
+
+```
+scripts\umbra-installer.bat release
+```
+
+This produces `Umbra.msi` and a `UmbraSetup.exe` bundle that offers to install the host as well.
+Pass `--no-host` for a client-only bundle. WiX comes from NuGet, so no separate WiX install is
+needed. Use `scripts\build-arch.bat` for a full dual-architecture release.
+
+`scripts\setup-qt.py` exists because aqtinstall (through 3.3.0) cannot install any Qt 6.8+ MSVC kit:
+it builds the repository path `qt6_6111/qt6_6111` instead of `qt6_6111/qt6_6111_msvc2022_64`, so every
+metadata fetch 404s and surfaces as a confusing checksum error. The script patches that and installs
+the exact Qt the build expects.
+
 ### Windows Build Requirements
-* Qt 6.11 SDK or later (earlier versions may work but are not officially supported)
-* [Visual Studio 2026](https://visualstudio.microsoft.com/downloads/) (Community edition is fine)
-* Select **MSVC** option during Qt installation. MinGW is not supported.
-* [7-Zip](https://www.7-zip.org/) (only if building installers for non-development PCs)
+* Qt 6.11 SDK or later (`scripts\setup-qt.py` installs this for you)
+* [Visual Studio 2022 or later](https://visualstudio.microsoft.com/downloads/) with the
+  "Desktop development with C++" workload (Community edition is fine)
+* Select **MSVC** option if installing Qt by hand. MinGW is not supported.
+* [7-Zip](https://www.7-zip.org/) (only for `build-arch.bat` release packaging)
 * Graphics Tools (only if running debug builds)
   * Install "Graphics Tools" in the Optional Features page of the Windows Settings app.
   * Alternatively, run `dism /online /add-capability /capabilityname:Tools.Graphics.DirectX~~~~0.0.1.0` and reboot.
@@ -100,15 +128,22 @@ for different architectures, which handle building deps and extra linking for yo
         * For Windows builds, use `scripts\build-arch.bat` and `scripts\generate-bundle.bat`. Execute these scripts from the root of the repository within a Qt command prompt. Ensure  7-Zip binary directory is on your `%PATH%`.
         * For macOS builds, use `scripts/generate-dmg.sh`. Execute this script from the root of the repository and ensure Qt's `bin` folder is in your `$PATH`.
         * For Steam Link builds, run `scripts/build-steamlink-app.sh` from the root of the repository.
-    * To build from the command line for development use on macOS or Linux, run `qmake6 moonlight-qt.pro` then `make debug` or `make release`.
-        * The final binary will be placed in `app/moonlight`.
-    * To create an embedded build for a single-purpose device, use `qmake6 "CONFIG+=embedded" moonlight-qt.pro` and build normally.
+    * To build from the command line for development use on macOS or Linux, run `qmake6 umbra.pro` then `make debug` or `make release`.
+        * The final binary will be placed in `app/umbra`.
+    * To create an embedded build for a single-purpose device, use `qmake6 "CONFIG+=embedded" umbra.pro` and build normally.
         * This build will lack windowed mode, Discord/Help links, and other features that don't make sense on an embedded device.
         * For platforms with poor GPU performance, add `"CONFIG+=gpuslow"` to prefer direct KMSDRM rendering over GL/Vulkan renderers. Direct KMSDRM rendering can use dedicated YUV/RGB conversion and scaling hardware rather than slower GPU shaders for these operations.
 
-## Contribute
-1. Fork us
-2. Write code
-3. Send Pull Requests
+## Licence and credits
 
-Check out our [website](https://moonlight-stream.org) for project links and information.
+Umbra is GPLv3, like everything it is built on. It is a fork of
+[moonlight-qt](https://github.com/moonlight-stream/moonlight-qt) by the Moonlight Game Streaming
+Project, and its installer redistributes a host built from
+[Vibepollo](https://github.com/Nonary/vibepollo), itself a fork of
+[Apollo](https://github.com/ClassicOldSong/Apollo) and
+[Sunshine](https://github.com/LizardByte/Sunshine).
+[Totaie/umbra-host](https://github.com/Totaie/umbra-host) is the corresponding source for that
+redistributed host binary.
+
+All the hard parts are theirs. Please report bugs in Umbra's own features here rather than
+upstream.
