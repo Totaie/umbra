@@ -5305,6 +5305,32 @@ namespace confighttp {
    *
    * @api_examples{/api/pairing-passphrase| POST| {"regenerate":false}}
    */
+  /**
+   * @brief Write a fresh pairing passphrase into the config and apply it.
+   *
+   * Shared by the API endpoint and by startup. The client asks for this token as
+   * soon as you try to connect to an unpaired host, so a host that has never had
+   * its web interface opened still has to have one.
+   */
+  void generate_pairing_passphrase(bool regenerate) {
+    // 64 hex characters, i.e. 256 bits. Hex rather than a denser alphabet because
+    // this gets typed by hand on phones and TVs when a QR code isn't an option,
+    // and a case-insensitive alphabet without lookalike characters matters more
+    // there than saving twenty keystrokes.
+    std::string generated = crypto::rand_alphabet(64, "0123456789abcdef"sv);
+
+    auto current = config::parse_config(file_handler::read_file(config::sunshine.config_file.c_str()));
+    current["pairing_passphrase"] = generated;
+    std::stringstream config_stream;
+    for (const auto &kv : current) {
+      config_stream << kv.first << " = " << kv.second << std::endl;
+    }
+    file_handler::write_file(config::sunshine.config_file.c_str(), config_stream.str());
+    config::apply_config_now();
+
+    BOOST_LOG(info) << (regenerate ? "Regenerated"sv : "Generated"sv) << " the pairing passphrase"sv;
+  }
+
   void pairingPassphrase(resp_https_t response, req_https_t request) {
     if (!authenticate(response, request)) {
       return;
@@ -5324,22 +5350,7 @@ namespace confighttp {
       }
 
       if (config::nvhttp.pairing_passphrase.empty() || regenerate) {
-        // 64 hex characters, i.e. 256 bits. Hex rather than a denser alphabet because
-        // this gets typed by hand on phones and TVs when a QR code isn't an option,
-        // and a case-insensitive alphabet without lookalike characters matters more
-        // there than saving twenty keystrokes.
-        std::string generated = crypto::rand_alphabet(64, "0123456789abcdef"sv);
-
-        auto current = config::parse_config(file_handler::read_file(config::sunshine.config_file.c_str()));
-        current["pairing_passphrase"] = generated;
-        std::stringstream config_stream;
-        for (const auto &kv : current) {
-          config_stream << kv.first << " = " << kv.second << std::endl;
-        }
-        file_handler::write_file(config::sunshine.config_file.c_str(), config_stream.str());
-        config::apply_config_now();
-
-        BOOST_LOG(info) << (regenerate ? "Regenerated"sv : "Generated"sv) << " the pairing passphrase"sv;
+        generate_pairing_passphrase(regenerate);
       }
 
       output_tree["passphrase"] = config::nvhttp.pairing_passphrase;
@@ -6279,4 +6290,19 @@ namespace confighttp {
     add_cors_headers(headers);
     response->write(SimpleWeb::StatusCode::success_ok, tree.dump(), headers);
   }
+  void ensure_pairing_passphrase() {
+    if (!config::nvhttp.pairing_passphrase.empty()) {
+      return;
+    }
+
+    try {
+      generate_pairing_passphrase(false);
+      BOOST_LOG(info) << "Created a pairing token for this host; it is shown in the web interface under Pair."sv;
+    } catch (std::exception &e) {
+      // Not fatal: PIN pairing still works, and the token can be generated later
+      // from the web interface.
+      BOOST_LOG(warning) << "Could not create a pairing token: "sv << e.what();
+    }
+  }
+
 }  // namespace confighttp

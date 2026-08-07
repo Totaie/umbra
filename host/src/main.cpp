@@ -736,6 +736,10 @@ int main(int argc, char *argv[]) {
     session_history::shutdown();
   });
 
+  // Do this before the HTTP interface comes up, so the first client to ask can be
+  // answered. Clients prompt for this token instead of a PIN.
+  confighttp::ensure_pairing_passphrase();
+
   if (http::init()) {
     BOOST_LOG(fatal) << "HTTP interface failed to initialize"sv;
 

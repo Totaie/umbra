@@ -29,6 +29,14 @@
 using namespace std::chrono_literals;
 
 namespace confighttp {
+
+  /**
+   * @brief Make sure this host has a pairing token, creating one if it does not.
+   *
+   * Called at startup. Umbra clients ask for the token when connecting, so it has
+   * to exist before anyone opens the web interface.
+   */
+  void ensure_pairing_passphrase();
   using resp_https_t = std::shared_ptr<typename SimpleWeb::ServerBase<SimpleWeb::HTTPS>::Response>;
   using req_https_t = std::shared_ptr<typename SimpleWeb::ServerBase<SimpleWeb::HTTPS>::Request>;
 
