@@ -47,8 +47,12 @@ rem Resolve the newest release ourselves rather than letting gh pick "latest", w
 rem only considers full releases. While the host is still in beta every release is a
 rem prerelease, so gh would report "release not found" and the bundle would silently
 rem have no host to chain.
+rem
+rem Sort by version rather than taking gh's first row. Our releases can share a
+rem creation timestamp, and when they do gh's order is arbitrary - it handed back
+rem v0.2.6 while v0.2.7 existed, and a client went out bundling the older host.
 if "%TAG%"=="" (
-    for /f "usebackq delims=" %%t in (`gh release list --repo "%REPO%" --limit 1 --json tagName --jq ".[0].tagName" 2^>nul`) do (
+    for /f "usebackq delims=" %%t in (`gh release list --repo "%REPO%" --limit 40 --json tagName --jq "[.[].tagName | select(test(\"^v[0-9]+[.][0-9]+[.][0-9]+$\"))] | sort_by(ltrimstr(\"v\") | split(\".\") | map(tonumber)) | last" 2^>nul`) do (
         if not defined TAG set TAG=%%t
     )
     if "!TAG!"=="" (

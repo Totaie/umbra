@@ -91,7 +91,7 @@ if "%WITH_HOST%"=="1" (
     )
 
     set HOST_LATEST_TAG=
-    for /f "usebackq delims=" %%t in (`gh release list --repo Totaie/umbra-host --limit 1 --json tagName --jq ".[0].tagName" 2^>nul`) do (
+    for /f "usebackq delims=" %%t in (`gh release list --repo Totaie/umbra-host --limit 40 --json tagName --jq "[.[].tagName | select(test(\"^v[0-9]+[.][0-9]+[.][0-9]+$\"))] | sort_by(ltrimstr(\"v\") | split(\".\") | map(tonumber)) | last" 2^>nul`) do (
         if not defined HOST_LATEST_TAG set HOST_LATEST_TAG=%%t
     )
 
