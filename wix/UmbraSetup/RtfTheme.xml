@@ -30,11 +30,16 @@
 
             <!-- Options is a step in the sequence rather than a button tucked beside
                  Install, so the install location and the host checkbox are seen rather
-                 than discovered. This button only navigates; the real InstallButton
-                 lives on the Options page, and WixStdBA keeps that one disabled until
-                 the licence is accepted, so nothing can be installed by skipping past
-                 this page. -->
-            <Button Name="LicenseNextButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
+                 than discovered.
+
+                 The name has to stay OptionsButton. WixStdBA tracks which page it is
+                 on itself, and it only learns about a move to Options through this
+                 control. Navigating with a differently-named button and a bare
+                 ChangePageAction left the BA believing it was still on the licence
+                 page, so when the install began it hid that page and drew Progress
+                 over an Options page nobody had hidden - two pages of text on top of
+                 each other. -->
+            <Button Name="OptionsButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0" VisibleCondition="NOT WixStdBASuppressOptionsUI">
                 <Text>Next</Text>
                 <ChangePageAction Page="Options" />
             </Button>
@@ -62,18 +67,23 @@
                  Checked by default; see InstallHostCheckbox in Bundle.wxs. -->
             <Checkbox Name="InstallHostCheckbox" X="11" Y="200" Width="400" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">Also install the Umbra host, so this PC can be streamed from</Checkbox>
 
-            <!-- Back returns to the licence without discarding what was chosen here;
-                 Cancel on this page used to do that and was the only way out. -->
-            <Button Name="OptionsBackButton" X="-171" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
+            <!-- Back is OptionsOkButton for the same reason Next is OptionsButton:
+                 it is how WixStdBA is told the Options page has been left. It also
+                 keeps what was typed here, where OptionsCancelButton would discard it. -->
+            <Button Name="OptionsOkButton" X="-171" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
                 <Text>Back</Text>
                 <ChangePageAction Page="Install" />
             </Button>
 
-            <!-- The name is what matters: WixStdBA starts the install from the control
-                 called InstallButton, and gates it on the licence checkbox. -->
+            <!-- WixStdBA starts the install from the control called InstallButton, and
+                 keeps it disabled until the licence checkbox on the previous page is
+                 ticked - so moving it here does not let anyone skip the licence. -->
             <Button Name="InstallButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">#(loc.InstallInstallButton)</Button>
 
-            <Button Name="OptionsCancelButton" X="-11" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
+            <!-- Closes the installer outright, so Cancel means the same thing on both
+                 pages. Deliberately not named OptionsCancelButton, which WixStdBA
+                 would treat as "return to the previous page". -->
+            <Button Name="OptionsCloseButton" X="-11" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
                 <Text>#(loc.InstallCancelButton)</Text>
                 <CloseWindowAction />
             </Button>
