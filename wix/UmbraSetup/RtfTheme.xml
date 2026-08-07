@@ -8,7 +8,7 @@
     <Font Id="2" Height="-22" Weight="500" Foreground="graytext">Segoe UI</Font>
     <Font Id="3" Height="-12" Weight="500" Foreground="windowtext" Background="window">Segoe UI</Font>
 
-    <Window Width="485" Height="300" HexStyle="100a0000" FontId="0" Caption="#(loc.Caption)" IconFile="Umbra.ico">
+    <Window Width="485" Height="400" HexStyle="100a0000" FontId="0" Caption="#(loc.Caption)" IconFile="Umbra.ico">
         <ImageControl X="11" Y="11" Width="64" Height="64" ImageFile="logo.png" Visible="yes"/>
         <Label X="80" Y="11" Width="-11" Height="64" FontId="1" Visible="yes" DisablePrefix="yes">#(loc.Title)</Label>
 
@@ -23,67 +23,42 @@
         <Page Name="Loading">
             <Label X="11" Y="80" Width="-11" Height="30" FontId="2" DisablePrefix="yes" Visible="no" Name="CheckingForUpdatesLabel" />
         </Page>
+        <!-- One page before the install, deliberately.
+
+             WixStdBA knows nothing about an Options page - its page list is Loading,
+             Help, Install, Modify, Progress, ProgressPassive, Success and Failure,
+             and it never references OptionsButton. An Options page is a thmutil-only
+             page, and the two layers track "the current page" separately: thmutil
+             hides whatever it last showed, while WixStdBA hides whatever its own
+             DeterminePageId says. Start an install while the Options page is up and
+             WixStdBA hides Install, shows Progress, and leaves Options on screen
+             underneath - which is the overlapping text this replaces.
+
+             Attaching a ChangePageAction to the Install button does not rescue it:
+             thmutil offers the click to the BA first and stops when it is handled,
+             which it always is for InstallButton, so the action never runs.
+
+             Hence no Options page and no Options button. Everything that used to
+             hide behind it is here, in the order it is read. -->
         <Page Name="Install">
-            <Richedit Name="EulaRichedit" X="11" Y="80" Width="-11" Height="-70" TabStop="yes" FontId="0" HexStyle="800000" />
-            <Checkbox Name="EulaAcceptCheckbox" X="-11" Y="-41" Width="260" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">#(loc.InstallAcceptCheckbox)</Checkbox>
-            <Button Name="InstallUpdateButton" X="11" Y="-11" Width="200" Height="23" TabStop="yes" FontId="0" EnableCondition="WixStdBAUpdateAvailable" HideWhenDisabled="yes">#(loc.UpdateButton)</Button>
+            <Richedit Name="EulaRichedit" X="11" Y="80" Width="-11" Height="130" TabStop="yes" FontId="0" HexStyle="800000" />
+            <Checkbox Name="EulaAcceptCheckbox" X="11" Y="218" Width="-11" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">#(loc.InstallAcceptCheckbox)</Checkbox>
 
-            <!-- Options is a step in the sequence rather than a button tucked beside
-                 Install, so the install location and the host checkbox are seen rather
-                 than discovered.
-
-                 The name has to stay OptionsButton. WixStdBA tracks which page it is
-                 on itself, and it only learns about a move to Options through this
-                 control. Navigating with a differently-named button and a bare
-                 ChangePageAction left the BA believing it was still on the licence
-                 page, so when the install began it hid that page and drew Progress
-                 over an Options page nobody had hidden - two pages of text on top of
-                 each other. -->
-            <Button Name="OptionsButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0" VisibleCondition="NOT WixStdBASuppressOptionsUI">
-                <Text>Next</Text>
-                <ChangePageAction Page="Options" />
-            </Button>
-            <Button Name="InstallCancelButton" X="-11" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
-                <Text>#(loc.InstallCancelButton)</Text>
-                <CloseWindowAction />
-            </Button>
-        </Page>
-        <Page Name="Options">
-            <Label X="11" Y="80" Width="-11" Height="30" FontId="2" DisablePrefix="yes">#(loc.OptionsHeader)</Label>
-            <Label X="11" Y="121" Width="-11" Height="17" FontId="3" DisablePrefix="yes">#(loc.OptionsLocationLabel)</Label>
-            <Editbox Name="InstallFolder" X="11" Y="143" Width="-91" Height="21" TabStop="yes" FontId="3" FileSystemAutoComplete="yes" />
-            <Button Name="BrowseButton" X="-11" Y="142" Width="75" Height="23" TabStop="yes" FontId="3">
+            <Label X="11" Y="248" Width="-11" Height="17" FontId="3" DisablePrefix="yes">#(loc.OptionsLocationLabel)</Label>
+            <Editbox Name="InstallFolder" X="11" Y="268" Width="-91" Height="21" TabStop="yes" FontId="3" FileSystemAutoComplete="yes" />
+            <Button Name="BrowseButton" X="-11" Y="267" Width="75" Height="23" TabStop="yes" FontId="3">
                 <Text>#(loc.OptionsBrowseButton)</Text>
                 <BrowseDirectoryAction VariableName="InstallFolder" />
             </Button>
 
-            <!-- Added a checkbox for user to choose if shortcut is placed on
-                desktop or not. Checkbox's current state (checked/unchecked) is
-                read from a variable which has same name as this checkbox. The
-                variable is defined in Bundle.wxs. -->
-            <Checkbox Name="AddDesktopShortcutCheckbox" X="11" Y="178" Width="250" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">Add desktop shortcut</Checkbox>
+            <!-- Checkbox state is read from the bundle variable of the same name;
+                 both are declared in Bundle.wxs. -->
+            <Checkbox Name="AddDesktopShortcutCheckbox" X="11" Y="300" Width="-11" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">Add desktop shortcut</Checkbox>
+            <Checkbox Name="InstallHostCheckbox" X="11" Y="322" Width="-11" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">Also install the Umbra host, so this PC can be streamed from</Checkbox>
 
-            <!-- Lets one install both connect to other PCs and be connected to.
-                 Checked by default; see InstallHostCheckbox in Bundle.wxs. -->
-            <Checkbox Name="InstallHostCheckbox" X="11" Y="200" Width="400" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">Also install the Umbra host, so this PC can be streamed from</Checkbox>
-
-            <!-- Back is OptionsOkButton for the same reason Next is OptionsButton:
-                 it is how WixStdBA is told the Options page has been left. It also
-                 keeps what was typed here, where OptionsCancelButton would discard it. -->
-            <Button Name="OptionsOkButton" X="-171" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
-                <Text>Back</Text>
-                <ChangePageAction Page="Install" />
-            </Button>
-
-            <!-- WixStdBA starts the install from the control called InstallButton, and
-                 keeps it disabled until the licence checkbox on the previous page is
-                 ticked - so moving it here does not let anyone skip the licence. -->
+            <Button Name="InstallUpdateButton" X="11" Y="-11" Width="200" Height="23" TabStop="yes" FontId="0" EnableCondition="WixStdBAUpdateAvailable" HideWhenDisabled="yes">#(loc.UpdateButton)</Button>
             <Button Name="InstallButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">#(loc.InstallInstallButton)</Button>
-
-            <!-- Closes the installer outright, so Cancel means the same thing on both
-                 pages. Deliberately not named OptionsCancelButton, which WixStdBA
-                 would treat as "return to the previous page". -->
-            <Button Name="OptionsCloseButton" X="-11" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
+            <Button Name="InstallCancelButton" X="-11" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
                 <Text>#(loc.InstallCancelButton)</Text>
                 <CloseWindowAction />
             </Button>
