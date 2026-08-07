@@ -8,6 +8,7 @@ import "../theme"
 
 import StreamingPreferences 1.0
 import AutoUpdateChecker 1.0
+import HostManager 1.0
 import ComputerManager 1.0
 import SdlGamepadKeyNavigation 1.0
 import SystemProperties 1.0
@@ -661,6 +662,16 @@ Column {
                     ToolTip.text: qsTr("Random downloads a new wallpaper from a third-party image service, replacing it weekly. Choose None to stop Umbra contacting it at all.")
                 }
 
+                Label {
+                    id: hostUpdateStatus
+                    width: parent.width
+                    text: ""
+                    visible: text !== ""
+                    font.pointSize: 12
+                    color: Theme.textDim
+                    wrapMode: Text.Wrap
+                }
+
                 RowLayout {
                     width: parent.width
                     spacing: 12
@@ -680,6 +691,38 @@ Column {
                         font.pointSize: 12
                         color: Theme.textDim
                         elide: Text.ElideMiddle
+                    }
+                }
+
+                // Updating the host means running its installer, which stops the
+                // service - and the installer needs administrator rights, so Windows
+                // shows a UAC prompt. That prompt is drawn on the secure desktop,
+                // which the host does not capture, so anyone doing this *through* a
+                // stream would lose the picture and have no way to click it. Hence
+                // the refusal while a session is live rather than a warning.
+                NavigableMessageDialog {
+                    id: hostUpdateDialog
+
+                    property string newVersion: ""
+                    property string releaseUrl: ""
+                    readonly property bool streaming: HostManager.isHostStreaming()
+
+                    standardButtons: streaming ? Dialog.Ok : (Dialog.Ok | Dialog.Cancel)
+
+                    text: streaming
+                          ? qsTr("Umbra Host %1 is available, but this PC is streaming right now.").arg(newVersion) + "
+
+" +
+                            qsTr("Installing it stops the host, which ends the session, and Windows asks for administrator permission on this PC's own screen - a stream can't show that prompt. End the session first, then update.")
+                          : qsTr("Umbra Host %1 is available.").arg(newVersion) + "
+
+" +
+                            qsTr("The download page will open. Installing needs administrator permission, so do it at this PC rather than over a stream.")
+
+                    onAccepted: {
+                        if (!streaming && releaseUrl) {
+                            Qt.openUrlExternally(releaseUrl)
+                        }
                     }
                 }
 
@@ -709,7 +752,17 @@ Column {
 
                         onClicked: {
                             updateCheckStatus.text = qsTr("Checking…")
+                            hostUpdateStatus.text = ""
                             AutoUpdateChecker.checkNow()
+
+                            // Also check the host, but only where one is installed.
+                            // Declining the host during setup is a supported choice,
+                            // and a client-only machine shouldn't be told anything
+                            // about a host it doesn't have.
+                            if (HostManager.isHostInstalled()) {
+                                hostUpdateStatus.text = qsTr("Checking Umbra Host…")
+                                HostManager.checkHostForUpdate()
+                            }
                         }
                     }
 
@@ -733,6 +786,19 @@ Column {
                         })
                         AutoUpdateChecker.onUpdateAvailable.connect(function(version) {
                             updateCheckStatus.text = qsTr("Umbra %1 is available.").arg(version)
+                        })
+
+                        HostManager.hostUpToDate.connect(function(version) {
+                            hostUpdateStatus.text = qsTr("Umbra Host %1 is up to date.").arg(version)
+                        })
+                        HostManager.hostCheckFailed.connect(function(message) {
+                            hostUpdateStatus.text = message
+                        })
+                        HostManager.hostUpdateAvailable.connect(function(version, url) {
+                            hostUpdateDialog.newVersion = version
+                            hostUpdateDialog.releaseUrl = url
+                            hostUpdateStatus.text = qsTr("Umbra Host %1 is available.").arg(version)
+                            hostUpdateDialog.open()
                         })
                     }
                 }

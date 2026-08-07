@@ -97,7 +97,11 @@ void AutoUpdateChecker::start()
 #endif
 
     // Query GitHub Releases API for the latest release
-    QUrl url(QString("https://api.github.com/repos/%1/%2/releases/latest")
+    // The list endpoint rather than /releases/latest, which by definition only
+    // returns a release marked neither prerelease nor draft. Every Umbra release so
+    // far is a prerelease, so /releases/latest simply 404s and the updater could
+    // never see anything - while reporting the machine as up to date.
+    QUrl url(QString("https://api.github.com/repos/%1/%2/releases?per_page=30")
                  .arg(GITHUB_OWNER, GITHUB_REPO));
     QNetworkRequest request(url);
 
@@ -277,15 +281,57 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
             return;
         }
 
-        if (!jsonDoc.isObject()) {
-            qWarning() << "GitHub release response is not a JSON object";
+        if (!jsonDoc.isArray()) {
+            qWarning() << "GitHub releases response is not a JSON array";
             if (manualCheck) {
                 emit onCheckFailed(tr("The update server sent a response Umbra couldn't read."));
             }
             return;
         }
 
-        QJsonObject releaseObj = jsonDoc.object();
+        // Pick the highest version rather than the first entry. GitHub orders by
+        // creation date, and releases published close together can share a timestamp,
+        // at which point the order is arbitrary.
+        QJsonArray releases = jsonDoc.array();
+        QJsonObject releaseObj;
+        QVector<int> bestVersion;
+
+        for (const QJsonValue& value : releases) {
+            if (!value.isObject()) {
+                continue;
+            }
+
+            QJsonObject candidate = value.toObject();
+
+            // Drafts are not published to anyone. Prereleases are what we ship, so
+            // they count.
+            if (candidate["draft"].toBool(false)) {
+                continue;
+            }
+
+            if (!candidate.contains("tag_name") || !candidate["tag_name"].isString()) {
+                continue;
+            }
+
+            QVector<int> candidateVersion;
+            parseStringToVersionQuad(candidate["tag_name"].toString(), candidateVersion);
+            if (candidateVersion.isEmpty()) {
+                continue;
+            }
+
+            if (bestVersion.isEmpty() || compareVersion(bestVersion, candidateVersion) < 0) {
+                bestVersion = candidateVersion;
+                releaseObj = candidate;
+            }
+        }
+
+        if (releaseObj.isEmpty()) {
+            qWarning() << "No usable releases found";
+            if (manualCheck) {
+                emit onCheckFailed(tr("No Umbra releases were found to compare against."));
+            }
+            return;
+        }
 
         // GitHub Releases API response format:
         // {
@@ -301,16 +347,6 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         //     }
         //   ]
         // }
-
-        // Skip pre-releases and drafts
-        if (releaseObj["prerelease"].toBool(false) || releaseObj["draft"].toBool(false)) {
-            qDebug() << "Latest GitHub release is a pre-release or draft, skipping";
-            if (manualCheck) {
-                // Not an error: the newest thing published just isn't a stable release.
-                emit onUpToDate();
-            }
-            return;
-        }
 
         if (!releaseObj.contains("tag_name") || !releaseObj["tag_name"].isString()) {
             qWarning() << "GitHub release missing tag_name";
@@ -418,14 +454,11 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         qWarning() << "Update checking failed:" << reply->error() << reply->errorString();
 
         if (manualCheck) {
-            if (reply->error() == QNetworkReply::ContentNotFoundError) {
-                // Nothing published yet, or only prereleases. Not worth an error.
-                emit onUpToDate();
-            }
-            else {
-                emit onCheckFailed(tr("Umbra couldn't reach the update server: %1")
-                                   .arg(reply->errorString()));
-            }
+            // A 404 used to be reported as "up to date". It is not: it means the
+            // question could not be answered, and saying otherwise is how an out of
+            // date install was told it was current.
+            emit onCheckFailed(tr("Umbra couldn't reach the update server: %1")
+                               .arg(reply->errorString()));
         }
 
         reply->deleteLater();

@@ -3,7 +3,10 @@
 #include <QElapsedTimer>
 #include <QObject>
 #include <QString>
+#include <QNetworkAccessManager>
 #include <QTimer>
+
+class QNetworkReply;
 
 // Controls the copy of Umbra Host installed on this machine.
 //
@@ -43,6 +46,19 @@ public:
     // https://localhost:47990
     Q_INVOKABLE QString hostWebUiUrl() const;
 
+    // The installed host's version, or an empty string when none is installed.
+    Q_INVOKABLE QString installedHostVersion();
+
+    // Asks GitHub whether a newer host exists. Reports through hostUpdateAvailable,
+    // hostUpToDate or hostCheckFailed. Does nothing at all when no host is
+    // installed - declining the host during setup is a supported choice, not a
+    // problem to nag about.
+    Q_INVOKABLE void checkHostForUpdate();
+
+    // True while the host is serving a stream. Installing over it would stop the
+    // service and drop the session, so updates wait.
+    Q_INVOKABLE bool isHostStreaming();
+
     bool isBusy() const
     {
         return m_Busy;
@@ -52,6 +68,10 @@ signals:
     void busyChanged();
     void webUiOpened();
     void webUiFailed(QString error);
+
+    void hostUpdateAvailable(QString newVersion, QString url);
+    void hostUpToDate(QString currentVersion);
+    void hostCheckFailed(QString error);
 
 private:
     // Absolute path to the host executable, or an empty string if not installed.
@@ -67,7 +87,10 @@ private:
     void fail(const QString& error);
     void setBusy(bool busy);
 
+    void handleHostReleasesReply(QNetworkReply* reply);
+
     QString m_CachedExecutable;
+    QNetworkAccessManager* m_Nam = nullptr;
     bool m_Busy = false;
     QTimer m_PollTimer;
     QElapsedTimer m_WaitTimer;
