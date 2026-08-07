@@ -820,6 +820,25 @@ bool D3D11VARenderer::prepareDecoderContextInGetFormat(AVCodecContext *context, 
 {
     // Create a new hardware frames context suitable for decoding our specified format
     av_buffer_unref(&context->hw_frames_ctx);
+
+    // avcodec_get_hw_frames_parameters() takes the frames context's sw_format from
+    // avctx->sw_pix_fmt. On some machines that is still AV_PIX_FMT_NONE when
+    // get_format() runs, and av_hwframe_ctx_init() then fails with
+    // "Unsupported pixel format: (null)" and -22 - after which every packet is
+    // rejected with EPERM and the stream is simply a black window, forever, with no
+    // error shown. Seen on a client with several adapters (an Intel iGPU, an NVIDIA
+    // dGPU and three virtual display adapters).
+    //
+    // D3D11VA only ever decodes to NV12 or P010, so filling it in when FFmpeg has
+    // not is safe and costs nothing when it has.
+    if (context->sw_pix_fmt == AV_PIX_FMT_NONE) {
+        context->sw_pix_fmt = (m_DecoderParams.videoFormat & VIDEO_FORMAT_MASK_10BIT) ? AV_PIX_FMT_P010
+                                                                        : AV_PIX_FMT_NV12;
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Decoder left sw_pix_fmt unset; assuming %s for D3D11VA",
+                    av_get_pix_fmt_name(context->sw_pix_fmt));
+    }
+
     int err = avcodec_get_hw_frames_parameters(context, m_HwDeviceContext, pixelFormat, &context->hw_frames_ctx);
     if (err < 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,

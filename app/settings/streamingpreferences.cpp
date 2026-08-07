@@ -225,8 +225,11 @@ void StreamingPreferences::reload()
 
     // Umbra is desktop-oriented: selecting a PC goes straight to its desktop rather
     // than stopping at the app grid. The full list stays on the PC's context menu.
+    // Off by default. The inherited behaviour downloaded a random image from a
+    // third-party host on first run, which is a surprising thing for a remote
+    // desktop tool to do before anyone has asked it to.
     backgroundMode = static_cast<BackgroundMode>(settings.value(SER_BACKGROUNDMODE,
-                                                 static_cast<int>(BackgroundMode::BG_RANDOM)).toInt());
+                                                 static_cast<int>(BackgroundMode::BG_NONE)).toInt());
     backgroundImagePath = settings.value(SER_BACKGROUNDIMAGEPATH).toString();
     directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
     clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
