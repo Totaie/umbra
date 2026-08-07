@@ -47,8 +47,8 @@ async function submit(): Promise<void> {
   <main id="main-content" class="auth-page">
     <section class="auth-panel" aria-labelledby="auth-title">
       <div class="auth-brand">
-        <img src="/images/logo-apollo-45.png" alt="" width="45" height="45" />
-        <span>Vibepollo</span>
+        <img src="/images/logo-umbra-45.png" alt="" width="45" height="45" />
+        <span>Umbra</span>
       </div>
 
       <div class="auth-heading">

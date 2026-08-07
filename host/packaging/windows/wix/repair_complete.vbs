@@ -3,8 +3,8 @@
 
 Function ShowRepairComplete()
     Dim msg
-    msg = "Vibepollo repair completed successfully. No reboot is required."
-    MsgBox msg, vbInformation + vbOKOnly, "Vibepollo Repair"
+    msg = "Umbra repair completed successfully. No reboot is required."
+    MsgBox msg, vbInformation + vbOKOnly, "Umbra Repair"
     ShowRepairComplete = 0
 End Function
 

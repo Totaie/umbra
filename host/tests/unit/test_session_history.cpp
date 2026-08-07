@@ -26,7 +26,7 @@ namespace {
     make_temp_db_path(const char *label) {
     auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
     auto path = std::filesystem::temp_directory_path() /
-                ("vibepollo-tests-" + std::string(label) + "-" + std::to_string(stamp) + ".sqlite");
+                ("umbra-tests-" + std::string(label) + "-" + std::to_string(stamp) + ".sqlite");
     std::error_code ec;
     std::filesystem::remove(path, ec);
     return path;

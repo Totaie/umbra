@@ -77,7 +77,7 @@ fi
 
 if ! command -v npm >/dev/null 2>&1 && [[ ! -x "/c/Program Files/nodejs/npm.cmd" ]]; then
     echo "ERROR: npm was not found, and the web_ui target is not optional: the build" >&2
-    echo "       fails at 'Unable to build the Vibepollo browser interface'." >&2
+    echo "       fails at 'Unable to build the Umbra browser interface'." >&2
     echo "       Install it with: pacman -S mingw-w64-ucrt-x86_64-nodejs" >&2
     exit 1
 fi
@@ -99,7 +99,7 @@ echo "Configuring..."
 # The repo used for update checks is passed explicitly rather than relying on the
 # defaults in cmake/prep/build_version.cmake. Those are CACHE variables, so a build
 # directory first configured against upstream keeps upstream's values forever and the
-# host would quietly check Vibepollo for its updates instead of Umbra.
+# host would quietly check Umbra for its updates instead of Umbra.
 cmake -B "${BUILD_DIR}" -G Ninja -S "${SOURCE_ROOT}" \
       -DSUNSHINE_REPO_OWNER=Totaie \
       -DSUNSHINE_REPO_NAME=umbra-host \

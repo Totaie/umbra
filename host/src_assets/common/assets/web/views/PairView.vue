@@ -69,6 +69,61 @@ function resetForm(): void {
   pairedName.value = '';
   error.value = '';
 }
+
+// --- Pairing token ---------------------------------------------------------------
+// A long shared secret that replaces the PIN. The client proves it knows the token
+// during pairing, so nobody has to be sitting at this machine to approve a device.
+
+interface PassphraseResponse {
+  passphrase?: string;
+  status?: boolean;
+}
+
+const token = ref('');
+const tokenRevealed = ref(false);
+const tokenLoading = ref(false);
+const tokenCopied = ref(false);
+const tokenError = ref('');
+
+const maskedToken = computed(() =>
+  token.value ? '•'.repeat(Math.min(token.value.length, 64)) : '',
+);
+
+async function fetchToken(regenerate: boolean): Promise<void> {
+  tokenError.value = '';
+  tokenLoading.value = true;
+  try {
+    const response = await apiPost<PassphraseResponse>('/api/pairing-passphrase', {
+      regenerate,
+    });
+    token.value = response.passphrase ?? '';
+    // Regenerating is a deliberate act, so show the new value straight away — the
+    // user needs to copy it somewhere. A plain read stays masked.
+    if (regenerate) {
+      tokenRevealed.value = true;
+    }
+  } catch {
+    tokenError.value = t('ui.pair.token.error');
+  } finally {
+    tokenLoading.value = false;
+  }
+}
+
+async function copyToken(): Promise<void> {
+  if (!token.value) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(token.value);
+    tokenCopied.value = true;
+    window.setTimeout(() => {
+      tokenCopied.value = false;
+    }, 2000);
+  } catch {
+    // Clipboard access can be denied; revealing the token lets the user select it.
+    tokenRevealed.value = true;
+  }
+}
 </script>
 
 <template>
@@ -214,6 +269,60 @@ function resetForm(): void {
           {{ t('ui.pair.privacy') }}
         </p>
       </section>
+
+      <section class="pair-token vs-surface" aria-labelledby="pair-token-title">
+        <div class="pair-panel__heading">
+          <div class="pair-panel__icon" aria-hidden="true"><UiIcon name="key" :size="20" /></div>
+          <div>
+            <h2 id="pair-token-title">{{ t('ui.pair.token.title') }}</h2>
+            <p>{{ t('ui.pair.token.description') }}</p>
+          </div>
+        </div>
+
+        <InlineAlert v-if="tokenError" tone="danger" announce="assertive">
+          {{ tokenError }}
+        </InlineAlert>
+
+        <p v-if="!token" class="pair-token__empty">{{ t('ui.pair.token.none') }}</p>
+
+        <div v-else class="pair-token__value">
+          <code>{{ tokenRevealed ? token : maskedToken }}</code>
+        </div>
+
+        <div class="pair-token__actions">
+          <AppButton
+            v-if="!token"
+            :label="t('ui.pair.token.generate')"
+            variant="primary"
+            size="compact"
+            :busy="tokenLoading"
+            @click="fetchToken(false)"
+          />
+          <template v-else>
+            <AppButton
+              :label="tokenRevealed ? t('ui.pair.token.hide') : t('ui.pair.token.reveal')"
+              variant="secondary"
+              size="compact"
+              @click="tokenRevealed = !tokenRevealed"
+            />
+            <AppButton
+              :label="tokenCopied ? t('ui.pair.token.copied') : t('ui.pair.token.copy')"
+              variant="secondary"
+              size="compact"
+              @click="copyToken"
+            />
+            <AppButton
+              :label="t('ui.pair.token.regenerate')"
+              variant="tertiary"
+              size="compact"
+              :busy="tokenLoading"
+              @click="fetchToken(true)"
+            />
+          </template>
+        </div>
+
+        <p class="pair-token__warning">{{ t('ui.pair.token.regenerate_warning') }}</p>
+      </section>
     </div>
   </div>
 </template>
@@ -232,8 +341,37 @@ function resetForm(): void {
 }
 
 .pair-instructions,
-.pair-panel {
+.pair-panel,
+.pair-token {
   padding: var(--vs-space-24);
+}
+
+/* The token spans both columns: it applies to the whole page, not just the PIN form. */
+.pair-token {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--vs-space-16);
+}
+
+.pair-token__value {
+  overflow-x: auto;
+}
+
+.pair-token__value code {
+  font-family: var(--vs-type-family-mono, monospace);
+  font-size: var(--vs-type-size-body);
+  word-break: break-all;
+}
+
+.pair-token__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vs-space-12);
+}
+
+.pair-token__empty,
+.pair-token__warning {
+  color: var(--vs-color-text-muted, inherit);
 }
 
 .pair-instructions h2,

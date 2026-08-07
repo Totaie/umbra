@@ -205,7 +205,7 @@ jobs:
       release_commit: ${{ needs.release-candidate.outputs.release_commit || github.sha }}
       release_version: ${{ needs.release-candidate.outputs.release_version || '0.0.0' }}
       release_tag: ${{ needs.release-candidate.outputs.tag_name }}
-      symbol_product_name: Vibepollo
+      symbol_product_name: Umbra
       publish_symbols: ${{ needs.release-candidate.outputs.should_release == 'true' }}
       symbol_release_draft: true
       symbol_release_prefix: polo
@@ -275,7 +275,7 @@ jobs:
             make_latest=true
           fi
 
-          product_name="Vibepollo"
+          product_name="Umbra"
 
           notes_file=""
           for candidate in \

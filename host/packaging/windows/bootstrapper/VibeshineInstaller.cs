@@ -21,7 +21,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace VibepolloInstaller {
+namespace UmbraInstaller {
   internal static class BuildFlavor {
 #if UNINSTALL_ONLY
     public static readonly bool IsUninstallOnly = true;
@@ -164,7 +164,7 @@ namespace VibepolloInstaller {
       _arguments = arguments;
       _bundleVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0, 0);
       _licenseText = LoadEmbeddedLicenseText();
-      _installedProduct = InstallerRunner.GetInstalledVibepolloProduct();
+      _installedProduct = InstallerRunner.GetInstalledUmbraProduct();
       _legacySunshineProduct = InstallerRunner.GetInstalledSunshineProduct();
       _legacySunshineRegistration = InstallerRunner.GetLegacySunshineRegistration();
       _legacyApolloRegistration = InstallerRunner.GetLegacyApolloRegistration();
@@ -181,7 +181,7 @@ namespace VibepolloInstaller {
       var showInstallOptions = showInstallLocation || _showInstallVirtualDisplayOption;
       var useCompactUpdateLayout = !BuildFlavor.IsUninstallOnly && _installedProduct != null && !showInstallOptions;
       var displayVersion = GetTargetVersionText();
-      Title = (BuildFlavor.IsUninstallOnly ? "Vibepollo Uninstaller v" : "Vibepollo Installer v") + displayVersion;
+      Title = (BuildFlavor.IsUninstallOnly ? "Umbra Uninstaller v" : "Umbra Installer v") + displayVersion;
       Width = 720;
       Height = showInstallOptions ? 620 : useCompactUpdateLayout ? 430 : 500;
       MinWidth = 690;
@@ -446,7 +446,7 @@ namespace VibepolloInstaller {
       installStack.Children.Add(_installLocationTitleText);
 
       _installLocationHintText = new TextBlock {
-        Text = "Choose where Vibepollo will be installed. The default is recommended.",
+        Text = "Choose where Umbra will be installed. The default is recommended.",
         FontSize = 12.5,
         Foreground = new SolidColorBrush(Color.FromRgb(209, 222, 241)),
         Margin = new Thickness(0, 0, 0, 10),
@@ -469,7 +469,7 @@ namespace VibepolloInstaller {
         Foreground = new SolidColorBrush(Color.FromRgb(245, 249, 255)),
         BorderBrush = new SolidColorBrush(Color.FromRgb(96, 111, 171)),
         CaretBrush = new SolidColorBrush(Color.FromRgb(245, 249, 255)),
-        ToolTip = "Used when installing or updating Vibepollo"
+        ToolTip = "Used when installing or updating Umbra"
       };
       _installPathGrid.Children.Add(_installPathTextBox);
 
@@ -505,10 +505,10 @@ namespace VibepolloInstaller {
         HorizontalAlignment = HorizontalAlignment.Left,
         VerticalContentAlignment = VerticalAlignment.Center,
         Margin = new Thickness(0, 0, 0, 8),
-        ToolTip = "Choose which bundled virtual display driver Vibepollo uses. The Vibepollo Display Driver is the recommended default."
+        ToolTip = "Choose which bundled virtual display driver Umbra uses. The Umbra Display Driver is the recommended default."
       };
       _virtualDisplayDriverComboBox.Items.Add(new ComboBoxItem {
-        Content = "Vibepollo Display Driver (recommended)"
+        Content = "Umbra Display Driver (recommended)"
       });
       _virtualDisplayDriverComboBox.Items.Add(new ComboBoxItem {
         Content = "SudoVDA (legacy)"
@@ -516,7 +516,7 @@ namespace VibepolloInstaller {
       _virtualDisplayDriverComboBox.SelectedIndex = _useSudoVdaSelectedInConfig ? 1 : 0;
 
       var installVirtualDisplayHintText = new TextBlock {
-        Text = "The Vibepollo Display Driver is installed and selected by default for virtual displays. Pick SudoVDA (legacy) only if you need to keep using the previous driver.",
+        Text = "The Umbra Display Driver is installed and selected by default for virtual displays. Pick SudoVDA (legacy) only if you need to keep using the previous driver.",
         FontSize = 12,
         Foreground = new SolidColorBrush(Color.FromRgb(190, 208, 236)),
         TextWrapping = TextWrapping.Wrap
@@ -546,7 +546,7 @@ namespace VibepolloInstaller {
       });
 
       tipsStack.Children.Add(new TextBlock {
-        Text = "You can install or upgrade Vibepollo while actively streaming. No system restart is required. "
+        Text = "You can install or upgrade Umbra while actively streaming. No system restart is required. "
           + "After you click Install or Upgrade, the current streaming session will end, then you can usually "
           + "start streaming again after about 1–2 minutes without issues.",
         FontSize = 12.5,
@@ -564,7 +564,7 @@ namespace VibepolloInstaller {
       });
 
       tipsStack.Children.Add(new TextBox {
-        Text = "VibepolloSetup.exe /qn /norestart",
+        Text = "UmbraSetup.exe /qn /norestart",
         IsReadOnly = true,
         FontFamily = new FontFamily("Consolas"),
         FontSize = 12.5,
@@ -708,7 +708,7 @@ namespace VibepolloInstaller {
       buttonRow.Children.Add(_continueButton);
 
       _uninstallButton = new Button {
-        Content = "Uninstall Vibepollo",
+        Content = "Uninstall Umbra",
         Height = 40,
         MinWidth = 152,
         Margin = new Thickness(10, 0, 0, 0),
@@ -762,13 +762,13 @@ namespace VibepolloInstaller {
       Grid.SetColumn(_closeButton, 4);
       buttonRow.Children.Add(_closeButton);
 
-      _continueButton.Content = BuildFlavor.IsUninstallOnly ? "Uninstall Vibepollo" : BuildInstallButtonLabel();
+      _continueButton.Content = BuildFlavor.IsUninstallOnly ? "Uninstall Umbra" : BuildInstallButtonLabel();
       if (_uninstallUiRequested && _installedProduct == null) {
         SetStatus(
-          "Vibepollo is not installed.",
+          "Umbra is not installed.",
           BuildFlavor.IsUninstallOnly
             ? "No uninstall action is required."
-            : "Uninstall is unavailable. Choose Install Vibepollo to continue.",
+            : "Uninstall is unavailable. Choose Install Umbra to continue.",
           _statusNormalBrush);
       } else {
         SetStatus("Ready.", string.Empty, _statusNormalBrush);
@@ -860,7 +860,7 @@ namespace VibepolloInstaller {
       // installed app or temporary generic taskbar identities while WPF loads.
       ShellIdentity.TryApplyInstallerWindowIdentity(
         new WindowInteropHelper(this).Handle,
-        BuildFlavor.IsUninstallOnly ? "Vibepollo Uninstaller" : "Vibepollo Installer"
+        BuildFlavor.IsUninstallOnly ? "Umbra Uninstaller" : "Umbra Installer"
       );
     }
 
@@ -971,7 +971,7 @@ namespace VibepolloInstaller {
         currentPath = _preferredInstallDirectory;
       }
 
-      var selectedPath = ModernFolderPicker.TryPickFolder(this, "Select the Vibepollo install folder", currentPath);
+      var selectedPath = ModernFolderPicker.TryPickFolder(this, "Select the Umbra install folder", currentPath);
       if (!string.IsNullOrWhiteSpace(selectedPath)) {
         _installPathTextBox.Text = selectedPath;
       }
@@ -987,8 +987,8 @@ namespace VibepolloInstaller {
 
     private async void UninstallNowClicked(object sender, RoutedEventArgs e) {
       if (_installedProduct == null) {
-        SetStatus("Uninstall not started.", "No Vibepollo installation was found on this PC.", _statusNormalBrush);
-        await ShowOverlayInfoAsync("Nothing to uninstall", "Vibepollo is not currently installed on this PC.");
+        SetStatus("Uninstall not started.", "No Umbra installation was found on this PC.", _statusNormalBrush);
+        await ShowOverlayInfoAsync("Nothing to uninstall", "Umbra is not currently installed on this PC.");
         return;
       }
 
@@ -1019,7 +1019,7 @@ namespace VibepolloInstaller {
         var proceed = await ShowOverlayConfirmAsync(
           "Sunshine ecosystem detected",
           BuildVibeshineInstallWarning(vibeshineProduct),
-          "Continue with Vibepollo",
+          "Continue with Umbra",
           "Cancel",
           false);
         if (!proceed) {
@@ -1085,7 +1085,7 @@ namespace VibepolloInstaller {
           selectedPath,
           installVirtualDisplayDriver,
           false));
-      }, "Install", "Installing or updating Vibepollo...", "Vibepollo installation completed.");
+      }, "Install", "Installing or updating Umbra...", "Umbra installation completed.");
     }
 
     private bool ShouldInstallVirtualDisplayDriver() {
@@ -1094,8 +1094,8 @@ namespace VibepolloInstaller {
 
     private async Task RunUninstallFlow() {
       if (_installedProduct == null) {
-        SetStatus("Uninstall not started.", "No Vibepollo installation was found on this PC.", _statusNormalBrush);
-        await ShowOverlayInfoAsync("Nothing to uninstall", "Vibepollo is not currently installed on this PC.");
+        SetStatus("Uninstall not started.", "No Umbra installation was found on this PC.", _statusNormalBrush);
+        await ShowOverlayInfoAsync("Nothing to uninstall", "Umbra is not currently installed on this PC.");
         return;
       }
 
@@ -1111,8 +1111,8 @@ namespace VibepolloInstaller {
           uninstallOptions.Value.FactoryResetAppData,
           uninstallOptions.Value.RemoveVirtualDisplayDriver)),
         "Uninstall",
-        "Removing Vibepollo...",
-        "Vibepollo uninstall completed.");
+        "Removing Umbra...",
+        "Umbra uninstall completed.");
     }
 
     private async Task RunOperationAsync(Func<Task<InstallerResult>> actionFactory, string actionLabel, string inProgressText, string successText) {
@@ -1124,7 +1124,7 @@ namespace VibepolloInstaller {
         if (result.InstallDeferredForRestart) {
           ProcessExitCode = result.ExitCode;
           var detail = string.IsNullOrWhiteSpace(result.Message)
-            ? "Migration cleanup completed, but Windows must restart before the Vibepollo payload can be installed."
+            ? "Migration cleanup completed, but Windows must restart before the Umbra payload can be installed."
             : result.Message;
           if (!string.IsNullOrWhiteSpace(result.UserDetail)) {
             detail += "\n" + result.UserDetail;
@@ -1141,7 +1141,7 @@ namespace VibepolloInstaller {
             if (!string.IsNullOrWhiteSpace(result.UserDetail)) {
               warningDetail += "\n" + result.UserDetail;
             }
-            SetStatus("Vibepollo installation completed with warnings.", warningDetail, _statusWarningBrush);
+            SetStatus("Umbra installation completed with warnings.", warningDetail, _statusWarningBrush);
             await ShowInstallPartialSuccessDialogAsync(result);
             Close();
             return;
@@ -1170,10 +1170,10 @@ namespace VibepolloInstaller {
         if (result.Operation == InstallerOperation.Uninstall && result.ExitCode == 1605) {
           ProcessExitCode = 0;
           SetStatus(
-            "Vibepollo is not installed.",
+            "Umbra is not installed.",
             "Nothing needed to be removed.",
             _statusNormalBrush);
-          await ShowOverlayInfoAsync("Nothing to uninstall", "Vibepollo is not currently installed on this PC.");
+          await ShowOverlayInfoAsync("Nothing to uninstall", "Umbra is not currently installed on this PC.");
           return;
         }
 
@@ -1241,7 +1241,7 @@ namespace VibepolloInstaller {
 
       // Block UNC / network paths — Windows services cannot reliably run from network locations
       if (fullPath.StartsWith(@"\\", StringComparison.Ordinal)) {
-        throw new InvalidOperationException("Network paths (UNC) are not supported. Vibepollo runs as a Windows service and must be installed on a local drive.");
+        throw new InvalidOperationException("Network paths (UNC) are not supported. Umbra runs as a Windows service and must be installed on a local drive.");
       }
 
       // Verify the drive exists
@@ -1286,9 +1286,9 @@ namespace VibepolloInstaller {
         : string.Empty;
 
       return "Vibeshine" + versionSuffix + " was detected on this PC.\n\n"
-        + "Vibepollo does not carry over Vibeshine settings.\n"
+        + "Umbra does not carry over Vibeshine settings.\n"
         + "If you intend to stay in the Sunshine ecosystem, Vibeshine is recommended instead.\n\n"
-        + "If this is intentional, continue with Vibepollo.\n"
+        + "If this is intentional, continue with Umbra.\n"
         + "Continuing will uninstall Vibeshine before installation.";
     }
 
@@ -1298,7 +1298,7 @@ namespace VibepolloInstaller {
         : string.Empty;
 
       return "Apollo" + versionSuffix + " was detected on this PC.\n\n"
-        + "Vibepollo replaces Apollo and cannot be installed while Apollo is installed.\n"
+        + "Umbra replaces Apollo and cannot be installed while Apollo is installed.\n"
         + "Continuing will uninstall Apollo before installation.\n\n"
         + "Click Uninstall Apollo to proceed.";
     }
@@ -1312,7 +1312,7 @@ namespace VibepolloInstaller {
       }
 
       return "Legacy Sunshine" + versionSuffix + " was detected on this PC.\n\n"
-        + "Vibepollo replaces Sunshine. The bootstrapper will uninstall Sunshine first, then start the installation.\n"
+        + "Umbra replaces Sunshine. The bootstrapper will uninstall Sunshine first, then start the installation.\n"
         + "No settings will be lost during this migration.\n\n"
         + "Click Uninstall Sunshine to proceed.";
     }
@@ -1324,7 +1324,7 @@ namespace VibepolloInstaller {
       }
 
       return "Legacy Apollo" + versionSuffix + " was detected on this PC.\n\n"
-        + "Vibepollo replaces legacy Apollo and will automatically uninstall it first, then install Vibepollo.\n"
+        + "Umbra replaces legacy Apollo and will automatically uninstall it first, then install Umbra.\n"
         + "No settings will be carried over.\n\n"
         + "Click Uninstall Apollo to proceed.";
     }
@@ -1394,13 +1394,13 @@ namespace VibepolloInstaller {
     private string BuildInstallButtonLabel() {
       switch (GetInstallActionKind()) {
         case InstallActionKind.Install:
-          return "Install Vibepollo";
+          return "Install Umbra";
         case InstallActionKind.Upgrade:
-          return "Upgrade Vibepollo";
+          return "Upgrade Umbra";
         case InstallActionKind.Downgrade:
-          return "Downgrade Vibepollo";
+          return "Downgrade Umbra";
         default:
-          return "Reinstall Vibepollo";
+          return "Reinstall Umbra";
       }
     }
 
@@ -1436,7 +1436,7 @@ namespace VibepolloInstaller {
 
       await ShowOverlayAsync(
         "License",
-        "Vibepollo software license terms:",
+        "Umbra software license terms:",
         "Close",
         string.Empty,
         new SolidColorBrush(Color.FromRgb(99, 102, 241)),
@@ -1684,7 +1684,7 @@ namespace VibepolloInstaller {
         IsChecked = false
       };
       var deleteFolderCheckBox = new CheckBox {
-        Content = "Factory reset (deletes Vibepollo settings, preserves user-added files)",
+        Content = "Factory reset (deletes Umbra settings, preserves user-added files)",
         FontSize = 13,
         Foreground = new SolidColorBrush(Color.FromRgb(226, 235, 250)),
         Margin = new Thickness(0, 0, 0, 0),
@@ -1692,11 +1692,11 @@ namespace VibepolloInstaller {
       };
 
       var message = "Choose what to remove during uninstall.\n\n"
-        + "Uninstall always removes the Vibepollo service, firewall rules, and MSI-installed program files. "
+        + "Uninstall always removes the Umbra service, firewall rules, and MSI-installed program files. "
         + "Files you added after installation are preserved.";
 
       var result = await ShowOverlayAsync(
-        "Uninstall Vibepollo",
+        "Uninstall Umbra",
         message,
         "Uninstall",
         "Cancel",
@@ -1793,7 +1793,7 @@ namespace VibepolloInstaller {
         return;
       }
 
-      var nextStep = "Attach this file on GitHub: https://github.com/Nonary/Vibepollo/issues\n"
+      var nextStep = "Attach this file on GitHub: https://github.com/Totaie/umbra-host/issues\n"
         + "Or Discord (#vibeshine): https://discord.com/invite/CGg5JxN";
       SetStatus("Support logs saved.", outputPath, _statusSuccessBrush);
       await ShowOverlayInfoAsync(
@@ -1832,7 +1832,7 @@ namespace VibepolloInstaller {
         return;
       }
 
-      var nextStep = "Attach this file on GitHub: https://github.com/Nonary/Vibepollo/issues\n"
+      var nextStep = "Attach this file on GitHub: https://github.com/Totaie/umbra-host/issues\n"
         + "Or Discord (#vibeshine): https://discord.com/invite/CGg5JxN";
       SetStatus("Support logs saved.", outputPath, _statusSuccessBrush);
       await ShowOverlayInfoAsync(
@@ -1845,7 +1845,7 @@ namespace VibepolloInstaller {
       var destination = "GitHub issue or Discord #vibeshine";
       var executionVersion = _bundleVersion.ToString(3);
       using (var writer = new StreamWriter(outputPath, false)) {
-        writer.WriteLine(BuildSupportSummary(destination, executionVersion, failureDetail, installResult, candidateLogs.Count, "Vibepollo install failure report", "Failure detail:"));
+        writer.WriteLine(BuildSupportSummary(destination, executionVersion, failureDetail, installResult, candidateLogs.Count, "Umbra install failure report", "Failure detail:"));
         writer.WriteLine();
 
         if (candidateLogs.Count == 0) {
@@ -1873,7 +1873,7 @@ namespace VibepolloInstaller {
       var destination = "GitHub issue or Discord #vibeshine";
       var executionVersion = _bundleVersion.ToString(3);
       using (var writer = new StreamWriter(outputPath, false)) {
-        writer.WriteLine(BuildSupportSummary(destination, executionVersion, warningDetail, installResult, candidateLogs.Count, "Vibepollo install warning report", "Warning detail:"));
+        writer.WriteLine(BuildSupportSummary(destination, executionVersion, warningDetail, installResult, candidateLogs.Count, "Umbra install warning report", "Warning detail:"));
         writer.WriteLine();
 
         if (candidateLogs.Count == 0) {
@@ -1978,7 +1978,7 @@ namespace VibepolloInstaller {
       string reportTitle,
       string detailLabel) {
       var lines = new List<string> {
-        string.IsNullOrWhiteSpace(reportTitle) ? "Vibepollo install support report" : reportTitle,
+        string.IsNullOrWhiteSpace(reportTitle) ? "Umbra install support report" : reportTitle,
         "Generated (UTC): " + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
         "Destination: " + destination,
         "Installer version: " + installerVersion,
@@ -1990,7 +1990,7 @@ namespace VibepolloInstaller {
         detail ?? "Unknown error",
         string.Empty,
         "Next step:",
-        "Attach this file on GitHub: https://github.com/Nonary/Vibepollo/issues",
+        "Attach this file on GitHub: https://github.com/Totaie/umbra-host/issues",
         "Or Discord (#vibeshine): https://discord.com/invite/CGg5JxN"
       };
       return string.Join(Environment.NewLine, lines);
@@ -2006,9 +2006,9 @@ namespace VibepolloInstaller {
 
       block.Inlines.Add(new Run("Open an issue on "));
       var githubLink = new Hyperlink(new Run("GitHub")) {
-        NavigateUri = new Uri("https://github.com/Nonary/Vibepollo/issues")
+        NavigateUri = new Uri("https://github.com/Totaie/umbra-host/issues")
       };
-      githubLink.Click += (sender, args) => OpenExternalUrl("https://github.com/Nonary/Vibepollo/issues");
+      githubLink.Click += (sender, args) => OpenExternalUrl("https://github.com/Totaie/umbra-host/issues");
       block.Inlines.Add(githubLink);
       block.Inlines.Add(new Run(" or join "));
       var discordLink = new Hyperlink(new Run("Discord (#vibeshine)")) {
@@ -2192,8 +2192,8 @@ namespace VibepolloInstaller {
 
     public static void WriteHelp() {
 #if UNINSTALL_ONLY
-      Console.WriteLine("Vibepollo Uninstaller");
-      Console.WriteLine("  Self-contained graphical uninstaller for Vibepollo.");
+      Console.WriteLine("Umbra Uninstaller");
+      Console.WriteLine("  Self-contained graphical uninstaller for Umbra.");
       Console.WriteLine();
       Console.WriteLine("Usage:");
       Console.WriteLine("  uninstall.exe          Launch graphical uninstall UI");
@@ -2206,12 +2206,12 @@ namespace VibepolloInstaller {
       Console.WriteLine("  uninstall.exe");
       Console.WriteLine("  uninstall.exe /quiet");
 #else
-      Console.WriteLine("Vibepollo Installer");
+      Console.WriteLine("Umbra Installer");
       Console.WriteLine("  Self-hosted game streaming server — stream your PC to any device.");
       Console.WriteLine();
       Console.WriteLine("Usage:");
-      Console.WriteLine("  VibepolloSetup.exe                Launch graphical installer UI");
-      Console.WriteLine("  VibepolloSetup.exe [MSI options]  Pass options to msiexec");
+      Console.WriteLine("  UmbraSetup.exe                Launch graphical installer UI");
+      Console.WriteLine("  UmbraSetup.exe [MSI options]  Pass options to msiexec");
       Console.WriteLine();
       Console.WriteLine("Wrapper options:");
       Console.WriteLine("  --msi <path>    Use a specific MSI payload instead of the embedded one");
@@ -2223,16 +2223,16 @@ namespace VibepolloInstaller {
       Console.WriteLine();
       Console.WriteLine("Supported MSI properties:");
       Console.WriteLine("  INSTALL_ROOT=<path>  Install to a custom directory (default: %ProgramFiles%\\Apollo)");
-      Console.WriteLine("  INSTALL_VIRTUAL_DISPLAY_DRIVER=0  Use SudoVDA instead of the default Vibepollo Display Driver");
+      Console.WriteLine("  INSTALL_VIRTUAL_DISPLAY_DRIVER=0  Use SudoVDA instead of the default Umbra Display Driver");
       Console.WriteLine();
       Console.WriteLine("Examples:");
-      Console.WriteLine("  VibepolloSetup.exe /qn");
-      Console.WriteLine("  VibepolloSetup.exe /qn INSTALL_ROOT=\"D:\\Vibepollo\"");
-      Console.WriteLine("  VibepolloSetup.exe /x {PRODUCT-CODE} /qn");
-      Console.WriteLine("  VibepolloSetup.exe /qn INSTALL_VIRTUAL_DISPLAY_DRIVER=0");
-      Console.WriteLine("  VibepolloSetup.exe /uninstall");
-      Console.WriteLine("  VibepolloSetup.exe /uninstall /quiet");
-      Console.WriteLine("  VibepolloSetup.exe --msi C:\\temp\\Vibepollo.msi /passive");
+      Console.WriteLine("  UmbraSetup.exe /qn");
+      Console.WriteLine("  UmbraSetup.exe /qn INSTALL_ROOT=\"D:\\Umbra\"");
+      Console.WriteLine("  UmbraSetup.exe /x {PRODUCT-CODE} /qn");
+      Console.WriteLine("  UmbraSetup.exe /qn INSTALL_VIRTUAL_DISPLAY_DRIVER=0");
+      Console.WriteLine("  UmbraSetup.exe /uninstall");
+      Console.WriteLine("  UmbraSetup.exe /uninstall /quiet");
+      Console.WriteLine("  UmbraSetup.exe --msi C:\\temp\\Umbra.msi /passive");
 #endif
     }
 
@@ -2267,7 +2267,7 @@ namespace VibepolloInstaller {
     };
     private static readonly InstalledProductKind[] MsiRegistrationRecoveryKinds = {
       InstalledProductKind.Vibeshine,
-      InstalledProductKind.Vibepollo
+      InstalledProductKind.Umbra
     };
     private static readonly string[] MsiCacheFailureLogMarkers = {
       "This installation source for this product is not available",
@@ -2285,7 +2285,7 @@ namespace VibepolloInstaller {
     private const string MsiFirewallExceptionUninstallFailureLogMarker =
       "CustomAction WixExecFirewallExceptionsUninstall returned actual error code 1603";
     private static readonly string[] RelatedServiceNames = {
-      "ApolloService",
+      "UmbraService",
       "SunshineService",
       "VibeshineService",
       "sunshinesvc"
@@ -2299,7 +2299,7 @@ namespace VibepolloInstaller {
       "sunshine_display_helper",
       "apollo",
       "apollosvc",
-      "vibepollo"
+      "umbra"
     };
 
     internal sealed class InstalledProductInfo {
@@ -2360,7 +2360,7 @@ namespace VibepolloInstaller {
     internal enum InstalledProductKind {
       Unknown,
       Vibeshine,
-      Vibepollo,
+      Umbra,
       Apollo,
       Sunshine
     }
@@ -2468,9 +2468,9 @@ namespace VibepolloInstaller {
         .FirstOrDefault();
     }
 
-    public static InstalledProductInfo GetInstalledVibepolloProduct() {
+    public static InstalledProductInfo GetInstalledUmbraProduct() {
       return GetInstalledProducts(false)
-        .Where(product => product.Kind == InstalledProductKind.Vibepollo)
+        .Where(product => product.Kind == InstalledProductKind.Umbra)
         .OrderByDescending(product => product.Version ?? new Version(0, 0, 0, 0))
         .FirstOrDefault();
     }
@@ -2484,7 +2484,7 @@ namespace VibepolloInstaller {
 
     public static List<InstalledProductInfo> GetInstalledApolloFamilyProducts() {
       return GetInstalledProductRegistrations(true)
-        .Where(product => product.Kind == InstalledProductKind.Apollo || product.Kind == InstalledProductKind.Vibepollo)
+        .Where(product => product.Kind == InstalledProductKind.Apollo || product.Kind == InstalledProductKind.Umbra)
         .GroupBy(BuildProductRegistrationIdentity, StringComparer.OrdinalIgnoreCase)
         .Select(MergeInstalledProductGroup)
         .OrderByDescending(product => product.Version ?? new Version(0, 0, 0, 0))
@@ -2780,8 +2780,13 @@ namespace VibepolloInstaller {
       if (string.Equals(trimmedDisplayName, "Vibeshine", StringComparison.OrdinalIgnoreCase)) {
         return InstalledProductKind.Vibeshine;
       }
-      if (string.Equals(trimmedDisplayName, "Vibepollo", StringComparison.OrdinalIgnoreCase)) {
-        return InstalledProductKind.Vibepollo;
+      // "Vibepollo" is what this product was called before the Umbra fork. Installs
+      // made under the old name still have to be recognised as ours, or upgrading
+      // over one would leave two copies registered.
+      if (string.Equals(trimmedDisplayName, "Umbra", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(trimmedDisplayName, "Umbra Host", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(trimmedDisplayName, "Vibepollo", StringComparison.OrdinalIgnoreCase)) {
+        return InstalledProductKind.Umbra;
       }
       // Apollo is also a common prefix in unrelated software titles, so only
       // the exact streaming-host product name is considered a conflict.
@@ -3319,7 +3324,7 @@ namespace VibepolloInstaller {
         string recoveryDetail;
         if (TryRepairBustedMsiRegistration(
           uninstallCompetingProductsResult,
-          new[] { InstalledProductKind.Vibepollo },
+          new[] { InstalledProductKind.Umbra },
           "competing product pre-uninstall",
           out recoveryDetail)) {
           recoveryDetails.Add(recoveryDetail);
@@ -3366,7 +3371,7 @@ namespace VibepolloInstaller {
 
       StashedVibeshinePayload upgradeSourceStash;
       var uninstallUpgradeSourceResult = TryPreUninstallProblematicUpgradeSourceVersion(
-        "install_remove_vibepollo_1148",
+        "install_remove_umbra_1148",
         true,
         false,
         out upgradeSourceStash);
@@ -3377,7 +3382,7 @@ namespace VibepolloInstaller {
           string recoveryDetail;
           if (TryRepairBustedMsiRegistration(
             uninstallUpgradeSourceResult,
-            new[] { InstalledProductKind.Vibepollo },
+            new[] { InstalledProductKind.Umbra },
             "upgrade source pre-uninstall",
             out recoveryDetail)) {
             recoveryDetails.Add(recoveryDetail);
@@ -3543,7 +3548,7 @@ namespace VibepolloInstaller {
       TryStopRelatedServicesAndProcesses(logPath);
 
       var registrationRecoveryProduct =
-        TryGetUnambiguousMsiRegistrationRecoveryProduct(InstalledProductKind.Vibepollo);
+        TryGetUnambiguousMsiRegistrationRecoveryProduct(InstalledProductKind.Umbra);
       var exitCode = RunMsiexec(args, true, false);
       exitCode = RetryInstallWithSameProductReinstallIfNeeded(exitCode, args, msiPath, true, false);
       if (exitCode == 0 && competingProductsRequireRestart) {
@@ -3645,7 +3650,7 @@ namespace VibepolloInstaller {
         return new InstallerResult {
           Operation = InstallerOperation.Uninstall,
           ExitCode = 0,
-          Message = "Legacy Sunshine uninstall entry is stale; continuing with Vibepollo installation."
+          Message = "Legacy Sunshine uninstall entry is stale; continuing with Umbra installation."
         };
       }
 
@@ -3759,7 +3764,7 @@ namespace VibepolloInstaller {
         return new InstallerResult {
           Operation = InstallerOperation.Uninstall,
           ExitCode = 0,
-          Message = "Legacy Apollo uninstall entry is stale; continuing with Vibepollo installation."
+          Message = "Legacy Apollo uninstall entry is stale; continuing with Umbra installation."
         };
       }
 
@@ -3959,7 +3964,7 @@ namespace VibepolloInstaller {
       return exitCode == 1603 && LogContainsMarker(logPath, MsiFirewallExceptionUninstallFailureLogMarker);
     }
 
-    private const string InstallerRecoveryDirectoryPrefix = "VibepolloInstallerRecovery_";
+    private const string InstallerRecoveryDirectoryPrefix = "UmbraInstallerRecovery_";
 
     // A retained recovery stash is only useful while the user is still acting
     // on the failure message that named it, so keep it for an hour and then let
@@ -4351,7 +4356,7 @@ namespace VibepolloInstaller {
           + retryLogPath;
         AppendInstallerLogMessage(retryLogPath, recoveryDetail);
         if (preserveOriginalPayload
-            && product.Kind == InstalledProductKind.Vibepollo
+            && product.Kind == InstalledProductKind.Umbra
             && (retryExitCode == 0 || retryExitCode == 3010 || retryExitCode == 1605)) {
           stashedPayload = new StashedVibeshinePayload {
             MsiPath = originalMsiPath,
@@ -4496,14 +4501,14 @@ namespace VibepolloInstaller {
         AppendInstallerLogMessage(
           failureResult.LogPath,
           "MSI registration repair was considered for " + (context ?? "install")
-          + ", but no validated Vibeshine/Vibepollo product registrations were found.");
+          + ", but no validated Vibeshine/Umbra product registrations were found.");
         return false;
       }
 
       AppendInstallerLogMessage(
         failureResult.LogPath,
         "Detected a recoverable previous MSI failure during " + (context ?? "install")
-        + " (exit code " + failureResult.ExitCode + "). Attempting guarded Vibeshine/Vibepollo MSI registration repair.");
+        + " (exit code " + failureResult.ExitCode + "). Attempting guarded Vibeshine/Umbra MSI registration repair.");
 
       TryStopRelatedServicesAndProcesses(failureResult.LogPath);
       var cleanupResult = CleanupMsiRegistrations(targets, failureResult.LogPath);
@@ -4629,7 +4634,7 @@ namespace VibepolloInstaller {
       if (!LooksLikeProductCode(productCode)) {
         return;
       }
-      if (product.Kind != InstalledProductKind.Vibeshine && product.Kind != InstalledProductKind.Vibepollo) {
+      if (product.Kind != InstalledProductKind.Vibeshine && product.Kind != InstalledProductKind.Umbra) {
         return;
       }
       if (seen.Contains(productCode)) {
@@ -4643,7 +4648,7 @@ namespace VibepolloInstaller {
     private static bool IsRecoveryKindAllowed(
       InstalledProductKind kind,
       IReadOnlyCollection<InstalledProductKind> allowedKinds) {
-      if (kind != InstalledProductKind.Vibeshine && kind != InstalledProductKind.Vibepollo) {
+      if (kind != InstalledProductKind.Vibeshine && kind != InstalledProductKind.Umbra) {
         return false;
       }
       if (allowedKinds == null || allowedKinds.Count == 0) {
@@ -4729,7 +4734,7 @@ namespace VibepolloInstaller {
         var encoding = DetectTextFileEncodingForAppend(logPath);
         using (var writer = new StreamWriter(logPath, true, encoding)) {
           writer.WriteLine();
-          writer.Write("[Vibepollo Bootstrapper ");
+          writer.Write("[Umbra Bootstrapper ");
           writer.Write(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
           writer.Write(" UTC] ");
           writer.WriteLine(message);
@@ -5355,7 +5360,7 @@ namespace VibepolloInstaller {
         factoryResetAppData,
         removeVirtualDisplayDriver,
         true,
-        new[] { InstalledProductKind.Vibepollo });
+        new[] { InstalledProductKind.Umbra });
       uninstallResult.Operation = InstallerOperation.Uninstall;
       return uninstallResult;
     }
@@ -5445,13 +5450,13 @@ namespace VibepolloInstaller {
           arguments.IsCliQuietMode(),
           true);
         if (!uninstallCompetingProductsResult.Succeeded) {
-          if (ShouldRerunCliElevatedForMsiRecovery(uninstallCompetingProductsResult, new[] { InstalledProductKind.Vibepollo })) {
+          if (ShouldRerunCliElevatedForMsiRecovery(uninstallCompetingProductsResult, new[] { InstalledProductKind.Umbra })) {
             return RunElevatedBootstrapperCli(arguments);
           }
           string recoveryDetail;
           if (TryRepairBustedMsiRegistration(
             uninstallCompetingProductsResult,
-            new[] { InstalledProductKind.Vibepollo },
+            new[] { InstalledProductKind.Umbra },
             "CLI competing product pre-uninstall",
             out recoveryDetail)) {
             recoveryDetails.Add(recoveryDetail);
@@ -5470,14 +5475,14 @@ namespace VibepolloInstaller {
       if (ShouldPreUninstallProblematicUpgradeSource(cliArgs)) {
         StashedVibeshinePayload upgradeSourceStash;
         var uninstallUpgradeSourceResult = TryPreUninstallProblematicUpgradeSourceVersion(
-          "cli_remove_vibepollo_1148",
+          "cli_remove_umbra_1148",
           arguments.IsCliQuietMode(),
           true,
           out upgradeSourceStash);
         AdoptStashedPayload(ref stashedPreviousPayload, upgradeSourceStash);
         if (uninstallUpgradeSourceResult != null) {
           if (!uninstallUpgradeSourceResult.Succeeded) {
-            if (ShouldRerunCliElevatedForMsiRecovery(uninstallUpgradeSourceResult, new[] { InstalledProductKind.Vibepollo })) {
+            if (ShouldRerunCliElevatedForMsiRecovery(uninstallUpgradeSourceResult, new[] { InstalledProductKind.Umbra })) {
               return ApplyStashedPayloadRecovery(
                 RunElevatedBootstrapperCli(arguments),
                 stashedPreviousPayload,
@@ -5486,7 +5491,7 @@ namespace VibepolloInstaller {
             string recoveryDetail;
             if (TryRepairBustedMsiRegistration(
               uninstallUpgradeSourceResult,
-              new[] { InstalledProductKind.Vibepollo },
+              new[] { InstalledProductKind.Umbra },
               "CLI upgrade source pre-uninstall",
               out recoveryDetail)) {
               recoveryDetails.Add(recoveryDetail);
@@ -5588,7 +5593,7 @@ namespace VibepolloInstaller {
       TryStopRelatedServicesAndProcesses(logPath);
 
       var registrationRecoveryProduct = isInstallOperation
-        ? TryGetUnambiguousMsiRegistrationRecoveryProduct(InstalledProductKind.Vibepollo)
+        ? TryGetUnambiguousMsiRegistrationRecoveryProduct(InstalledProductKind.Umbra)
         : null;
       var exitCode = RunMsiexec(cliArgs, arguments.IsCliQuietMode(), true);
       if (isInstallOperation) {
@@ -5886,7 +5891,7 @@ namespace VibepolloInstaller {
       "sunshine",
       "sunshinesvc",
       "apollo",
-      "vibepollo"
+      "umbra"
     };
 
     private static void TryDrainPreinstallLocks() {
@@ -6182,7 +6187,7 @@ namespace VibepolloInstaller {
       }
 
       foreach (var installedProduct in new[] {
-        GetInstalledVibepolloProduct(),
+        GetInstalledUmbraProduct(),
         GetInstalledVibeshineProduct(),
         GetInstalledSunshineProduct(),
         GetInstalledApolloProduct()
@@ -6230,7 +6235,7 @@ namespace VibepolloInstaller {
     }
 
     private static string BuildCompetingProductUninstallFailureMessage(string uninstallMessage) {
-      var prefix = "Failed to uninstall Apollo, Vibepollo, or Sunshine before starting Vibepollo installation.";
+      var prefix = "Failed to uninstall Apollo, Umbra, or Sunshine before starting Umbra installation.";
       if (string.IsNullOrWhiteSpace(uninstallMessage)) {
         return prefix;
       }
@@ -6238,7 +6243,7 @@ namespace VibepolloInstaller {
     }
 
     private static string BuildUpgradeSourcePreUninstallFailureMessage(string uninstallMessage) {
-      var prefix = "Failed to uninstall Vibepollo 1.14.8 before starting installation."
+      var prefix = "Failed to uninstall Umbra 1.14.8 before starting installation."
         + " This version requires uninstall/reinstall to avoid web UI files being removed during upgrade.";
       if (string.IsNullOrWhiteSpace(uninstallMessage)) {
         return prefix;
@@ -6384,7 +6389,7 @@ namespace VibepolloInstaller {
       }
 
       try {
-        if (GetInstalledVibepolloProduct() != null || GetInstalledVibeshineProduct() != null) {
+        if (GetInstalledUmbraProduct() != null || GetInstalledVibeshineProduct() != null) {
           // A product is still (or again) registered; leave it alone.
           return null;
         }
@@ -6407,7 +6412,7 @@ namespace VibepolloInstaller {
 
         AppendInstallerLogMessage(logPath, "Restoring previously installed version from stashed package: " + stashedPayload.MsiPath);
         var exitCode = RunMsiexec(args, true, false);
-        if ((exitCode == 0 || exitCode == 3010) && (GetInstalledVibepolloProduct() != null || GetInstalledVibeshineProduct() != null)) {
+        if ((exitCode == 0 || exitCode == 3010) && (GetInstalledUmbraProduct() != null || GetInstalledVibeshineProduct() != null)) {
           return "The previously installed version was automatically restored. Restore log: " + logPath;
         }
 
@@ -6445,12 +6450,12 @@ namespace VibepolloInstaller {
           ? restoreMessage
           : installResult.Message.TrimEnd() + " " + restoreMessage;
       }
-      var restoredVibepollo = GetInstalledVibepolloProduct();
+      var restoredUmbra = GetInstalledUmbraProduct();
       var restoredVibeshine = GetInstalledVibeshineProduct();
       var restoredExactProduct =
-        (restoredVibepollo != null
+        (restoredUmbra != null
           && string.Equals(
-            NormalizeProductCode(restoredVibepollo.ProductCode),
+            NormalizeProductCode(restoredUmbra.ProductCode),
             NormalizeProductCode(stashedPayload.ProductCode),
             StringComparison.OrdinalIgnoreCase))
         || (restoredVibeshine != null
@@ -6500,14 +6505,14 @@ namespace VibepolloInstaller {
       bool requestElevationIfNeeded,
       out StashedVibeshinePayload stashedPayload) {
       stashedPayload = null;
-      var installedVibepollo = GetInstalledVibepolloProduct();
-      if (!RequiresPreUninstallUpgradeWorkaround(installedVibepollo)) {
+      var installedUmbra = GetInstalledUmbraProduct();
+      if (!RequiresPreUninstallUpgradeWorkaround(installedUmbra)) {
         return null;
       }
 
-      stashedPayload = TryStashInstalledProductPayload(installedVibepollo, logPhase + "_stash");
+      stashedPayload = TryStashInstalledProductPayload(installedUmbra, logPhase + "_stash");
       if (stashedPayload == null) {
-        return BuildRollbackPreservationFailure(installedVibepollo);
+        return BuildRollbackPreservationFailure(installedUmbra);
       }
       return UninstallInstalledProducts(
         logPhase,
@@ -6516,7 +6521,7 @@ namespace VibepolloInstaller {
         false,
         false,
         false,
-        new[] { InstalledProductKind.Vibepollo });
+        new[] { InstalledProductKind.Umbra });
     }
 
     private static bool RequiresPreUninstallDowngradeWorkaround(InstalledProductInfo installedProduct, string msiPath) {
@@ -6563,7 +6568,7 @@ namespace VibepolloInstaller {
     }
 
     private static bool RequiresPreUninstallUpgradeWorkaround(InstalledProductInfo installedProduct) {
-      if (installedProduct == null || installedProduct.Kind != InstalledProductKind.Vibepollo || installedProduct.Version == null) {
+      if (installedProduct == null || installedProduct.Kind != InstalledProductKind.Umbra || installedProduct.Version == null) {
         return false;
       }
 
@@ -6587,7 +6592,7 @@ namespace VibepolloInstaller {
       var installedProducts = GetInstalledProductRegistrations(true)
         .Where(product =>
           product.Kind == InstalledProductKind.Apollo
-          || product.Kind == InstalledProductKind.Vibepollo
+          || product.Kind == InstalledProductKind.Umbra
           || product.Kind == InstalledProductKind.Sunshine)
         .GroupBy(BuildProductRegistrationIdentity, StringComparer.OrdinalIgnoreCase)
         .Select(MergeInstalledProductGroup)
@@ -6596,7 +6601,7 @@ namespace VibepolloInstaller {
         return new InstallerResult {
           Operation = InstallerOperation.Uninstall,
           ExitCode = 0,
-          Message = "No conflicting Apollo, Vibepollo, or Sunshine installation was found."
+          Message = "No conflicting Apollo, Umbra, or Sunshine installation was found."
         };
       }
 
@@ -7036,7 +7041,7 @@ namespace VibepolloInstaller {
         if (stream == null) {
           throw new InvalidOperationException(
             "No MSI payload was found. The installer may be corrupted.\n\n"
-            + "Try re-downloading the installer from the Vibepollo releases page, "
+            + "Try re-downloading the installer from the Umbra releases page, "
             + "or use the --msi option to specify a payload manually.");
         }
 
@@ -7044,7 +7049,7 @@ namespace VibepolloInstaller {
         var extractDirectory = BuildEmbeddedMsiExtractDirectory(versionToken, forceFreshExtract);
         Directory.CreateDirectory(extractDirectory);
 
-        var msiPath = Path.Combine(extractDirectory, "Vibepollo.msi");
+        var msiPath = Path.Combine(extractDirectory, "Umbra.msi");
         var shouldWrite = forceFreshExtract
           || !File.Exists(msiPath)
           || new FileInfo(msiPath).Length != stream.Length
@@ -7083,21 +7088,21 @@ namespace VibepolloInstaller {
       if (IsProcessElevated()) {
         var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
         if (!string.IsNullOrWhiteSpace(programData)) {
-          return Path.Combine(programData, "Vibepollo", "InstallerCache");
+          return Path.Combine(programData, "Umbra", "InstallerCache");
         }
       }
 
-      return Path.Combine(Path.GetTempPath(), "VibepolloInstaller");
+      return Path.Combine(Path.GetTempPath(), "UmbraInstaller");
     }
 
     private static IEnumerable<string> GetEmbeddedMsiExtractRoots() {
       var roots = new List<string> {
-        Path.Combine(Path.GetTempPath(), "VibepolloInstaller")
+        Path.Combine(Path.GetTempPath(), "UmbraInstaller")
       };
 
       var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
       if (!string.IsNullOrWhiteSpace(programData)) {
-        roots.Add(Path.Combine(programData, "Vibepollo", "InstallerCache"));
+        roots.Add(Path.Combine(programData, "Umbra", "InstallerCache"));
       }
 
       return roots;
@@ -8079,13 +8084,13 @@ namespace VibepolloInstaller {
 
       var message = operationName + " failed (error " + exitCode + ").";
       if (exitCode == 1603) {
-        message += " A fatal error occurred during installation. Ensure no Vibepollo processes are running and try again.";
+        message += " A fatal error occurred during installation. Ensure no Umbra processes are running and try again.";
       } else if (exitCode == 1618) {
         message += " Another installation is already in progress. Wait for it to finish, then try again.";
       } else if (exitCode == 1602) {
         message += " The installation was cancelled by the user.";
       } else if (exitCode == 1605) {
-        message += " No existing Vibepollo installation was found.";
+        message += " No existing Umbra installation was found.";
       }
       if (!string.IsNullOrWhiteSpace(logPath)) {
         message += " Log: " + logPath;
@@ -8095,7 +8100,7 @@ namespace VibepolloInstaller {
   }
 
   internal static class ShellIdentity {
-    internal const string InstallerAppUserModelId = "Vibepollo.Installer";
+    internal const string InstallerAppUserModelId = "Umbra.Installer";
 
     private static readonly PropertyKey AppUserModelIdKey =
       new PropertyKey(new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 5);

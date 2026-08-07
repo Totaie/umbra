@@ -2,7 +2,7 @@
   <title>Umbra Host</title>
   <path d="M16 14 L16 30 A16 16 0 0 0 48 30 L48 14"
         fill="none"
-        stroke="currentColor"
+        stroke="#C9D1E0"
         stroke-width="11"
         stroke-linecap="round"
         stroke-linejoin="round"/>

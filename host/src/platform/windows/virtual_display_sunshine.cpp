@@ -2792,7 +2792,7 @@ namespace VDISPLAY_SUNSHINE {
 
     std::array<char, TEMPORARY_DISPLAY_NAME_CHARS> make_temporary_display_name(const char *client_name) {
       std::array<char, TEMPORARY_DISPLAY_NAME_CHARS> name {};
-      const char *fallback = "Vibepollo";
+      const char *fallback = "Umbra";
       const char *source = (client_name && std::strlen(client_name) > 0) ? client_name : fallback;
       std::size_t out = 0;
 
@@ -3141,7 +3141,7 @@ namespace VDISPLAY_SUNSHINE {
 
     constexpr std::size_t MAX_VIRTUAL_DISPLAY_RECOVERY_ENTRIES = sunshine_driver::kMaxDisplayStateEntries;
     constexpr std::uint64_t MAX_VIRTUAL_DISPLAY_RECOVERY_FILE_BYTES = 128 * 1024;
-    constexpr char VIRTUAL_DISPLAY_RECOVERY_DPAPI_ENTROPY[] = "Vibepollo virtual display owner capability v1";
+    constexpr char VIRTUAL_DISPLAY_RECOVERY_DPAPI_ENTROPY[] = "Umbra virtual display owner capability v1";
 
     fs::path virtual_display_private_state_directory() {
       const auto &state_path_string = statefile::vibeshine_state_path();
@@ -3225,7 +3225,7 @@ namespace VDISPLAY_SUNSHINE {
         if (!LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &overlapped)) {
           const auto native_error = GetLastError();
           CloseHandle(handle);
-          BOOST_LOG(warning) << "Another Vibepollo process owns virtual display recovery state (error="
+          BOOST_LOG(warning) << "Another Umbra process owns virtual display recovery state (error="
                              << native_error << ").";
           return false;
         }
@@ -3331,7 +3331,7 @@ namespace VDISPLAY_SUNSHINE {
       DATA_BLOB output {};
       if (!CryptProtectData(
             &input,
-            L"Vibepollo virtual display recovery",
+            L"Umbra virtual display recovery",
             &entropy,
             nullptr,
             nullptr,

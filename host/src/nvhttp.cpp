@@ -1903,7 +1903,7 @@ namespace nvhttp {
           if (!parse_unsigned(refresh_text, kMaxRefreshMillihz, raw_refresh)) {
             return std::nullopt;
           }
-          // Vibepollo's legacy mode values at or above 1000 are already millihertz.
+          // Umbra's legacy mode values at or above 1000 are already millihertz.
           refresh_millihz = raw_refresh >= 1000 ? raw_refresh : raw_refresh * 1000;
         } else {
           if (refresh_text.find('.', decimal_point + 1) != std::string_view::npos) {
@@ -2419,7 +2419,7 @@ namespace nvhttp {
       msg.reserve(160);
       msg += "Permission denied: this device lacks the \"";
       msg += perm_label;
-      msg += "\" permission. Enable it on the host in the Vibepollo Web UI under Client Management.";
+      msg += "\" permission. Enable it on the host in the Umbra Web UI under Client Management.";
       return msg;
     }
 
@@ -2575,12 +2575,20 @@ namespace nvhttp {
 
               // NB: constant-time compare. The hash is public once observed, but there
               // is no reason to leak how much of it matched.
+              //
+              // util::hex emits uppercase; other clients hex-encode in lowercase, so
+              // both sides are folded to a single case first. Folding is done on the
+              // hex alphabet only, which is not secret.
+              const auto fold = [](char c) -> unsigned char {
+                return static_cast<unsigned char>(c >= 'a' && c <= 'f' ? c - ('a' - 'A') : c);
+              };
+
               const std::string_view provided {psk_it->second};
               const std::string_view computed {expected.to_string_view()};
               bool match = provided.size() == computed.size();
               unsigned char diff = match ? 0 : 1;
               for (size_t i = 0; i < computed.size() && i < provided.size(); i++) {
-                diff |= static_cast<unsigned char>(computed[i] ^ provided[i]);
+                diff |= static_cast<unsigned char>(fold(computed[i]) ^ fold(provided[i]));
               }
 
               if (match && diff == 0) {
@@ -2813,7 +2821,7 @@ namespace nvhttp {
 
       // Advertise which host software this actually is. appversion above is the
       // GameStream compatibility version and is identical across Sunshine, Apollo,
-      // Vibepollo and this, so a client cannot otherwise tell them apart. Umbra shows
+      // Umbra and this, so a client cannot otherwise tell them apart. Umbra shows
       // this on the machine's card, which is what makes "the host answering is not the
       // one I installed" visible instead of surfacing later as pairing mysteriously
       // falling back to a PIN. Other clients ignore fields they don't know.

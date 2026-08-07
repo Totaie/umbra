@@ -1,6 +1,6 @@
-# Vibepollo design principles
+# Umbra design principles
 
-These principles define the Vibepollo interface. **Must** indicates release acceptance; **should** indicates the default unless a documented product constraint requires an exception.
+These principles define the Umbra interface. **Must** indicates release acceptance; **should** indicates the default unless a documented product constraint requires an exception.
 
 | # | Principle | Why | Correct use | Misuse to avoid | Primary surfaces |
 |---:|---|---|---|---|---|

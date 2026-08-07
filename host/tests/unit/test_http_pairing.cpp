@@ -18,9 +18,9 @@ TEST(HttpPairingCertLogging, MissingSubjectNameIsEmptyInsteadOfCrashing) {
 }
 
 TEST(HttpPairingClientNames, DisplayClientNameSkipsSelfPlaceholder) {
-  ASSERT_EQ(display_client_name_for_session("Living Room", "TTV", "Vibepollo"), "Living Room");
-  ASSERT_EQ(display_client_name_for_session(" self ", "TTV", "Vibepollo"), "TTV");
-  ASSERT_EQ(display_client_name_for_session("", " self ", "Vibepollo"), "Vibepollo");
+  ASSERT_EQ(display_client_name_for_session("Living Room", "TTV", "Umbra"), "Living Room");
+  ASSERT_EQ(display_client_name_for_session(" self ", "TTV", "Umbra"), "TTV");
+  ASSERT_EQ(display_client_name_for_session("", " self ", "Umbra"), "Umbra");
   ASSERT_EQ(display_client_name_for_session("self", "", ""), "Sunshine");
 }
 

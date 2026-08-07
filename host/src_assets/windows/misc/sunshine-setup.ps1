@@ -15,7 +15,7 @@ param(
 )
 
 # Constants
-$DocsUrl = "https://github.com/Nonary/Vibepollo"
+$DocsUrl = "https://github.com/Totaie/umbra-host"
 
 # Set preference variables for output streams
 $InformationPreference = 'Continue'

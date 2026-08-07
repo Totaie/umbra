@@ -52,7 +52,7 @@ if "%VERSION%"=="" (
 )
 
 rem gh resolves the repo from git remotes, and this clone also has an 'upstream'
-rem remote pointing at Nonary/Vibepollo, which gh picks in preference. Every gh call
+rem remote pointing at Totaie/umbra-host, which gh picks in preference. Every gh call
 rem must therefore name the repo, or the release is attempted against upstream, where
 rem we have no write access and the failure looks like a token scope problem.
 set REPO=Totaie/umbra-host

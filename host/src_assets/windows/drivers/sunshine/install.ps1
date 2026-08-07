@@ -35,7 +35,7 @@ trap {
         Write-Warning "[SunshineVirtualDisplay] Unable to restore the virtual display broker after failure: $($_.Exception.Message)"
     }
     try {
-        Start-ApolloServiceIfNeeded
+        Start-UmbraServiceIfNeeded
     } catch {
         Write-Warning "[SunshineVirtualDisplay] Unable to restore the Apollo service after failure: $($_.Exception.Message)"
     }
@@ -430,13 +430,13 @@ function Remove-CertificateIfPresent {
 }
 
 function Stop-ApolloForDriverInstall {
-    $service = Get-Service -Name 'ApolloService' -ErrorAction SilentlyContinue
+    $service = Get-Service -Name 'UmbraService' -ErrorAction SilentlyContinue
     if ($service -and $service.Status -eq 'Running') {
         $script:apolloServiceWasRunning = $true
     }
     if ($service -and $service.Status -ne 'Stopped') {
         Write-Host '[SunshineVirtualDisplay] Stopping Apollo service before driver repair.'
-        Stop-Service -Name 'ApolloService' -Force -ErrorAction Stop
+        Stop-Service -Name 'UmbraService' -Force -ErrorAction Stop
         $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
     }
 
@@ -446,12 +446,12 @@ function Stop-ApolloForDriverInstall {
     }
 }
 
-function Start-ApolloServiceIfNeeded {
+function Start-UmbraServiceIfNeeded {
     if (-not $script:apolloServiceWasRunning) {
         return
     }
 
-    $service = Get-Service -Name 'ApolloService' -ErrorAction SilentlyContinue
+    $service = Get-Service -Name 'UmbraService' -ErrorAction SilentlyContinue
     if (-not $service) {
         $script:apolloServiceWasRunning = $false
         return
@@ -462,7 +462,7 @@ function Start-ApolloServiceIfNeeded {
     }
 
     Write-Host '[SunshineVirtualDisplay] Restarting Apollo service after driver repair.'
-    Start-Service -Name 'ApolloService' -ErrorAction Stop
+    Start-Service -Name 'UmbraService' -ErrorAction Stop
     $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
     $script:apolloServiceWasRunning = $false
 }
@@ -1137,7 +1137,7 @@ if ((-not $driverPackageRefreshNeeded) -and $deviceNodePresent) {
     Initialize-DriverStateRegistryAccess
     Invoke-InstallerHealthCheck
     Start-VirtualDisplayBrokerIfNeeded
-    Start-ApolloServiceIfNeeded
+    Start-UmbraServiceIfNeeded
     Write-Host '[SunshineVirtualDisplay] Driver install complete.'
     if ($script:rebootRequired) {
         Write-Host '[SunshineVirtualDisplay] A reboot is required to finalize driver installation.'
@@ -1171,7 +1171,7 @@ Restart-SunshineVirtualDisplayRuntime
 Initialize-DriverStateRegistryAccess
 Invoke-InstallerHealthCheck
 Start-VirtualDisplayBrokerIfNeeded
-Start-ApolloServiceIfNeeded
+Start-UmbraServiceIfNeeded
 
 Write-Host '[SunshineVirtualDisplay] Driver install complete.'
 if ($script:rebootRequired) {

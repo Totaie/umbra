@@ -66,7 +66,7 @@ add_custom_command(
             "${CMAKE_SOURCE_DIR}/umbra.ico"
             "${SUNSHINE_WINDOWS_VERSIONINFO_STAMP}"
             generate_windows_versioninfo
-    COMMENT "Building lightweight Vibepollo uninstaller UI"
+    COMMENT "Building lightweight Umbra uninstaller UI"
 )
 add_custom_target(build_uninstall_ui ALL DEPENDS "${SUNSHINE_UNINSTALL_UI_EXE}")
 

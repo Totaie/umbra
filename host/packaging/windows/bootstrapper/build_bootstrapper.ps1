@@ -11,7 +11,7 @@ param(
     [switch]$NoInstallSignPathModuleIfMissing,
     [string]$SignPathApiToken = $env:SIGNPATH_API_TOKEN,
     [string]$SignPathOrganizationId = $(if ([string]::IsNullOrWhiteSpace($env:SIGNPATH_ORGANIZATION_ID)) { "1ba0e884-7ab4-43e6-aa84-9b2c7e3fba15" } else { $env:SIGNPATH_ORGANIZATION_ID }),
-    [string]$SignPathProjectSlug = $(if ([string]::IsNullOrWhiteSpace($env:SIGNPATH_PROJECT_SLUG)) { "Vibepollo" } else { $env:SIGNPATH_PROJECT_SLUG }),
+    [string]$SignPathProjectSlug = $(if ([string]::IsNullOrWhiteSpace($env:SIGNPATH_PROJECT_SLUG)) { "Umbra" } else { $env:SIGNPATH_PROJECT_SLUG }),
     [string]$SignPathSigningPolicySlug = $(if ([string]::IsNullOrWhiteSpace($env:SIGNPATH_SIGNING_POLICY_SLUG)) { "release-signing" } else { $env:SIGNPATH_SIGNING_POLICY_SLUG }),
     [string]$SignPathPeArtifactConfigurationSlug = $env:SIGNPATH_PE_ARTIFACT_CONFIGURATION_SLUG,
     [string]$SignPathMsiArtifactConfigurationSlug = $(if ([string]::IsNullOrWhiteSpace($env:SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG)) { "msi-file-apollo" } else { $env:SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG })
@@ -230,7 +230,7 @@ if ([string]::IsNullOrWhiteSpace($OutputName)) {
     if ($UninstallOnly) {
         $OutputName = "uninstall.exe"
     } else {
-        $OutputName = "VibepolloSetup.exe"
+        $OutputName = "UmbraSetup.exe"
     }
 }
 
@@ -266,11 +266,11 @@ if ([string]::IsNullOrWhiteSpace($informationalVersion)) {
     $informationalVersion = $assemblyVersion
 }
 if ($UninstallOnly) {
-    $assemblyInfoPath = Join-Path $artifactDir "VibepolloUninstall.AssemblyInfo.cs"
-    $assemblyTitle = "Vibepollo Uninstaller"
+    $assemblyInfoPath = Join-Path $artifactDir "UmbraUninstall.AssemblyInfo.cs"
+    $assemblyTitle = "Umbra Uninstaller"
 } else {
-    $assemblyInfoPath = Join-Path $artifactDir "VibepolloInstaller.AssemblyInfo.cs"
-    $assemblyTitle = "Vibepollo Installer"
+    $assemblyInfoPath = Join-Path $artifactDir "UmbraInstaller.AssemblyInfo.cs"
+    $assemblyTitle = "Umbra Installer"
 }
 $assemblyInfoContent = @(
     "using System.Reflection;",
@@ -297,7 +297,7 @@ if (-not $shouldSignWithSignPath) {
 if ($shouldSignWithSignPath -and -not $UninstallOnly) {
     Invoke-SignPathForArtifact `
         -ArtifactPath $MsiPath `
-        -Description "Vibepollo MSI payload $informationalVersion"
+        -Description "Umbra MSI payload $informationalVersion"
 }
 
 $references = @(
@@ -356,9 +356,9 @@ if ($LASTEXITCODE -ne 0) {
 
 if ($shouldSignWithSignPath) {
     $artifactDescription = if ($UninstallOnly) {
-        "Vibepollo uninstaller $informationalVersion"
+        "Umbra uninstaller $informationalVersion"
     } else {
-        "Vibepollo setup executable $informationalVersion"
+        "Umbra setup executable $informationalVersion"
     }
     Invoke-SignPathForArtifact `
         -ArtifactPath $outputPath `

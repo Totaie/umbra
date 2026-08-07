@@ -1540,6 +1540,15 @@ namespace confighttp {
       return;
     }
 
+    // Umbra ships the V2 interface as the default one. It is built with a base of
+    // /v2/ and its router is bound to that prefix, so rather than re-hosting it at
+    // the root we send the root there. The legacy interface stays reachable at its
+    // own paths for anything V2 doesn't cover yet.
+    if (path_view == "/" || path_view == "/index.html") {
+      send_redirect(std::move(response), std::move(request), "/v2/");
+      return;
+    }
+
     const bool is_v2_route = path_view == "/v2" || path_view.starts_with("/v2/");
     const bool is_v2_static_path = path_view == "/v2/assets" || path_view.starts_with("/v2/assets/") ||
                                    path_view == "/v2/images" || path_view.starts_with("/v2/images/");
@@ -1565,7 +1574,7 @@ namespace confighttp {
   void getFaviconImage(resp_https_t response, req_https_t request) {
     print_req(request);
 
-    std::ifstream in(WEB_DIR "images/apollo.ico", std::ios::binary);
+    std::ifstream in(WEB_DIR "images/umbra.ico", std::ios::binary);
     SimpleWeb::CaseInsensitiveMultimap headers;
     headers.emplace("Content-Type", "image/x-icon");
     headers.emplace("X-Frame-Options", "DENY");
@@ -1584,7 +1593,7 @@ namespace confighttp {
   void getApolloLogoImage(resp_https_t response, req_https_t request) {
     print_req(request);
 
-    std::ifstream in(WEB_DIR "images/logo-apollo-45.png", std::ios::binary);
+    std::ifstream in(WEB_DIR "images/logo-umbra-45.png", std::ios::binary);
     SimpleWeb::CaseInsensitiveMultimap headers;
     headers.emplace("Content-Type", "image/png");
     headers.emplace("X-Frame-Options", "DENY");
@@ -5911,7 +5920,7 @@ namespace confighttp {
     register_api_route("^/api/logs/export_crash$", "GET", downloadCrashBundle);
 #endif
     server.resource["^/images/sunshine.ico$"]["GET"] = getFaviconImage;
-    server.resource["^/images/logo-apollo-45.png$"]["GET"] = getApolloLogoImage;
+    server.resource["^/images/logo-umbra-45.png$"]["GET"] = getApolloLogoImage;
     server.resource["^/images/logo-sunshine-45.png$"]["GET"] = getApolloLogoImage;  // legacy alias
     server.resource["^/assets\\/.+$"]["GET"] = getNodeModules;
     register_api_route("^/api/pairing-passphrase$", "POST", pairingPassphrase);

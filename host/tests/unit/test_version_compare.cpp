@@ -1,6 +1,6 @@
 /**
  * @file tests/unit/test_version_compare.cpp
- * @brief Unit tests for Vibepollo's semver comparison rules.
+ * @brief Unit tests for Umbra's semver comparison rules.
  */
 
 #include "../tests_common.h"

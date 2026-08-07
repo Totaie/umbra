@@ -1,6 +1,6 @@
 /**
  * @file tests/integration/test_virtual_display_packaging.cpp
- * @brief Tests for Vibepollo Display Driver packaging invariants.
+ * @brief Tests for Umbra Display Driver packaging invariants.
  */
 #include "../tests_common.h"
 
@@ -370,7 +370,7 @@ TEST(SunshineVirtualDisplayPackaging, DirectMsiConflictRemovalBlocksInsteadOfUni
   expect_contains(script, "conflicting products must be removed by the bootstrapper or by the user");
   expect_contains(script, "nameUpper = \"SUNSHINE\"");
   expect_contains(script, "nameUpper = \"APOLLO\"");
-  expect_contains(script, "nameUpper = \"VIBEPOLLO\"");
+  expect_contains(script, "nameUpper = \"UMBRA\"");
   EXPECT_EQ(script.find("shell.Run"), std::string::npos);
   EXPECT_EQ(script.find("Left(nameUpper"), std::string::npos);
 }
@@ -405,11 +405,11 @@ TEST(SunshineVirtualDisplayPackaging, BootstrapperClassifiesConflictingProductsB
   const auto body = bootstrapper.substr(classifier, next_function - classifier);
 
   expect_contains(body, "string.Equals(trimmedDisplayName, \"Vibeshine\"");
-  expect_contains(body, "string.Equals(trimmedDisplayName, \"Vibepollo\"");
+  expect_contains(body, "string.Equals(trimmedDisplayName, \"Umbra\"");
   expect_contains(body, "string.Equals(trimmedDisplayName, \"Apollo\"");
   expect_contains(body, "string.Equals(trimmedDisplayName, \"Sunshine\"");
   EXPECT_EQ(body.find("StartsWith(\"Sunshine\""), std::string::npos);
-  EXPECT_EQ(body.find("StartsWith(\"Vibepollo\""), std::string::npos);
+  EXPECT_EQ(body.find("StartsWith(\"Umbra\""), std::string::npos);
 }
 
 TEST(SunshineVirtualDisplayPackaging, BootstrapperQuotesForwardedArgumentsWithEmbeddedQuotes) {
@@ -460,7 +460,7 @@ TEST(SunshineVirtualDisplayPackaging, BootstrapperOffersSudoVdaRollback) {
   expect_contains(bootstrapper, "InternalInstallVirtualDisplay = true;");
   expect_contains(bootstrapper, "Content = \"Use SudoVDA\"");
   expect_contains(bootstrapper, "IsChecked = _useSudoVdaSelectedInConfig");
-  expect_contains(bootstrapper, "Vibepollo Display Driver is installed and selected by default");
+  expect_contains(bootstrapper, "Umbra Display Driver is installed and selected by default");
   expect_contains(bootstrapper, "Enable this option to use SudoVDA instead.");
   expect_contains(bootstrapper, "contentStack.Children.Add(tipsSection);");
   expect_contains(bootstrapper, "contentStack.Children.Add(_installVirtualDisplaySection);");
@@ -520,7 +520,7 @@ TEST(SunshineVirtualDisplayPackaging, InstallerSelectionSeedsSunshineDriverFlag)
   expect_contains(migration, "-Value $(if ($enabled) { 'enabled' } else { 'disabled' })");
   expect_contains(migration, "$isLegacySplitEncodeProperty = $property.Name -eq 'nvenc_force_split_encode'");
   expect_contains(migration, "$targetName -eq 'nvenc_split_encode' -and -not $isLegacySplitEncodeProperty");
-  expect_contains(migration, "Updated Vibepollo Display Driver preference from installer selection.");
+  expect_contains(migration, "Updated Umbra Display Driver preference from installer selection.");
   expect_contains(header, "use_sunshine_virtual_display_driver");
   expect_contains(config, "true,  // use_sunshine_virtual_display_driver");
   expect_contains(config, "bool_f(vars, \"dd_use_sunshine_virtual_display_driver\", video.dd.use_sunshine_virtual_display_driver);");
@@ -528,7 +528,7 @@ TEST(SunshineVirtualDisplayPackaging, InstallerSelectionSeedsSunshineDriverFlag)
   expect_contains(locale, "\"dd_use_sunshine_virtual_display_driver\": \"Use SudoVDA\"");
   expect_contains(locale, "Switch back to SudoVDA for virtual displays");
   expect_contains(locale, "\"virtual_display_status_sudovda_ready\": \"SudoVDA driver ready\"");
-  expect_contains(locale, "\"virtual_display_status_vibeshine_ready\": \"Vibepollo driver ready\"");
+  expect_contains(locale, "\"virtual_display_status_vibeshine_ready\": \"Umbra driver ready\"");
   expect_contains(docs, "### dd_use_sunshine_virtual_display_driver");
   expect_contains(docs, "Disable this to switch back to the bundled SudoVDA rollback driver.");
   expect_contains(docs, "<td colspan=\"2\">@code{}true@endcode</td>");
@@ -729,7 +729,7 @@ TEST(SunshineVirtualDisplayPackaging, InstallerKeepsSudoVdaRollbackAndSunshineDr
 
   expect_contains(cmake, "drivers/sudovda");
   expect_contains(cmake, "drivers/sunshine");
-  expect_contains(cmake, "Vibepollo Display Driver");
+  expect_contains(cmake, "Umbra Display Driver");
   expect_contains(actions, "SudoVdaRegistryDefaults");
   expect_contains(actions, "InstallSudovda");
   expect_contains(actions, "drivers\\sudovda\\install.ps1");
