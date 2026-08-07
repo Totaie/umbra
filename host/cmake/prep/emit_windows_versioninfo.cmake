@@ -235,7 +235,27 @@ set(_previous_revision "")
 set(_computed_revision "")
 set(_cache_key "")
 
-if(_patch GREATER 65534)
+# Umbra releases carry a plain MAJOR.MINOR.PATCH from version.txt, and that is the
+# number the client's installer, the update check and the user all deal in. Stamp it
+# verbatim.
+#
+# Upstream instead encodes the patch as build = patch*100+99 and derives the fourth
+# field from time elapsed since the matching release tag. That works when a tag exists
+# per series; ours never match, so the anchor fell back to an old commit and the
+# elapsed-time revision overflowed the 65534 limit outright - 0.2.7 simply would not
+# build. It had also been quietly producing versions like 0.2.499.28 for 0.2.4, whose
+# third field reads as newer than 0.2.5, which is what made the client bundle skip
+# host upgrades.
+#
+# UMBRA_PLAIN_VERSION is set by our own build; leaving it unset keeps upstream's
+# scheme intact for anyone building this the original way.
+if(DEFINED ENV{UMBRA_PLAIN_VERSION} OR UMBRA_PLAIN_VERSION)
+    set(_rc_build "${_patch}")
+    set(_rc_revision 0)
+    set(_cache_key "${_rc_major}.${_rc_minor}.${_rc_build}")
+    set(_computed_revision 0)
+    set(_source_kind "umbra-plain-version")
+elseif(_patch GREATER 65534)
     math(EXPR _rc_build "${_patch} / 100")
     math(EXPR _rc_revision "${_patch} % 100")
     set(_cache_key "${_rc_major}.${_rc_minor}.${_rc_build}")

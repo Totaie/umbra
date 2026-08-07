@@ -75,6 +75,15 @@ if [[ -z "${PROCESSOR_ARCHITECTURE:-}" ]]; then
     echo "Set PROCESSOR_ARCHITECTURE=${PROCESSOR_ARCHITECTURE} for FFmpeg dependency resolution"
 fi
 
+# Stamp the version from version.txt verbatim into the Windows resources, instead of
+# upstream's scheme of encoding the patch as build=patch*100+99 with a fourth field
+# counting time since the matching release tag. Our tags never match that pattern, so
+# the anchor fell back to an old commit and the computed revision eventually exceeded
+# the 65534 field limit, failing the build outright. It had also been stamping 0.2.4
+# as 0.2.499.28, whose third field compares as newer than 0.2.5 - which is why the
+# client bundle decided the host was already up to date and skipped upgrading it.
+export UMBRA_PLAIN_VERSION=1
+
 if ! command -v npm >/dev/null 2>&1 && [[ ! -x "/c/Program Files/nodejs/npm.cmd" ]]; then
     echo "ERROR: npm was not found, and the web_ui target is not optional: the build" >&2
     echo "       fails at 'Unable to build the Umbra browser interface'." >&2
