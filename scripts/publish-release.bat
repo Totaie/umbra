@@ -143,6 +143,28 @@ set ASSET_NAME=UmbraSetup-%ARCH%-!VERSION!.exe
 set ASSET=%SOURCE_ROOT%\build\installer-%ARCH%-release\!ASSET_NAME!
 copy /y "!BUILT!" "!ASSET!" >nul
 
+rem ---------------------------------------------------------------------------
+rem Refuse to publish something the local antivirus already objects to. The
+rem bundle embeds the host installer, so a host release that Defender dislikes
+rem shows up here as a WIX0001 "file contains a virus" build failure - which is
+rem what happened with host v0.2.1. Catch it as a clear message instead.
+rem ---------------------------------------------------------------------------
+set MPCMDRUN=%ProgramFiles%\Windows Defender\MpCmdRun.exe
+if exist "!MPCMDRUN!" (
+    echo Scanning the installer before publishing...
+    "!MPCMDRUN!" -Scan -ScanType 3 -File "!ASSET!" -DisableRemediation >nul 2>&1
+    if !ERRORLEVEL! EQU 2 (
+        echo.
+        echo REFUSING TO PUBLISH: Windows Defender flags !ASSET_NAME!.
+        echo Run this to see the detection:
+        echo   "!MPCMDRUN!" -Scan -ScanType 3 -File "!ASSET!" -DisableRemediation
+        exit /b 1
+    )
+    echo   clean
+) else (
+    echo Windows Defender not found; skipping the pre-publish scan.
+)
+
 for %%f in ("!ASSET!") do set ASSET_SIZE=%%~zf
 set SHA=
 for /f "usebackq skip=1 tokens=*" %%h in (`certutil -hashfile "!ASSET!" SHA256`) do (
