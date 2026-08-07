@@ -62,6 +62,8 @@
 #define SER_REVERSESCROLL "reversescroll"
 #define SER_SWAPFACEBUTTONS "swapfacebuttons"
 #define SER_CAPTURESYSKEYS "capturesyskeys"
+#define SER_BACKGROUNDMODE "backgroundmode"
+#define SER_BACKGROUNDIMAGEPATH "backgroundimagepath"
 #define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
 #define SER_CLIENTSIDECURSOR "clientsidecursor"
 #define SER_PREFERREDHOSTDISPLAY "preferredhostdisplay"
@@ -223,6 +225,9 @@ void StreamingPreferences::reload()
 
     // Umbra is desktop-oriented: selecting a PC goes straight to its desktop rather
     // than stopping at the app grid. The full list stays on the PC's context menu.
+    backgroundMode = static_cast<BackgroundMode>(settings.value(SER_BACKGROUNDMODE,
+                                                 static_cast<int>(BackgroundMode::BG_RANDOM)).toInt());
+    backgroundImagePath = settings.value(SER_BACKGROUNDIMAGEPATH).toString();
     directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
     clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
     preferredHostDisplay = settings.value(SER_PREFERREDHOSTDISPLAY, 0).toInt();
@@ -455,6 +460,8 @@ void StreamingPreferences::save()
     settings.setValue(SER_REVERSESCROLL, reverseScrollDirection);
     settings.setValue(SER_SWAPFACEBUTTONS, swapFaceButtons);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
+    settings.setValue(SER_BACKGROUNDMODE, static_cast<int>(backgroundMode));
+    settings.setValue(SER_BACKGROUNDIMAGEPATH, backgroundImagePath);
     settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
     settings.setValue(SER_CLIENTSIDECURSOR, clientSideCursor);
     settings.setValue(SER_PREFERREDHOSTDISPLAY, preferredHostDisplay);

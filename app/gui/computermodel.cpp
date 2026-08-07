@@ -269,14 +269,24 @@ void ComputerModel::renameComputer(int computerIndex, QString name)
 
 void ComputerModel::setPairingPassphrase(int computerIndex, QString passphrase)
 {
-    Q_ASSERT(computerIndex < m_Computers.count());
+    if (computerIndex < 0 || computerIndex >= m_Computers.count()) {
+        qWarning() << "Invalid computer index for setPairingPassphrase:" << computerIndex;
+        return;
+    }
 
     m_ComputerManager->setHostPairingPassphrase(m_Computers[computerIndex], passphrase);
 }
 
 bool ComputerModel::hasPairingPassphrase(int computerIndex) const
 {
-    Q_ASSERT(computerIndex < m_Computers.count());
+    // QML calls this from a delegate binding, and a delegate's index goes to -1
+    // while the model is being updated - which happens every time a PC changes
+    // between online and offline. Q_ASSERT compiles out in release builds, so the
+    // out of range index went straight into the container and dereferenced
+    // whatever was next to it.
+    if (computerIndex < 0 || computerIndex >= m_Computers.count()) {
+        return false;
+    }
 
     QReadLocker lock(&m_Computers[computerIndex]->lock);
     return !m_Computers[computerIndex]->pairingPassphrase.isEmpty();
@@ -289,7 +299,10 @@ int ComputerModel::getClientScreenCount() const
 
 QString ComputerModel::launchAdditionalDisplays(int computerIndex, QString appName)
 {
-    Q_ASSERT(computerIndex < m_Computers.count());
+    if (computerIndex < 0 || computerIndex >= m_Computers.count()) {
+        qWarning() << "Invalid computer index for launchAdditionalDisplays:" << computerIndex;
+        return tr("That PC is no longer available.");
+    }
 
     const int screenCount = getClientScreenCount();
     if (screenCount < 2) {

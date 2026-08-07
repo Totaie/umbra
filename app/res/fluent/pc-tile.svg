@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- A desktop machine seen head on: display, stand, and a tower beside it. Drawn at
+     64 rather than the toolbar's 24 because it renders at 90px on the PC tile, and
+     a 24px grid upscaled that far goes soft. Strokes are 3.5 so the shape still
+     reads once the disc behind it is a saturated colour. -->
+<rect x="6.5" y="12.5" width="37" height="26" rx="2.5" stroke="#FFFFFF" stroke-width="3.5"/>
+<path d="M25 38.5V47" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M16 47.5H34" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"/>
+<rect x="49.5" y="20.5" width="10" height="27" rx="2" stroke="#FFFFFF" stroke-width="3.5"/>
+<path d="M54.5 26.5V29" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"/>
+</svg>

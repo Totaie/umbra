@@ -281,12 +281,20 @@ CenteredGridView {
                 rotation: rotationAngle
             }
 
-            Text {
+            // A machine, not an initial. The letter read as a contact avatar, which
+            // is the wrong idea entirely - these are computers, and two PCs whose
+            // names start with the same letter looked identical. The per-name colour
+            // of the disc still tells them apart at a glance.
+            Image {
                 anchors.centerIn: parent
-                text: model.name ? model.name.charAt(0).toUpperCase() : "?"
-                font.pixelSize: parent.width * 0.6
-                font.bold: true
-                color: parent.color
+                width: parent.width * 0.46
+                height: width
+                source: "qrc:/res/fluent/pc-tile.svg"
+                sourceSize.width: width * 2
+                sourceSize.height: height * 2
+                fillMode: Image.PreserveAspectFit
+                opacity: model.online ? 0.92 : 0.4
+                smooth: true
             }
         }
 
@@ -762,7 +770,11 @@ CenteredGridView {
                 loadingIndicator.visible = false
             } else if (status === Image.Error) {
                 loadingIndicator.visible = false
-                getBackgroundImage() // 如果缓存图加载失败，尝试加载新图片
+                // Only chase a replacement when random wallpapers are actually on.
+                // Otherwise a broken custom file would quietly turn into a download.
+                if (StreamingPreferences.backgroundMode === StreamingPreferences.BG_RANDOM) {
+                    getBackgroundImage()
+                }
             }
         }
 
@@ -789,7 +801,50 @@ CenteredGridView {
             }
         }
 
-        Component.onCompleted: {
+        // Applies the current wallpaper setting. Called on startup and whenever the
+        // setting changes, so switching mode in Settings takes effect immediately
+        // rather than on the next launch.
+        function applyBackgroundMode() {
+            if (StreamingPreferences.backgroundMode === StreamingPreferences.BG_NONE) {
+                source = ""
+                currentImageUrl = ""
+                pcGrid.currentBgUrl = ""
+                loadingIndicator.visible = false
+                return
+            }
+
+            if (StreamingPreferences.backgroundMode === StreamingPreferences.BG_CUSTOM) {
+                var path = StreamingPreferences.backgroundImagePath
+                if (path && imageUtils.fileExists(path)) {
+                    var url = "file:///" + path.replace(/\\/g, "/").replace(/^\/+/, "")
+                    source = url
+                    currentImageUrl = url
+                    pcGrid.currentBgUrl = url
+                }
+                else {
+                    // Chosen file is gone. Better a blank background than silently
+                    // reaching out to the internet for a replacement.
+                    source = ""
+                    currentImageUrl = ""
+                    pcGrid.currentBgUrl = ""
+                }
+                loadingIndicator.visible = false
+                return
+            }
+
+            loadCachedOrFetchRandom()
+        }
+
+        Connections {
+            target: StreamingPreferences
+            function onUmbraSettingsChanged() {
+                backgroundImage.applyBackgroundMode()
+            }
+        }
+
+        Component.onCompleted: applyBackgroundMode()
+
+        function loadCachedOrFetchRandom() {
             // 先检查缓存图是否存在
             if (settings.cachedImagePath && imageUtils.fileExists(settings.cachedImagePath)) {
                 try {
@@ -839,11 +894,17 @@ CenteredGridView {
                 // 检查文件格式
                 var ext = filePath.toString().split('.').pop().toLowerCase()
                 if (["jpg", "jpeg", "png", "webp"].indexOf(ext) !== -1) {
-                    // 更新缓存路径和刷新时间
-                    settings.cachedImagePath = filePath.toString().substring(8)
+                    // Dropping a file is an explicit choice, so record it as one.
+                    // Leaving the mode on Random would have the weekly refresh throw
+                    // this image away without warning.
+                    var localPath = filePath.toString().substring(8)
+                    StreamingPreferences.backgroundImagePath = localPath
+                    StreamingPreferences.backgroundMode = StreamingPreferences.BG_CUSTOM
+                    StreamingPreferences.save()
+
+                    settings.cachedImagePath = localPath
                     settings.lastRefreshTime = Date.now()
 
-                    // 更新背景图
                     backgroundImage.source = filePath;
                     currentImageUrl = filePath;
                     pcGrid.currentBgUrl = filePath;  // 拖放时同步属性

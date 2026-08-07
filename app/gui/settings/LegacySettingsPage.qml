@@ -2,6 +2,7 @@ import QtQuick 2.9
 import QtQuick.Controls
 import QtQuick.Layouts 1.3
 import QtQuick.Window 2.2
+import Qt.labs.platform 1.1
 import ".."
 import "../theme"
 
@@ -607,6 +608,94 @@ Column {
                     ToolTip.timeout: 5000
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Check for new versions of Umbra when the app starts.")
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Wallpaper")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                AutoResizingComboBox {
+                    id: wallpaperModeComboBox
+                    textRole: "text"
+                    font.pointSize: 12
+
+                    model: ListModel {
+                        id: wallpaperModeModel
+                        ListElement {
+                            text: qsTr("Random image from the internet")
+                            val: StreamingPreferences.BG_RANDOM
+                        }
+                        ListElement {
+                            text: qsTr("Choose an image")
+                            val: StreamingPreferences.BG_CUSTOM
+                        }
+                        ListElement {
+                            text: qsTr("None")
+                            val: StreamingPreferences.BG_NONE
+                        }
+                    }
+
+                    Component.onCompleted: {
+                        var saved = StreamingPreferences.backgroundMode
+                        currentIndex = 0
+                        for (var i = 0; i < wallpaperModeModel.count; i++) {
+                            if (wallpaperModeModel.get(i).val === saved) {
+                                currentIndex = i
+                                break
+                            }
+                        }
+                        activated(currentIndex)
+                    }
+
+                    onActivated: {
+                        StreamingPreferences.backgroundMode = wallpaperModeModel.get(currentIndex).val
+                        StreamingPreferences.save()
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Random downloads a new wallpaper from a third-party image service, replacing it weekly. Choose None to stop Umbra contacting it at all.")
+                }
+
+                RowLayout {
+                    width: parent.width
+                    spacing: 12
+                    visible: StreamingPreferences.backgroundMode === StreamingPreferences.BG_CUSTOM
+
+                    HardButton {
+                        text: qsTr("Choose Image…")
+                        font.pointSize: 12
+                        onClicked: wallpaperFileDialog.open()
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: StreamingPreferences.backgroundImagePath
+                              ? StreamingPreferences.backgroundImagePath
+                              : qsTr("No image chosen yet.")
+                        font.pointSize: 12
+                        color: Theme.textDim
+                        elide: Text.ElideMiddle
+                    }
+                }
+
+                FileDialog {
+                    id: wallpaperFileDialog
+                    title: qsTr("Choose a wallpaper")
+                    nameFilters: [qsTr("Images (*.png *.jpg *.jpeg *.webp)")]
+
+                    onAccepted: {
+                        // Qt.labs.platform hands back a URL; everything downstream
+                        // wants a plain path, and fileExists() certainly does.
+                        var path = file.toString().replace(/^file:\/{3}/, "")
+                        StreamingPreferences.backgroundImagePath = decodeURIComponent(path)
+                        StreamingPreferences.backgroundMode = StreamingPreferences.BG_CUSTOM
+                        StreamingPreferences.save()
+                    }
                 }
 
                 RowLayout {

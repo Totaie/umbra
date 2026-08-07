@@ -120,6 +120,19 @@ public:
     };
     Q_ENUM(CaptureSysKeysMode);
 
+    enum BackgroundMode
+    {
+        // Fetch a random image from the internet, refreshed weekly. This is the
+        // behaviour Umbra inherited, and it means the app talks to a third party
+        // image host on first run, so it has to be possible to turn off.
+        BG_RANDOM,
+        // A file the user chose. Also what drag and drop onto the PC list sets.
+        BG_CUSTOM,
+        // No wallpaper at all - just the theme's own surface colour.
+        BG_NONE,
+    };
+    Q_ENUM(BackgroundMode);
+
     enum OverlayMenuPosition
     {
         OMP_RIGHT_EDGE = 0,  // Default: show on right edge of streaming window
@@ -211,6 +224,8 @@ public:
     Q_PROPERTY(bool swapFaceButtons MEMBER swapFaceButtons NOTIFY swapFaceButtonsChanged)
     Q_PROPERTY(bool keepAwake MEMBER keepAwake NOTIFY keepAwakeChanged)
     Q_PROPERTY(CaptureSysKeysMode captureSysKeysMode MEMBER captureSysKeysMode NOTIFY captureSysKeysModeChanged)
+    Q_PROPERTY(BackgroundMode backgroundMode MEMBER backgroundMode NOTIFY umbraSettingsChanged)
+    Q_PROPERTY(QString backgroundImagePath MEMBER backgroundImagePath NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool clientSideCursor MEMBER clientSideCursor NOTIFY umbraSettingsChanged)
     Q_PROPERTY(int preferredHostDisplay MEMBER preferredHostDisplay NOTIFY umbraSettingsChanged)
@@ -281,6 +296,9 @@ public:
     UIDisplayMode uiDisplayMode;
     Language language;
     CaptureSysKeysMode captureSysKeysMode;
+    BackgroundMode backgroundMode;
+    // Absolute path, not a URL. Empty unless backgroundMode is BG_CUSTOM.
+    QString backgroundImagePath;
     bool directConnectDesktop;
     // Draw the cursor locally rather than letting the host composite it into video.
     bool clientSideCursor;
