@@ -472,24 +472,14 @@ CenteredGridView {
                     // Go directly to app view; IP can be changed from there
                     openAppView(index, model.name, false)
                 }
-                else if (computerModel.hasPairingPassphrase(index)) {
-                    // The token is the shared secret, so there's nothing to type on the
-                    // host. Pass a PIN anyway: hosts that don't understand tokens fall
-                    // back to it rather than failing outright.
-                    computerModel.pairComputer(index, computerModel.generatePinString())
-
-                    pairDialog.pin = ""
-                    pairDialog.open()
-                }
                 else {
-                    var pin = computerModel.generatePinString()
-
-                    // Kick off pairing in the background
-                    computerModel.pairComputer(index, pin)
-
-                    // Display the pairing dialog
-                    pairDialog.pin = pin
-                    pairDialog.open()
+                    // Not paired yet, so ask for the host's token. A PIN is only worth
+                    // 10,000 guesses and the key derived from it can be attacked offline
+                    // by anyone who recorded the exchange, so it is the fallback rather
+                    // than the default.
+                    connectTokenDialog.pcIndex = index
+                    connectTokenDialog.pcName = model.name
+                    connectTokenDialog.open()
                 }
             } else if (!model.online) {
                 // Using open() here because it may be activated by keyboard
@@ -541,7 +531,7 @@ CenteredGridView {
         text: pin === ""
               ? qsTr("Pairing with this PC using its pairing token. This dialog will close when pairing is completed.")
               : qsTr("Please enter %1 on your host PC. This dialog will close when pairing is completed.").arg(pin)+"\n\n"+
-                qsTr("If your host PC is running Sunshine, navigate to the Sunshine web UI to enter the PIN.")
+                qsTr("Open the Umbra Host web interface at https://localhost:47990 on that PC, under Pair, to enter the PIN.")
         standardButtons: DialogButtonBox.Cancel
         onRejected: {
             // FIXME: We should interrupt pairing here
@@ -637,6 +627,98 @@ CenteredGridView {
 
                 Keys.onEnterPressed: {
                     renamePcDialog.accept()
+                }
+            }
+        }
+    }
+
+    // Asked for the moment you connect to a PC that isn't paired yet. The token is
+    // generated once on the host and never travels: both ends hash it with a salt
+    // that changes every attempt, so recording an exchange gives an attacker nothing
+    // to replay or grind offline the way a four digit PIN does.
+    NavigableDialog {
+        id: connectTokenDialog
+
+        property int pcIndex: -1
+        property string pcName
+
+        standardButtons: DialogButtonBox.Ok | DialogButtonBox.Cancel
+
+        onOpened: {
+            // Offer the token already stored for this PC, so reconnecting after an
+            // unpair doesn't mean fetching it from the host again.
+            connectTokenText.text = ""
+            connectTokenText.forceActiveFocus()
+        }
+
+        onClosed: {
+            connectTokenText.clear()
+        }
+
+        onAccepted: {
+            if (!connectTokenText.text) {
+                return
+            }
+
+            computerModel.setPairingPassphrase(pcIndex, connectTokenText.text)
+
+            // A PIN goes along regardless: a host that doesn't understand tokens
+            // falls back to it rather than refusing outright.
+            computerModel.pairComputer(pcIndex, computerModel.generatePinString())
+
+            pairDialog.pin = ""
+            pairDialog.open()
+        }
+
+        ColumnLayout {
+            spacing: 10
+
+            Text {
+                text: qsTr("Connect to %1").arg(connectTokenDialog.pcName)
+                color: Theme.text
+                font.family: Theme.fontSans
+                font.pointSize: Theme.fontRowTitle
+                font.weight: Font.DemiBold
+                Layout.fillWidth: true
+            }
+
+            Text {
+                text: qsTr("Enter this PC's pairing token. You'll find it in the Umbra Host web interface on that PC, at https://localhost:47990 under Pair.")
+                color: Theme.textDim
+                font.family: Theme.fontSans
+                font.pointSize: Theme.fontBody
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.maximumWidth: 440
+            }
+
+            HardTextField {
+                id: connectTokenText
+                Layout.fillWidth: true
+                Layout.minimumWidth: 440
+                focus: true
+                echoMode: TextInput.Password
+                placeholderText: qsTr("Paste the pairing token")
+
+                Keys.onReturnPressed: connectTokenDialog.accept()
+                Keys.onEnterPressed: connectTokenDialog.accept()
+            }
+
+            HardButton {
+                text: qsTr("Use a PIN instead")
+                font.pointSize: Theme.fontBody
+                Layout.alignment: Qt.AlignLeft
+
+                onClicked: {
+                    // For hosts that have no token set, and for pairing from a client
+                    // that isn't Umbra's.
+                    var idx = connectTokenDialog.pcIndex
+                    connectTokenDialog.close()
+
+                    var pin = computerModel.generatePinString()
+                    computerModel.pairComputer(idx, pin)
+                    pairDialog.pin = pin
+                    pairDialog.open()
                 }
             }
         }
