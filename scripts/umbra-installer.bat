@@ -111,6 +111,21 @@ if "%WITH_HOST%"=="1" (
     ) else (
         echo Using cached !HOST_CACHE_TAG! host installer at %BUILD_ROOT%\host\UmbraHostSetup.exe
     )
+
+    rem Bundle.wxs compares this against the installed sunshine.exe's file version to
+    rem decide whether the host needs upgrading, so it has to be the plain numeric
+    rem version the host stamps into its binary - the tag without its leading "v".
+    set UMBRA_HOST_VERSION=
+    if exist "%BUILD_ROOT%\host\TAG.txt" (
+        for /f "usebackq delims=" %%t in ("%BUILD_ROOT%\host\TAG.txt") do set UMBRA_HOST_VERSION=%%t
+    )
+    if "!UMBRA_HOST_VERSION:~0,1!"=="v" set UMBRA_HOST_VERSION=!UMBRA_HOST_VERSION:~1!
+    if "!UMBRA_HOST_VERSION!"=="" (
+        echo Could not determine the bundled host version from TAG.txt.
+        echo Delete %BUILD_ROOT%\host and re-run so it is fetched again.
+        exit /b 1
+    )
+    echo Bundling Umbra Host !UMBRA_HOST_VERSION!
 )
 
 rem ---------------------------------------------------------------------------
