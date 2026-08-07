@@ -270,15 +270,15 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "Umbra Host")
 # NSIS runs elevated (it installs under Program Files), so these run as admin.
 # Each is allowed to fail without failing the install: a host that's up but not
 # firewalled is recoverable, an install that rolls back is more annoying.
+#
+# Note there is deliberately no ACL change on the config directory. Loosening it
+# so an unelevated sunshine.exe could write there would let any local user edit a
+# configuration that a SYSTEM service reads - and that configuration can specify
+# commands to run - which is a local privilege escalation. The supported entry
+# point is `sunshine.exe --shortcut`, which tolerates a missing config directory
+# and elevates itself when it needs to.
 # ---------------------------------------------------------------------------
 set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
-  ; The service runs as SYSTEM and can write here; a user launching sunshine.exe
-  ; directly cannot, unless we grant it. Users is deliberate rather than
-  ; Everyone: it excludes anonymous logons and guests.
-  CreateDirectory '$INSTDIR\\\\config'
-  nsExec::ExecToLog '\\\"$SYSDIR\\\\icacls.exe\\\" \\\"$INSTDIR\\\\config\\\" /grant *S-1-5-32-545:(OI)(CI)M /T'
-  Pop $0
-
   DetailPrint 'Registering the Umbra Host service...'
   nsExec::ExecToLog '\\\"$SYSDIR\\\\cmd.exe\\\" /c \\\"$INSTDIR\\\\scripts\\\\install-service.bat\\\"'
   Pop $0
