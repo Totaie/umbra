@@ -84,6 +84,7 @@ static QString getStartupApplicationDir(const char* argv0)
 #include "gui/computermodel.h"
 #include "gui/appmodel.h"
 #include "backend/autoupdatechecker.h"
+#include "umbraversion.h"
 #include "backend/hostmanager.h"
 #include "backend/computermanager.h"
 #include "backend/systemproperties.h"

@@ -25,6 +25,14 @@ MOONLIGHT_NUMERIC_VERSION = $$system($$VERSION_PYTHON $$VERSION_SCRIPT --source-
 isEmpty(MOONLIGHT_VERSION): MOONLIGHT_VERSION = $$cat(version.txt)
 isEmpty(MOONLIGHT_NUMERIC_VERSION): MOONLIGHT_NUMERIC_VERSION = $$cat(version.txt)
 
+# Write the version into a header rather than passing it as -DVERSION_STR. A define
+# changing does not make anything recompile, so objects kept the version they were
+# first built with: the app reported 0.2.1 long after the installer said 0.2.6.
+UMBRA_VERSION_HEADER = $$OUT_PWD/umbraversion.h
+dummy = $$system($$VERSION_PYTHON $$VERSION_SCRIPT --source-root $$VERSION_SOURCE_ROOT --write-header $$shell_quote($$UMBRA_VERSION_HEADER))
+INCLUDEPATH += $$OUT_PWD
+HEADERS += $$UMBRA_VERSION_HEADER
+
 # Precompile QML files to avoid writing qmlcache on portable versions.
 # Since this binds the app against the Qt runtime version, we will only
 # do this for Windows and Mac (when disable-prebuilts is not defined),
@@ -663,4 +671,4 @@ macx {
 }
 
 VERSION = "$$MOONLIGHT_NUMERIC_VERSION"
-DEFINES += VERSION_STR=\\\"$$MOONLIGHT_VERSION\\\"
+# VERSION_STR now comes from umbraversion.h, generated above.

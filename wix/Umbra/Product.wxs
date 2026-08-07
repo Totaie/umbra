@@ -19,6 +19,24 @@
 
     <Property Id="APPDATAFOLDER" Value="%LOCALAPPDATA%\Umbra Project" />
 
+    <!-- Close a running Umbra before replacing its files.
+         Windows Installer would otherwise either put the update behind a reboot or
+         raise a files-in-use prompt, and reinstalling over a running copy looked like
+         it had worked while leaving the old binaries in place. Ask politely first via
+         the close message; TerminateProcess is the fallback for a window that will not
+         close itself, so the install always proceeds without a reboot.
+
+         Umbra spawns a second process per extra display for multi-monitor streaming,
+         and every one of them holds the same executable open, so this has to match all
+         of them - which targeting the image name does. -->
+    <util:CloseApplication Id="CloseUmbraClient"
+                           Target="Umbra.exe"
+                           Description="Umbra is running and needs to close before it can be updated."
+                           CloseMessage="yes"
+                           TerminateProcess="0"
+                           RebootPrompt="no"
+                           PromptToContinue="no" />
+
     <!-- There's no way to delete a registry key on uninstall but not major upgrade, so
         we have to roll our own deletion via custom action -->
     <CustomAction Id="DeleteRegistryKey"

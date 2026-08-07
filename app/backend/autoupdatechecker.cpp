@@ -1,4 +1,5 @@
 #include "autoupdatechecker.h"
+#include "umbraversion.h"
 #include "portableupdateinstaller.h"
 #include "path.h"
 

@@ -27,11 +27,17 @@
             <Richedit Name="EulaRichedit" X="11" Y="80" Width="-11" Height="-70" TabStop="yes" FontId="0" HexStyle="800000" />
             <Checkbox Name="EulaAcceptCheckbox" X="-11" Y="-41" Width="260" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">#(loc.InstallAcceptCheckbox)</Checkbox>
             <Button Name="InstallUpdateButton" X="11" Y="-11" Width="200" Height="23" TabStop="yes" FontId="0" EnableCondition="WixStdBAUpdateAvailable" HideWhenDisabled="yes">#(loc.UpdateButton)</Button>
-            <Button Name="OptionsButton" X="-171" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0" VisibleCondition="NOT WixStdBASuppressOptionsUI">
-                <Text>#(loc.InstallOptionsButton)</Text>
+
+            <!-- Options is a step in the sequence rather than a button tucked beside
+                 Install, so the install location and the host checkbox are seen rather
+                 than discovered. This button only navigates; the real InstallButton
+                 lives on the Options page, and WixStdBA keeps that one disabled until
+                 the licence is accepted, so nothing can be installed by skipping past
+                 this page. -->
+            <Button Name="LicenseNextButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
+                <Text>Next</Text>
                 <ChangePageAction Page="Options" />
             </Button>
-            <Button Name="InstallButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">#(loc.InstallInstallButton)</Button>
             <Button Name="InstallCancelButton" X="-11" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
                 <Text>#(loc.InstallCancelButton)</Text>
                 <CloseWindowAction />
@@ -56,13 +62,20 @@
                  Checked by default; see InstallHostCheckbox in Bundle.wxs. -->
             <Checkbox Name="InstallHostCheckbox" X="11" Y="200" Width="400" Height="17" TabStop="yes" FontId="3" HideWhenDisabled="yes">Also install the Umbra host, so this PC can be streamed from</Checkbox>
 
-            <Button Name="OptionsOkButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
-                <Text>#(loc.OptionsOkButton)</Text>
+            <!-- Back returns to the licence without discarding what was chosen here;
+                 Cancel on this page used to do that and was the only way out. -->
+            <Button Name="OptionsBackButton" X="-171" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
+                <Text>Back</Text>
                 <ChangePageAction Page="Install" />
             </Button>
+
+            <!-- The name is what matters: WixStdBA starts the install from the control
+                 called InstallButton, and gates it on the licence checkbox. -->
+            <Button Name="InstallButton" X="-91" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">#(loc.InstallInstallButton)</Button>
+
             <Button Name="OptionsCancelButton" X="-11" Y="-11" Width="75" Height="23" TabStop="yes" FontId="0">
-                <Text>#(loc.OptionsCancelButton)</Text>
-                <ChangePageAction Page="Install" Cancel="yes" />
+                <Text>#(loc.InstallCancelButton)</Text>
+                <CloseWindowAction />
             </Button>
         </Page>
         <Page Name="Progress">

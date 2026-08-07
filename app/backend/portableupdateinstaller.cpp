@@ -1,4 +1,5 @@
 #include "portableupdateinstaller.h"
+#include "umbraversion.h"
 #include "path.h"
 
 #include <QCoreApplication>

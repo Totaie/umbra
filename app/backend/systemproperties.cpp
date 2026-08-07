@@ -1,4 +1,5 @@
 #include "systemproperties.h"
+#include "umbraversion.h"
 #include "utils.h"
 
 #include <QGuiApplication>
