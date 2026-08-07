@@ -8,6 +8,11 @@
 #include <QUrl>
 #include <QtDebug>
 
+#ifdef Q_OS_WIN32
+#include <windows.h>
+#include <shellapi.h>
+#endif
+
 // The host serves its web interface on the base port + 1. Both are the host's
 // defaults; a host reconfigured onto another port has to be opened by hand.
 #define HOST_WEB_UI_PORT 47990
@@ -35,8 +40,22 @@ HostManager::HostManager(QObject* parent)
         }
         else if (m_WaitTimer.elapsed() >= HOST_STARTUP_TIMEOUT_MS) {
             m_PollTimer.stop();
-            fail(tr("Umbra Host was started but its web interface has not come up yet. "
-                    "Try again in a moment."));
+
+            // Distinguish the two ways this ends up here, because the fixes are
+            // completely different. No service at all means the install didn't
+            // finish its job and reinstalling is the answer; a registered service
+            // that never binds is a host-side failure worth reading the log for.
+            if (m_ServiceExists) {
+                fail(tr("The Umbra Host service is registered but nothing is answering on "
+                        "port %1. Check the host's log at "
+                        "%2\\config\\sunshine.log.")
+                     .arg(HOST_WEB_UI_PORT)
+                     .arg(QFileInfo(findHostExecutable()).absolutePath()));
+            }
+            else {
+                fail(tr("Umbra Host is installed but not registered as a service, so it "
+                        "can't start on its own. Reinstall Umbra Host to register it."));
+            }
         }
     });
 }
@@ -149,14 +168,12 @@ void HostManager::queryService()
         process->disconnect(this);
         process->deleteLater();
 
-        if (exitCode == 0) {
-            startService();
-        }
-        else {
-            // No service registered, so this is a portable or user-mode install.
-            if (launchExecutable()) {
-                beginWaitingForHost();
-            }
+        m_ServiceExists = (exitCode == 0);
+
+        // With a service, start that; without one, run the host directly. Either
+        // way a single UAC prompt follows, and then we wait for it to bind.
+        if (m_ServiceExists ? startService() : launchExecutable()) {
+            beginWaitingForHost();
         }
     });
     connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError) {
@@ -176,43 +193,59 @@ void HostManager::queryService()
 #endif
 }
 
-void HostManager::startService()
+bool HostManager::runElevated(const QString& program, const QString& arguments,
+                              const QString& workingDirectory)
 {
 #ifdef Q_OS_WIN32
-    // Prefer the service. It runs with the privileges the host needs for input
-    // injection and display changes, which a process we spawn would not inherit.
-    auto* process = new QProcess(this);
-    m_Process = process;
+    // QProcess cannot elevate, so this goes through ShellExecuteEx with the runas
+    // verb. The UAC prompt is the honest thing to show: the user asked to start
+    // something that captures their screen and injects input.
+    SHELLEXECUTEINFOW info = {};
+    info.cbSize = sizeof(info);
+    info.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI;
+    info.lpVerb = L"runas";
+    info.lpFile = reinterpret_cast<LPCWSTR>(program.utf16());
+    info.lpParameters = arguments.isEmpty() ? nullptr
+                                            : reinterpret_cast<LPCWSTR>(arguments.utf16());
+    info.lpDirectory = workingDirectory.isEmpty()
+                           ? nullptr
+                           : reinterpret_cast<LPCWSTR>(workingDirectory.utf16());
+    info.nShow = SW_SHOWNORMAL;
 
-    connect(process, &QProcess::finished, this, [this, process](int exitCode, QProcess::ExitStatus) {
-        process->disconnect(this);
-        process->deleteLater();
-
-        // Exit code 2 is "the service is already running", which is a success here.
-        if (exitCode == 0 || exitCode == 2) {
-            beginWaitingForHost();
-            return;
+    if (!ShellExecuteExW(&info)) {
+        DWORD error = GetLastError();
+        if (error == ERROR_CANCELLED) {
+            // The user dismissed the prompt. That's a decision, not a fault.
+            fail(tr("Umbra Host needs administrator permission to start."));
         }
-
-        // Starting a service needs elevation. Fall back to the executable, which
-        // asks for it via its own manifest.
-        qInfo() << "Could not start" << HOST_SERVICE_NAME << "- exit code" << exitCode
-                << "- falling back to launching the host directly";
-        if (launchExecutable()) {
-            beginWaitingForHost();
+        else {
+            fail(tr("Umbra Host could not be started (Windows error %1).").arg(error));
         }
-    });
-    connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError) {
-        process->disconnect(this);
-        process->deleteLater();
-        if (launchExecutable()) {
-            beginWaitingForHost();
-        }
-    });
+        return false;
+    }
 
-    process->start(QStringLiteral("net.exe"),
-                   {QStringLiteral("start"), QStringLiteral(HOST_SERVICE_NAME)});
+    if (info.hProcess != nullptr) {
+        CloseHandle(info.hProcess);
+    }
+
+    return true;
+#else
+    Q_UNUSED(arguments);
+    if (!QProcess::startDetached(program, {}, workingDirectory)) {
+        fail(tr("Umbra Host could not be started."));
+        return false;
+    }
+    return true;
 #endif
+}
+
+bool HostManager::startService()
+{
+    // net.exe rather than sc.exe because it waits for the service to finish
+    // starting instead of returning the moment the request is queued.
+    return runElevated(QStringLiteral("net.exe"),
+                       QStringLiteral("start ") + QStringLiteral(HOST_SERVICE_NAME),
+                       QString());
 }
 
 bool HostManager::launchExecutable()
@@ -223,14 +256,11 @@ bool HostManager::launchExecutable()
         return false;
     }
 
-    // Detached, so the host outlives Umbra. The working directory is the install
-    // folder because the host loads its web assets relative to itself.
-    if (!QProcess::startDetached(executable, {}, QFileInfo(executable).absolutePath())) {
-        fail(tr("Umbra Host could not be started. Try starting it from the Start menu."));
-        return false;
-    }
-
-    return true;
+    // --shortcut is what the Start menu entry passes: it puts the host in the tray
+    // rather than leaving a console window behind. The working directory is the
+    // install folder because the host loads its web assets relative to itself.
+    return runElevated(executable, QStringLiteral("--shortcut"),
+                       QFileInfo(executable).absolutePath());
 }
 
 void HostManager::beginWaitingForHost()

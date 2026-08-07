@@ -953,7 +953,7 @@ bool Session::initialize(QQuickWindow* qtWindow)
 
     // SDL reads this hint when the video subsystem initializes. Configure it for
     // each session so preference changes take effect on the next stream without
-    // restarting Moonlight. This hint makes sens only on macOS currently.
+    // restarting Umbra. This hint makes sens only on macOS currently.
     bool nativeTouchpadEnabled = m_Preferences->enableNativeTouchpad;
     SDL_SetHint(SDL_HINT_TRACKPAD_IS_TOUCH_ONLY, nativeTouchpadEnabled ? "1" : "0");
 
@@ -1349,7 +1349,7 @@ void Session::emitLaunchWarning(QString text)
 bool Session::validateLaunch(SDL_Window* testWindow)
 {
     if (!m_Computer->isSupportedServerVersion) {
-        emit displayLaunchError(tr("The version of GeForce Experience on %1 is not supported by this build of Moonlight. You must update Moonlight to stream from %1.").arg(m_Computer->name));
+        emit displayLaunchError(tr("The version of GeForce Experience on %1 is not supported by this build of Umbra. You must update Umbra to stream from %1.").arg(m_Computer->name));
         return false;
     }
 
@@ -1367,7 +1367,7 @@ bool Session::validateLaunch(SDL_Window* testWindow)
                 emitLaunchWarning(tr("Your host software or GPU doesn't support encoding AV1."));
             }
 
-            // Moonlight-common-c will handle this case already, but we want
+            // Umbra-common-c will handle this case already, but we want
             // to set this explicitly here so we can do our hardware acceleration
             // check below.
             m_SupportedVideoFormats.removeByMask(VIDEO_FORMAT_MASK_AV1);
@@ -1397,7 +1397,7 @@ bool Session::validateLaunch(SDL_Window* testWindow)
                 emitLaunchWarning(tr("Your host PC doesn't support encoding HEVC."));
             }
 
-            // Moonlight-common-c will handle this case already, but we want
+            // Umbra-common-c will handle this case already, but we want
             // to set this explicitly here so we can do our hardware acceleration
             // check below.
             m_SupportedVideoFormats.removeByMask(VIDEO_FORMAT_MASK_H265);
@@ -1578,7 +1578,7 @@ bool Session::validateLaunch(SDL_Window* testWindow)
 
     // Check for unmapped gamepads
     if (!SdlInputHandler::getUnmappedGamepads().isEmpty()) {
-        emitLaunchWarning(tr("An attached gamepad has no mapping and won't be usable. Visit the Moonlight help to resolve this."));
+        emitLaunchWarning(tr("An attached gamepad has no mapping and won't be usable. Visit the Umbra help to resolve this."));
     }
 
     // If we removed all codecs with the checks above, use H.264 as the codec of last resort.
@@ -2671,7 +2671,7 @@ void Session::cleanupFileMappingMount()
 
 void Session::startFileMappingSmokeProbe()
 {
-    if (qEnvironmentVariableIntValue("MOONLIGHT_FILE_MAPPING_SMOKE") == 0) {
+    if (qEnvironmentVariableIntValue("UMBRA_FILE_MAPPING_SMOKE") == 0) {
         return;
     }
 
@@ -2681,17 +2681,17 @@ void Session::startFileMappingSmokeProbe()
         return;
     }
 
-    const QString mappingId = QString::fromLocal8Bit(qgetenv("MOONLIGHT_FILE_MAPPING_SMOKE_MAPPING")).trimmed();
-    const QString path = QString::fromLocal8Bit(qgetenv("MOONLIGHT_FILE_MAPPING_SMOKE_PATH")).trimmed();
+    const QString mappingId = QString::fromLocal8Bit(qgetenv("UMBRA_FILE_MAPPING_SMOKE_MAPPING")).trimmed();
+    const QString path = QString::fromLocal8Bit(qgetenv("UMBRA_FILE_MAPPING_SMOKE_PATH")).trimmed();
     if (mappingId.isEmpty() || path.isEmpty()) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "File mapping smoke skipped: set MOONLIGHT_FILE_MAPPING_SMOKE_MAPPING and MOONLIGHT_FILE_MAPPING_SMOKE_PATH");
+                    "File mapping smoke skipped: set UMBRA_FILE_MAPPING_SMOKE_MAPPING and UMBRA_FILE_MAPPING_SMOKE_PATH");
         return;
     }
 
-    const int timeoutMs = readBoundedEnvInt("MOONLIGHT_FILE_MAPPING_SMOKE_TIMEOUT_MS", 5000, 1000, 60000);
-    const int offset = readBoundedEnvInt("MOONLIGHT_FILE_MAPPING_SMOKE_OFFSET", 0, 0, 1024 * 1024 * 1024);
-    const int length = readBoundedEnvInt("MOONLIGHT_FILE_MAPPING_SMOKE_LENGTH", 4096, 1, 1024 * 1024);
+    const int timeoutMs = readBoundedEnvInt("UMBRA_FILE_MAPPING_SMOKE_TIMEOUT_MS", 5000, 1000, 60000);
+    const int offset = readBoundedEnvInt("UMBRA_FILE_MAPPING_SMOKE_OFFSET", 0, 0, 1024 * 1024 * 1024);
+    const int length = readBoundedEnvInt("UMBRA_FILE_MAPPING_SMOKE_LENGTH", 4096, 1, 1024 * 1024);
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "Starting file mapping smoke probe: mapping=%s path=%s",
@@ -3466,7 +3466,7 @@ void Session::exec()
     // We always want a resizable window with High DPI enabled
     Uint32 defaultWindowFlags = SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
 
-    // If we're starting in windowed mode and the Moonlight GUI is maximized or
+    // If we're starting in windowed mode and the Umbra GUI is maximized or
     // minimized, match that with the streaming window.
     if (!m_IsFullScreen && m_QtWindow != nullptr) {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
@@ -3493,7 +3493,7 @@ void Session::exec()
 #ifdef Q_OS_DARWIN
     std::string windowName = QString(m_Computer->name).toStdString();
 #else
-    std::string windowName = QString(m_Computer->name + " - Moonlight").toStdString();
+    std::string windowName = QString(m_Computer->name + " - Umbra").toStdString();
 #endif
 
     m_Window = SDL_CreateWindow(windowName.c_str(),

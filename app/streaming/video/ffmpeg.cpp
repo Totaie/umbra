@@ -114,7 +114,7 @@ int FFmpegVideoDecoder::getDecoderCapabilities()
         }
         else if (m_HwDecodeCfg == nullptr) {
             // Note: This is NOT an exhaustive list of all decoders
-            // that Moonlight could pick. It will pick any working
+            // that Umbra could pick. It will pick any working
             // decoder that matches the codec ID and outputs one of
             // the pixel formats that we have a renderer for.
             static const QMap<QString, int> nonHwaccelCodecInfo = {

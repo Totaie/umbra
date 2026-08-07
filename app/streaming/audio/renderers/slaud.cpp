@@ -47,7 +47,7 @@ bool SLAudioRenderer::prepareForPlayback(const OPUS_MULTISTREAM_CONFIGURATION* o
 void SLAudioRenderer::remapChannels(POPUS_MULTISTREAM_CONFIGURATION opusConfig) {
     OPUS_MULTISTREAM_CONFIGURATION originalConfig = *opusConfig;
 
-    // The Moonlight's default channel order is FL,FR,C,LFE,RL,RR,SL,SR
+    // The Umbra's default channel order is FL,FR,C,LFE,RL,RR,SL,SR
     // SLAudio expects FL,C,FR,RL,RR,(SL,SR),LFE for 5.1/7.1 so we swap the channels around to match
 
     if (opusConfig->channelCount == 3 || opusConfig->channelCount >= 6) {

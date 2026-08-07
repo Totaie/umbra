@@ -30,7 +30,7 @@ SLVideoDecoder::~SLVideoDecoder()
     if (m_VideoContext != nullptr) {
         if (session != nullptr && m_ViewportWidth != 0 && m_ViewportHeight != 0) {
             // HACK: Fix the overlay that Qt uses to render otherwise the GUI will
-            // be squished into an overlay the size of what Moonlight used.
+            // be squished into an overlay the size of what Umbra used.
             CSLVideoOverlay* hackOverlay = SLVideo_CreateOverlay(m_VideoContext, m_ViewportWidth, m_ViewportHeight);
 
             // Quickly show and hide the overlay to flush the overlay changes to the display hardware

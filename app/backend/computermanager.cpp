@@ -832,7 +832,7 @@ private:
 
                 if (m_ComputerManager->m_Prefs->detectNetworkBlocking) {
                     // We failed to connect to the specified PC. Let's test to make sure this network
-                    // isn't blocking Moonlight, so we can tell the user about it.
+                    // isn't blocking Umbra, so we can tell the user about it.
                     portTestResult = LiTestClientConnectivity("qt.conntest.moonlight-stream.org", 443,
                                                               ML_PORT_FLAG_TCP_47984 | ML_PORT_FLAG_TCP_47989);
                 }

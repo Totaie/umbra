@@ -58,12 +58,12 @@ public:
             error = !capability.error.isEmpty();
             detail = error ? QObject::tr("Error") : QObject::tr("Not shared");
             message = capability.error.isEmpty()
-                    ? QObject::tr("No host folders are shared. On the host PC, right-click a folder and share it with Moonlight.")
+                    ? QObject::tr("No host folders are shared. On the host PC, right-click a folder and share it with Umbra.")
                     : QObject::tr("Host file sharing could not be checked: %1").arg(capability.error);
         }
         else if (!capability.enabled) {
             detail = QObject::tr("Not shared");
-            message = QObject::tr("No host folders are shared. On the host PC, right-click a folder and share it with Moonlight.");
+            message = QObject::tr("No host folders are shared. On the host PC, right-click a folder and share it with Umbra.");
         }
         else if (!capability.listening || capability.port == 0) {
             error = true;
@@ -157,7 +157,7 @@ public:
         }
         else if (!capability.enabled) {
             detail = QObject::tr("Not shared");
-            message = QObject::tr("No host folders are shared. On the host PC, right-click a folder and share it with Moonlight.");
+            message = QObject::tr("No host folders are shared. On the host PC, right-click a folder and share it with Umbra.");
         }
         else if (!capability.listening || capability.port == 0) {
             detail = QObject::tr("Starting");
@@ -283,12 +283,12 @@ QString diagnosticsDirectory()
     if (base.isEmpty()) {
         base = QDir::tempPath();
     }
-    return QDir(base).filePath(QStringLiteral("Moonlight Host Files"));
+    return QDir(base).filePath(QStringLiteral("Umbra Host Files"));
 }
 
 QString diagnosticsPath()
 {
-    return QDir(diagnosticsDirectory()).filePath(QStringLiteral("Moonlight File Mapping Diagnostics.log"));
+    return QDir(diagnosticsDirectory()).filePath(QStringLiteral("Umbra File Mapping Diagnostics.log"));
 }
 
 QString appendDiagnostic(const QString& event,

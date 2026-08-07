@@ -101,7 +101,7 @@ bool SdlAudioRenderer::submitAudio(int bytesWritten)
     }
 
     // Don't queue if there's already more than 30 ms of audio data waiting
-    // in Moonlight's audio queue.
+    // in Umbra's audio queue.
     if (LiGetPendingAudioDuration() > 30) {
         return true;
     }

@@ -230,7 +230,7 @@ QString ClipboardHelperClient::findHelperExecutable() const
     const QString helperName = QStringLiteral("moonlight-clipboard-helper");
 #endif
 
-    QString envPath = QString::fromLocal8Bit(qgetenv("MOONLIGHT_CLIPBOARD_HELPER"));
+    QString envPath = QString::fromLocal8Bit(qgetenv("UMBRA_CLIPBOARD_HELPER"));
     if (!envPath.isEmpty() && QFileInfo::exists(envPath)) {
         return envPath;
     }

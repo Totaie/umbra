@@ -490,8 +490,8 @@ int main(int argc, char *argv[])
     // These also ensure that our cache directory is named correctly. As such,
     // it is critical that these be called before Path::initialize().
     // NB: These control where QSettings stores our configuration. They intentionally
-    // differ from Moonlight's so Umbra keeps its own settings and can be installed
-    // alongside an existing Moonlight.
+    // differ from Umbra's so Umbra keeps its own settings and can be installed
+    // alongside an existing Umbra.
     QCoreApplication::setOrganizationName("Umbra Project");
     QCoreApplication::setOrganizationDomain("totaie.github.io");
     QCoreApplication::setApplicationName("Umbra");
@@ -615,7 +615,7 @@ int main(int argc, char *argv[])
 
             if (!QFile("/dev/dri").exists()) {
                 qWarning() << "Unable to find a KMSDRM display device!";
-                qWarning() << "On the Raspberry Pi, you must enable the 'fake KMS' driver in raspi-config to use Moonlight outside of the GUI environment.";
+                qWarning() << "On the Raspberry Pi, you must enable the 'fake KMS' driver in raspi-config to use Umbra outside of the GUI environment.";
             }
             else if (!qEnvironmentVariableIsSet("QT_QPA_EGLFS_KMS_CONFIG")) {
                 // HACK: Remove this when Qt is fixed to properly check for display support before picking a card
@@ -682,7 +682,7 @@ int main(int argc, char *argv[])
     if (!qEnvironmentVariableIsSet("QT_OPENGL")) {
         // On Windows, use ANGLE so we don't have to load OpenGL
         // user-mode drivers into our app. OGL drivers (especially Intel)
-        // seem to crash Moonlight far more often than DirectX.
+        // seem to crash Umbra far more often than DirectX.
         qputenv("QT_OPENGL", "angle");
     }
 #endif
@@ -764,7 +764,7 @@ int main(int argc, char *argv[])
     atexit(SDL_Quit);
 
     // Avoid the default behavior of changing the timer resolution to 1 ms.
-    // We don't want this all the time that Moonlight is open. We will set
+    // We don't want this all the time that Umbra is open. We will set
     // it manually when we start streaming.
     SDL_SetHint(SDL_HINT_TIMER_RESOLUTION, "0");
 
@@ -773,7 +773,7 @@ int main(int argc, char *argv[])
 
     // SDL 2.0.12 changes the default behavior to use the button label rather than the button
     // position as most other software does. Set this back to 0 to stay consistent with prior
-    // releases of Moonlight.
+    // releases of Umbra.
     SDL_SetHint(SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS, "0");
 
     // Disable relative mouse scaling to renderer size or logical DPI. We want to send
@@ -1002,9 +1002,9 @@ int main(int argc, char *argv[])
 #endif
 
     // This is necessary to show our icon correctly on Wayland
-    app.setDesktopFileName("com.moonlight_stream.Moonlight");
-    qputenv("SDL_VIDEO_WAYLAND_WMCLASS", "com.moonlight_stream.Moonlight");
-    qputenv("SDL_VIDEO_X11_WMCLASS", "com.moonlight_stream.Moonlight");
+    app.setDesktopFileName("com.moonlight_stream.Umbra");
+    qputenv("SDL_VIDEO_WAYLAND_WMCLASS", "com.moonlight_stream.Umbra");
+    qputenv("SDL_VIDEO_X11_WMCLASS", "com.moonlight_stream.Umbra");
 
     // Register our C++ types for QML
     qmlRegisterType<ComputerModel>("ComputerModel", 1, 0, "ComputerModel");

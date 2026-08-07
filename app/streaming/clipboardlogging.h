@@ -9,7 +9,7 @@ namespace ClipboardLog {
 
 inline bool debugEnabled()
 {
-    return qEnvironmentVariableIntValue("MOONLIGHT_CLIPBOARD_HELPER_DEBUG") != 0;
+    return qEnvironmentVariableIntValue("UMBRA_CLIPBOARD_HELPER_DEBUG") != 0;
 }
 
 inline void write(const char* level, const char* format, va_list args)

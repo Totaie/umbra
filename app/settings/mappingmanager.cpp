@@ -16,7 +16,7 @@ MappingManager::MappingManager()
 {
     QSettings settings;
 
-    // Load updated mappings from the Internet once per Moonlight launch
+    // Load updated mappings from the Internet once per Umbra launch
     if (s_MappingFetcher == nullptr) {
         s_MappingFetcher = new MappingFetcher();
         s_MappingFetcher->start();

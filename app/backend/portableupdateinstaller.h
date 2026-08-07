@@ -33,7 +33,7 @@ private slots:
 private:
     bool isPortableInstall() const;
     bool isBundleInstall() const;
-    // macOS：当前运行的 Moonlight.app 的路径，取不到（比如没在 bundle 里跑）时为空
+    // macOS：当前运行的 Umbra.app 的路径，取不到（比如没在 bundle 里跑）时为空
     QString getInstalledBundlePath() const;
     QString getUpdateArchiveName() const;
     QString getUpdateArchiveSuffix() const;
@@ -43,7 +43,7 @@ private:
     bool ensureWritableInstallDir(QString& errorMessage) const;
     QString createPortableUpdateWorkspace() const;
     QString materializePortableUpdateScript(const QString& workspace) const;
-    // macOS：挂载 DMG、把里面的 Moonlight.app 拷进工作目录、清掉隔离属性
+    // macOS：挂载 DMG、把里面的 Umbra.app 拷进工作目录、清掉隔离属性
     bool stageMacUpdateBundle(const QString& archivePath,
                               QString& stagedBundlePath,
                               QString& errorMessage);

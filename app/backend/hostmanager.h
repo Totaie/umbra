@@ -56,14 +56,23 @@ private:
     // Absolute path to the host executable, or an empty string if not installed.
     QString findHostExecutable();
 
-    // Asks the service control manager whether our service exists.
+    // Asks the service control manager whether our service exists. Read-only, so
+    // this is the one step that doesn't need administrator rights.
     void queryService();
 
-    // Runs `net start`, which needs elevation and may therefore fail.
-    void startService();
+    // Starts the registered service.
+    bool startService();
 
     // Launches the host executable directly, for installs with no service.
     bool launchExecutable();
+
+    // Runs a program elevated and waits for the UAC decision. Returns false and
+    // reports the reason on failure. Everything that starts the host goes through
+    // here: the host writes its configuration under Program Files, so it cannot
+    // run at all without administrator rights, and starting a service needs them
+    // regardless.
+    bool runElevated(const QString& program, const QString& arguments,
+                     const QString& workingDirectory);
 
     // Polls until the web interface answers, then opens it.
     void beginWaitingForHost();
@@ -74,6 +83,9 @@ private:
 
     QString m_CachedExecutable;
     bool m_Busy = false;
+    // Whether the service control manager knows about our service. Decides what
+    // to tell the user when the host never comes up.
+    bool m_ServiceExists = false;
     QPointer<QProcess> m_Process;
     QTimer m_PollTimer;
     QElapsedTimer m_WaitTimer;

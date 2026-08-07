@@ -167,7 +167,7 @@ void OverlayMenuPanel::buildMenuLevels()
     // === Level 1: Quick Actions (keyboard shortcuts) ===
     MenuLevel shortcuts;
     shortcuts.title = tr("Quick Actions");
-    shortcuts.items.push_back({tr("Quit Moonlight"),      "Ctrl+Alt+Shift+E", MenuItemType::Action,
+    shortcuts.items.push_back({tr("Quit Umbra"),      "Ctrl+Alt+Shift+E", MenuItemType::Action,
                                MenuAction::QuitAndExit,           0, true, false, true});
     shortcuts.items.push_back({tr("Performance Stats"),   "Ctrl+Alt+Shift+S", MenuItemType::Action,
                                MenuAction::ToggleStatsOverlay,    0, true, false, true});

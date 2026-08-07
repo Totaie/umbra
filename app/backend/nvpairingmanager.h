@@ -26,7 +26,7 @@ public:
     // When passphrase is non-empty it is used as the pairing secret instead of the
     // PIN, and the host is asked to authorise the pairing from it directly, so
     // nothing has to be entered on the host. Falls back to the PIN flow when empty,
-    // which is what every other Moonlight client does.
+    // which is what every other Umbra client does.
     pair(QString appVersion, QString pin, QSslCertificate& serverCert,
          QString passphrase = QString());
 

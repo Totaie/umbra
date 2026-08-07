@@ -88,7 +88,7 @@ FocusScope {
 
     Component.onDestruction: {
         // Also save preferences on destruction, since we won't get a
-        // deactivating callback if the user just closes Moonlight
+        // deactivating callback if the user just closes Umbra
         StreamingPreferences.save()
     }
 

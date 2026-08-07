@@ -122,7 +122,7 @@ bool VDPAURenderer::initialize(PDECODER_PARAMETERS params)
         return false;
     }
     else if (qgetenv("VDPAU_XWAYLAND") != "1" && WMUtils::isRunningWayland()) {
-        // VDPAU initialization causes Moonlight to crash when using XWayland in a Flatpak
+        // VDPAU initialization causes Umbra to crash when using XWayland in a Flatpak
         // on a system with the Nvidia 495.44 driver. VDPAU won't work under XWayland anyway,
         // so let's not risk trying it (unless the user wants to roll the dice).
         // https://gitlab.freedesktop.org/vdpau/libvdpau/-/issues/2

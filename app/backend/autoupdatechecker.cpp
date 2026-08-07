@@ -32,7 +32,7 @@ AutoUpdateChecker::AutoUpdateChecker(QObject *parent) :
             this, &AutoUpdateChecker::handleUpdateCheckRequestFinished);
 
     QString currentVersion(VERSION_STR);
-    qDebug() << "Current Moonlight version:" << currentVersion;
+    qDebug() << "Current Umbra version:" << currentVersion;
     parseStringToVersionQuad(currentVersion, m_CurrentVersionQuad);
 
     // Should at least have a 1.0-style version number
@@ -102,7 +102,7 @@ void AutoUpdateChecker::start()
 
     // GitHub API requires a User-Agent header
     request.setHeader(QNetworkRequest::UserAgentHeader,
-                      QString("Moonlight/%1").arg(VERSION_STR));
+                      QString("Umbra/%1").arg(VERSION_STR));
     // Request JSON response
     request.setRawHeader("Accept", "application/vnd.github+json");
 
@@ -151,12 +151,12 @@ void AutoUpdateChecker::parseStringToVersionQuad(const QString& string, QVector<
 QString AutoUpdateChecker::getPreferredAssetSuffix() const
 {
 #if defined(Q_OS_DARWIN)
-    // CI 出的 DMG 现在带架构后缀（Moonlight-<版本>-arm64.dmg）。
+    // CI 出的 DMG 现在带架构后缀（Umbra-<版本>-arm64.dmg）。
     // QSysInfo::buildCpuArchitecture() 给的是 arm64 / x86_64，和 generate-dmg.sh
-    // 里的 MOONLIGHT_ARCH 用词一致。
+    // 里的 UMBRA_ARCH 用词一致。
     //
     // 只是「优先」而不是「必须」：这个后缀是从某个版本才开始有的，旧 release 里是
-    // Moonlight-<版本>.dmg。匹配不到就退回任意 .dmg，否则老版本的用户会看到
+    // Umbra-<版本>.dmg。匹配不到就退回任意 .dmg，否则老版本的用户会看到
     // 「找不到更新包」。
     return QStringLiteral("-") + QSysInfo::buildCpuArchitecture() + QStringLiteral(".dmg");
 #else

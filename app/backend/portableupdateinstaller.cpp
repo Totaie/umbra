@@ -120,7 +120,7 @@ void PortableUpdateInstaller::installUpdate(const QString& url, const QString& e
 
     QNetworkRequest request(downloadUrl);
     request.setHeader(QNetworkRequest::UserAgentHeader,
-                      QString("Moonlight/%1").arg(VERSION_STR));
+                      QString("Umbra/%1").arg(VERSION_STR));
     request.setRawHeader("Accept", "application/octet-stream");
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
@@ -159,7 +159,7 @@ bool PortableUpdateInstaller::isBundleInstall() const
 QString PortableUpdateInstaller::getInstalledBundlePath() const
 {
 #if defined(Q_OS_DARWIN)
-    // 可执行文件在 Moonlight.app/Contents/MacOS/Moonlight，往上两级就是 bundle 本身
+    // 可执行文件在 Umbra.app/Contents/MacOS/Umbra，往上两级就是 bundle 本身
     QDir dir(QCoreApplication::applicationDirPath());
     if (!dir.cdUp() || !dir.cdUp()) {
         return QString();
@@ -233,7 +233,7 @@ bool PortableUpdateInstaller::ensureWritableInstallDir(QString& errorMessage) co
     probeFile.setAutoRemove(true);
 
     if (!probeFile.open()) {
-        errorMessage = tr("The current Moonlight folder is not writable. Move Moonlight to a writable location, run it with sufficient permissions, or download and install the update manually.");
+        errorMessage = tr("The current Umbra folder is not writable. Move Umbra to a writable location, run it with sufficient permissions, or download and install the update manually.");
         return false;
     }
 
@@ -242,7 +242,7 @@ bool PortableUpdateInstaller::ensureWritableInstallDir(QString& errorMessage) co
 #elif defined(Q_OS_DARWIN)
     QString bundlePath = getInstalledBundlePath();
     if (bundlePath.isEmpty()) {
-        errorMessage = tr("In-app update requires running Moonlight from an app bundle.");
+        errorMessage = tr("In-app update requires running Umbra from an app bundle.");
         return false;
     }
 
@@ -254,7 +254,7 @@ bool PortableUpdateInstaller::ensureWritableInstallDir(QString& errorMessage) co
     probeFile.setAutoRemove(true);
 
     if (!probeFile.open()) {
-        errorMessage = tr("Moonlight is installed in a folder you can't write to. Move it to your "
+        errorMessage = tr("Umbra is installed in a folder you can't write to. Move it to your "
                           "Applications folder, or download and install the update manually.");
         return false;
     }
@@ -440,7 +440,7 @@ bool PortableUpdateInstaller::stageMacUpdateBundle(const QString& archivePath,
 {
 #if defined(Q_OS_DARWIN)
     // 这几步是同步的，界面会卡住一两秒（ditto 一个 200MB 的 bundle）。放在这里而不是
-    // 丢给后面那个 detached 脚本，是为了让「DMG 打不开」「里面没有 Moonlight.app」
+    // 丢给后面那个 detached 脚本，是为了让「DMG 打不开」「里面没有 Umbra.app」
     // 这类失败还能弹回对话框 —— 脚本是在进程退出之后才跑的，那时候没人能看到错误。
     QString mountPoint = QDir(m_PortableUpdateWorkspace).filePath(QStringLiteral("mnt"));
     if (!QDir().mkpath(mountPoint)) {
@@ -449,7 +449,7 @@ bool PortableUpdateInstaller::stageMacUpdateBundle(const QString& archivePath,
     }
 
     // 挂到我们自己的目录下：-nobrowse 不在访达里露出来，也不会和用户手动挂载的
-    // 同名卷抢 /Volumes/Moonlight 这个位置。
+    // 同名卷抢 /Volumes/Umbra 这个位置。
     if (!runTool(QStringLiteral("/usr/bin/hdiutil"),
                  { QStringLiteral("attach"), archivePath,
                    QStringLiteral("-nobrowse"), QStringLiteral("-noautoopen"),
@@ -461,11 +461,11 @@ bool PortableUpdateInstaller::stageMacUpdateBundle(const QString& archivePath,
     }
 
     bool staged = false;
-    QString bundleInImage = QDir(mountPoint).filePath(QStringLiteral("Moonlight.app"));
-    QString stagedBundle = QDir(m_PortableUpdateWorkspace).filePath(QStringLiteral("Moonlight.app"));
+    QString bundleInImage = QDir(mountPoint).filePath(QStringLiteral("Umbra.app"));
+    QString stagedBundle = QDir(m_PortableUpdateWorkspace).filePath(QStringLiteral("Umbra.app"));
 
     if (!QFileInfo(bundleInImage).isDir()) {
-        errorMessage = tr("The downloaded disk image does not contain Moonlight.");
+        errorMessage = tr("The downloaded disk image does not contain Umbra.");
     }
     // 用 ditto 而不是 cp -R：它保留扩展属性、符号链接和 bundle 的元数据，
     // 少了这些代码签名会直接失效。
@@ -672,7 +672,7 @@ void PortableUpdateInstaller::handlePortableUpdateDownloadFinished()
         return;
     }
 
-    emit onPortableUpdateStatusChanged(tr("Installing update and restarting Moonlight..."));
+    emit onPortableUpdateStatusChanged(tr("Installing update and restarting Umbra..."));
 
     if (m_UpdateReply != nullptr) {
         m_UpdateReply->deleteLater();

@@ -124,7 +124,7 @@ VAAPIRenderer::openDisplay(SDL_Window* window)
         }
 #else
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "Moonlight not compiled with VAAPI X11 support!");
+                     "Umbra not compiled with VAAPI X11 support!");
         return nullptr;
 #endif
     }
@@ -138,7 +138,7 @@ VAAPIRenderer::openDisplay(SDL_Window* window)
         }
 #else
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "Moonlight not compiled with VAAPI Wayland support!");
+                     "Umbra not compiled with VAAPI Wayland support!");
         return nullptr;
 #endif
     }
