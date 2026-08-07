@@ -80,7 +80,27 @@ rem ---------------------------------------------------------------------------
 rem Fetch the host installer chained by the bundle
 rem ---------------------------------------------------------------------------
 if "%WITH_HOST%"=="1" (
-    if not exist "%BUILD_ROOT%\host\UmbraHostSetup.exe" (
+    rem The cache is only usable if it holds the newest host release. Keying it on
+    rem the file existing was enough to make a release ship a months-old host with
+    rem no warning, so the tag that was downloaded is compared against the tag that
+    rem is current. A failed lookup (offline, gh not logged in) falls back to the
+    rem cache rather than blocking the build.
+    set HOST_CACHE_TAG=
+    if exist "%BUILD_ROOT%\host\TAG.txt" (
+        for /f "usebackq delims=" %%t in ("%BUILD_ROOT%\host\TAG.txt") do set HOST_CACHE_TAG=%%t
+    )
+
+    set HOST_LATEST_TAG=
+    for /f "usebackq delims=" %%t in (`gh release list --repo Totaie/umbra-host --limit 1 --json tagName --jq ".[0].tagName" 2^>nul`) do (
+        if not defined HOST_LATEST_TAG set HOST_LATEST_TAG=%%t
+    )
+
+    set FETCH_HOST=0
+    if not exist "%BUILD_ROOT%\host\UmbraHostSetup.exe" set FETCH_HOST=1
+    if not "!HOST_LATEST_TAG!"=="" if not "!HOST_CACHE_TAG!"=="!HOST_LATEST_TAG!" set FETCH_HOST=1
+
+    if "!FETCH_HOST!"=="1" (
+        if not "!HOST_CACHE_TAG!"=="" echo Cached host is !HOST_CACHE_TAG!, newest is !HOST_LATEST_TAG!.
         echo Fetching Umbra host installer...
         call "%SOURCE_ROOT%\scripts\fetch-host.bat"
         if !ERRORLEVEL! NEQ 0 (
@@ -89,7 +109,7 @@ if "%WITH_HOST%"=="1" (
             exit /b 1
         )
     ) else (
-        echo Using cached host installer at %BUILD_ROOT%\host\UmbraHostSetup.exe
+        echo Using cached !HOST_CACHE_TAG! host installer at %BUILD_ROOT%\host\UmbraHostSetup.exe
     )
 )
 

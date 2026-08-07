@@ -90,9 +90,15 @@ for /f "usebackq skip=1 tokens=*" %%h in (`certutil -hashfile "%OUT_FILE%" SHA25
     if not defined SHA set SHA=%%h
 )
 
+rem Record which release this is. umbra-installer.bat reads it so it can tell a
+rem usable cache from a stale one; without it the cache is keyed on the file merely
+rem existing, and the bundle keeps shipping whichever host was downloaded first.
+> "%OUT_DIR%\TAG.txt" echo !TAG!
+
 echo.
 echo Host installer ready:
 echo   %OUT_FILE%
+echo   !TAG!
 echo   !ACTUAL_SIZE! bytes
 echo   sha256 !SHA!
 exit /b 0
