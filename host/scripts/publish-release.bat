@@ -107,6 +107,34 @@ set ASSET_NAME=UmbraHostSetup-%ARCH%-!VERSION!.exe
 set ASSET=%SOURCE_ROOT%\build\cpack_artifacts\!ASSET_NAME!
 copy /y "!PACKAGE!" "!ASSET!" >nul
 
+rem ---------------------------------------------------------------------------
+rem Refuse to publish something the local antivirus already objects to.
+rem
+rem v0.2.1 shipped an installer that Windows Defender quarantines on download, and
+rem nothing in the build said so - it was only noticed when the client's bundle
+rem build failed days later. An unsigned installer that registers a service is
+rem near the line for heuristics, so this is worth checking every time rather than
+rem discovering it from a user.
+rem
+rem -DisableRemediation means we get a verdict without the file being taken away
+rem mid-publish. A missing MpCmdRun (non-Defender machine) skips the check.
+rem ---------------------------------------------------------------------------
+set MPCMDRUN=%ProgramFiles%\Windows Defender\MpCmdRun.exe
+if exist "!MPCMDRUN!" (
+    echo Scanning the installer before publishing...
+    "!MPCMDRUN!" -Scan -ScanType 3 -File "!ASSET!" -DisableRemediation >nul 2>&1
+    if !ERRORLEVEL! EQU 2 (
+        echo.
+        echo REFUSING TO PUBLISH: Windows Defender flags !ASSET_NAME!.
+        echo Run this to see the detection:
+        echo   "!MPCMDRUN!" -Scan -ScanType 3 -File "!ASSET!" -DisableRemediation
+        exit /b 1
+    )
+    echo   clean
+) else (
+    echo Windows Defender not found; skipping the pre-publish scan.
+)
+
 for %%f in ("!ASSET!") do set ASSET_SIZE=%%~zf
 set SHA=
 for /f "usebackq skip=1 tokens=*" %%h in (`certutil -hashfile "!ASSET!" SHA256`) do (
