@@ -66,7 +66,7 @@ rem Run the sc command to create/reconfigure the service
 sc %SC_CMD% %SERVICE_NAME% binPath= "\"%SERVICE_BIN%\"" start= %SERVICE_START_TYPE% DisplayName= "Umbra Host Service"
 
 rem Set the description of the service
-sc description %SERVICE_NAME% "Apollo is a self-hosted game stream host for Moonlight."
+sc description %SERVICE_NAME% "Umbra Host lets other devices connect to this PC with Umbra."
 
 rem Start the new service
 net start %SERVICE_NAME%

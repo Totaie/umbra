@@ -255,6 +255,59 @@ set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}\\\\umbra.ico")
 # Match the legacy NSIS layout by installing under Apollo
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Umbra Host")
 
+# ---------------------------------------------------------------------------
+# NSIS post-install
+#
+# Upstream's Windows installer is the WiX MSI, and everything that makes an
+# install actually work - registering the service, opening the firewall, making
+# the config directory writable - lives in its custom actions. We ship NSIS
+# instead, because CPack's WIX generator needs the WiX 3 toolchain and this fork
+# builds under MSYS2. Without the steps below NSIS just copies files into Program
+# Files: no service is registered, nothing listens on 47989, and running
+# sunshine.exe by hand fails with "cannot create directories: Permission denied"
+# because it writes its config next to itself.
+#
+# NSIS runs elevated (it installs under Program Files), so these run as admin.
+# Each is allowed to fail without failing the install: a host that's up but not
+# firewalled is recoverable, an install that rolls back is more annoying.
+# ---------------------------------------------------------------------------
+set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+  ; The service runs as SYSTEM and can write here; a user launching sunshine.exe
+  ; directly cannot, unless we grant it. Users is deliberate rather than
+  ; Everyone: it excludes anonymous logons and guests.
+  CreateDirectory '$INSTDIR\\\\config'
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\icacls.exe\\\" \\\"$INSTDIR\\\\config\\\" /grant *S-1-5-32-545:(OI)(CI)M /T'
+  Pop $0
+
+  DetailPrint 'Registering the Umbra Host service...'
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\cmd.exe\\\" /c \\\"$INSTDIR\\\\scripts\\\\install-service.bat\\\"'
+  Pop $0
+  DetailPrint 'install-service.bat returned $0'
+
+  DetailPrint 'Adding firewall rules...'
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\cmd.exe\\\" /c \\\"$INSTDIR\\\\scripts\\\\add-firewall-rule.bat\\\"'
+  Pop $0
+
+  ; The host tells users not to run sunshine.exe by hand, so give them the
+  ; supported way in. --shortcut is what the WiX shortcut passes too.
+  CreateDirectory '$SMPROGRAMS\\\\Umbra Host'
+  CreateShortCut '$SMPROGRAMS\\\\Umbra Host\\\\Umbra Host.lnk' '$INSTDIR\\\\sunshine.exe' '--shortcut' '$INSTDIR\\\\sunshine.exe' 0
+  CreateShortCut '$SMPROGRAMS\\\\Umbra Host\\\\Umbra Host Web Interface.lnk' 'https://localhost:47990'
+")
+
+set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
+  DetailPrint 'Removing the Umbra Host service...'
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\cmd.exe\\\" /c \\\"$INSTDIR\\\\scripts\\\\uninstall-service.bat\\\"'
+  Pop $0
+
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\cmd.exe\\\" /c \\\"$INSTDIR\\\\scripts\\\\delete-firewall-rule.bat\\\"'
+  Pop $0
+
+  Delete '$SMPROGRAMS\\\\Umbra Host\\\\Umbra Host.lnk'
+  Delete '$SMPROGRAMS\\\\Umbra Host\\\\Umbra Host Web Interface.lnk'
+  RMDir '$SMPROGRAMS\\\\Umbra Host'
+")
+
 # Setting components groups and dependencies
 set(CPACK_COMPONENT_GROUP_CORE_EXPANDED true)
 set(CPACK_COMPONENT_GROUP_THIRDPARTY_DISPLAY_NAME "Third Party")
