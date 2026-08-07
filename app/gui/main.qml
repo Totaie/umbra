@@ -6,6 +6,7 @@ import QtQuick.Controls.Material as MaterialStyle
 
 import ComputerManager 1.0
 import AutoUpdateChecker 1.0
+import HostManager 1.0
 import StreamingPreferences 1.0
 import SystemProperties 1.0
 import SdlGamepadKeyNavigation 1.0
@@ -622,6 +623,38 @@ ApplicationWindow {
             }
 
             NavigableToolButton {
+                id: hostWebUiButton
+
+                // Only useful when this PC is also a host. Umbra bundles the host, so
+                // that's the common case, but a client-only install shouldn't show a
+                // button that can only fail.
+                visible: SystemProperties.hasBrowser && HostManager.isHostInstalled()
+                enabled: !HostManager.busy
+
+                iconSource: "qrc:/res/fluent/tb-host-web.svg"
+
+                ToolTip.delay: 1000
+                ToolTip.timeout: 5000
+                ToolTip.visible: hovered
+                ToolTip.text: HostManager.busy
+                              ? qsTr("Starting Umbra Host…")
+                              : qsTr("Open this PC's Umbra Host settings in a browser")
+
+                onClicked: HostManager.openHostWebUi()
+
+                Component.onCompleted: {
+                    HostManager.webUiFailed.connect(function(error) {
+                        hostWebUiErrorDialog.text = error
+                        hostWebUiErrorDialog.open()
+                    })
+                }
+
+                Keys.onDownPressed: {
+                    stackView.currentItem.forceActiveFocus(Qt.TabFocusReason)
+                }
+            }
+
+            NavigableToolButton {
                 id: helpButton
                 visible: SystemProperties.hasBrowser
 
@@ -790,6 +823,11 @@ ApplicationWindow {
 
     ErrorMessageDialog {
         id: portableUpdateErrorDialog
+        text: ""
+    }
+
+    ErrorMessageDialog {
+        id: hostWebUiErrorDialog
         text: ""
     }
 

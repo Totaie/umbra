@@ -44,6 +44,20 @@ public:
 
     Q_INVOKABLE void renameComputer(int computerIndex, QString name);
 
+    // Pairing passphrase: a long secret configured on the host that lets us pair
+    // without anyone having to type a PIN at the other end.
+    Q_INVOKABLE void setPairingPassphrase(int computerIndex, QString passphrase);
+
+    Q_INVOKABLE bool hasPairingPassphrase(int computerIndex) const;
+
+    // How many screens this PC has. Used to size the multi-display launcher.
+    Q_INVOKABLE int getClientScreenCount() const;
+
+    // Streams one host display onto each of this PC's screens after the first,
+    // by launching an extra Umbra process per screen. Returns an error message,
+    // or an empty string on success.
+    Q_INVOKABLE QString launchAdditionalDisplays(int computerIndex, QString appName);
+
     Q_INVOKABLE Session* createSessionForCurrentGame(int computerIndex);
 
     Q_INVOKABLE QVariantList getConnectionAddressesForComputer(int computerIndex) const;

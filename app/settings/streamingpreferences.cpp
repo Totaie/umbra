@@ -62,6 +62,9 @@
 #define SER_REVERSESCROLL "reversescroll"
 #define SER_SWAPFACEBUTTONS "swapfacebuttons"
 #define SER_CAPTURESYSKEYS "capturesyskeys"
+#define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
+#define SER_CLIENTSIDECURSOR "clientsidecursor"
+#define SER_PREFERREDHOSTDISPLAY "preferredhostdisplay"
 #define SER_KEEPAWAKE "keepawake"
 #define SER_LANGUAGE "language"
 #define SER_CUSTOMSCREENMODE "customscreenmode"
@@ -212,8 +215,20 @@ void StreamingPreferences::reload()
     hdrMaxBrightness = settings.value(SER_HDRMAXBRIGHTNESS, 1000.0).toDouble();
     hdrMinBrightness = settings.value(SER_HDRMINBRIGHTNESS, 0.001).toDouble();
     hdrMaxAverageBrightness = settings.value(SER_HDRMAXAVERAGEBRIGHTNESS, 1000.0).toDouble();
+    // Umbra defaults this on. Without it the host never receives the Meta key or
+    // combos like Win+Tab, so pressing Windows opens the *client's* Start menu.
+    // Fullscreen rather than always, so system keys aren't taken over while windowed.
     captureSysKeysMode = static_cast<CaptureSysKeysMode>(settings.value(SER_CAPTURESYSKEYS,
-                                                         static_cast<int>(CaptureSysKeysMode::CSK_OFF)).toInt());
+                                                         static_cast<int>(CaptureSysKeysMode::CSK_FULLSCREEN)).toInt());
+
+    // Umbra is desktop-oriented: selecting a PC goes straight to its desktop rather
+    // than stopping at the app grid. The full list stays on the PC's context menu.
+    directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
+    clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
+    preferredHostDisplay = settings.value(SER_PREFERREDHOSTDISPLAY, 0).toInt();
+    // Runtime-only, set by --client-screen for multi-display children. Never persisted,
+    // so a one-off launch can't strand the window on a monitor that isn't there.
+    clientScreenIndex = -1;
     audioConfig = static_cast<AudioConfig>(settings.value(SER_AUDIOCFG,
                                                   static_cast<int>(AudioConfig::AC_STEREO)).toInt());
     videoCodecConfig = static_cast<VideoCodecConfig>(settings.value(SER_VIDEOCFG,
@@ -440,6 +455,9 @@ void StreamingPreferences::save()
     settings.setValue(SER_REVERSESCROLL, reverseScrollDirection);
     settings.setValue(SER_SWAPFACEBUTTONS, swapFaceButtons);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
+    settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
+    settings.setValue(SER_CLIENTSIDECURSOR, clientSideCursor);
+    settings.setValue(SER_PREFERREDHOSTDISPLAY, preferredHostDisplay);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
     settings.setValue(SER_CUSTOMSCREENMODE, customScreenMode);
     settings.setValue(SER_CUSTOMVDDSCREENMODE, customVddScreenMode);

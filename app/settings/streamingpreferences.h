@@ -211,6 +211,10 @@ public:
     Q_PROPERTY(bool swapFaceButtons MEMBER swapFaceButtons NOTIFY swapFaceButtonsChanged)
     Q_PROPERTY(bool keepAwake MEMBER keepAwake NOTIFY keepAwakeChanged)
     Q_PROPERTY(CaptureSysKeysMode captureSysKeysMode MEMBER captureSysKeysMode NOTIFY captureSysKeysModeChanged)
+    Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY umbraSettingsChanged)
+    Q_PROPERTY(bool clientSideCursor MEMBER clientSideCursor NOTIFY umbraSettingsChanged)
+    Q_PROPERTY(int preferredHostDisplay MEMBER preferredHostDisplay NOTIFY umbraSettingsChanged)
+    Q_PROPERTY(int clientScreenIndex MEMBER clientScreenIndex NOTIFY umbraSettingsChanged)
     Q_PROPERTY(Language language MEMBER language NOTIFY languageChanged)
     Q_PROPERTY(int customScreenMode MEMBER customScreenMode NOTIFY customScreenModeChanged)
     Q_PROPERTY(int customVddScreenMode MEMBER customVddScreenMode NOTIFY customVddScreenModeChanged)
@@ -277,6 +281,13 @@ public:
     UIDisplayMode uiDisplayMode;
     Language language;
     CaptureSysKeysMode captureSysKeysMode;
+    bool directConnectDesktop;
+    // Draw the cursor locally rather than letting the host composite it into video.
+    bool clientSideCursor;
+    // 0 means leave the host on whatever display it is already capturing.
+    int preferredHostDisplay;
+    // Which of this PC's screens to put the stream on. -1 follows the Umbra window.
+    int clientScreenIndex;
     int customScreenMode;
     int customVddScreenMode;
     bool enableMicrophone;
@@ -334,6 +345,7 @@ signals:
     void reverseScrollDirectionChanged();
     void swapFaceButtonsChanged();
     void captureSysKeysModeChanged();
+    void umbraSettingsChanged();
     void keepAwakeChanged();
     void languageChanged();
     void customScreenModeChanged();

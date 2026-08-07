@@ -4,6 +4,7 @@ import QtQuick.Window 2.2
 
 import SdlGamepadKeyNavigation 1.0
 import Session 1.0
+import StreamingPreferences 1.0
 import SystemProperties 1.0
 
 import "theme"
@@ -350,6 +351,15 @@ Item {
 
                 // Allow an extra 500 ms for the tooltip's fade-out animation to finish
                 startSessionTimer.interval = toast.timeout + 500;
+            }
+
+            // Umbra is used as a remote desktop, where a connection that takes three
+            // and a half seconds to appear feels broken. The warnings are still shown
+            // and still logged, we just don't hold the session back waiting for them
+            // to fade. Only when the app grid has been skipped, so anyone deliberately
+            // browsing apps still gets the full-length warning.
+            if (StreamingPreferences.directConnectDesktop) {
+                startSessionTimer.interval = 0
             }
 
             // Start the timer to wait for toasts (or start the session immediately)

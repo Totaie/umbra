@@ -84,6 +84,7 @@ static QString getStartupApplicationDir(const char* argv0)
 #include "gui/computermodel.h"
 #include "gui/appmodel.h"
 #include "backend/autoupdatechecker.h"
+#include "backend/hostmanager.h"
 #include "backend/computermanager.h"
 #include "backend/systemproperties.h"
 #include "streaming/session.h"
@@ -1034,6 +1035,11 @@ int main(int argc, char *argv[])
                                                    [](QQmlEngine* qmlEngine, QJSEngine*) -> QObject* {
                                                        return StreamingPreferences::get(qmlEngine);
                                                    });
+    qmlRegisterSingletonType<HostManager>("HostManager", 1, 0,
+                                          "HostManager",
+                                          [](QQmlEngine*, QJSEngine*) -> QObject* {
+                                              return new HostManager();
+                                          });
     qmlRegisterType<ImageUtils>("ImageUtils", 1, 0, "ImageUtils");
 
     // Create the identity manager on the main thread

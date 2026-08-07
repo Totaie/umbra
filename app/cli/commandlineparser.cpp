@@ -352,6 +352,8 @@ void StreamCommandLineParser::parse(const QStringList &args, StreamingPreference
     parser.addValueOption("fps", "FPS");
     parser.addValueOption("bitrate", "bitrate in Kbps");
     parser.addValueOption("packet-size", "video packet size");
+    parser.addValueOption("host-display", "host display to capture (1-based)");
+    parser.addValueOption("client-screen", "screen on this PC to stream to (1-based)");
     parser.addChoiceOption("display-mode", "display mode", m_WindowModeMap.keys());
     parser.addChoiceOption("audio-config", "audio config", m_AudioConfigMap.keys());
     parser.addToggleOption("multi-controller", "multiple controller support");
@@ -515,6 +517,16 @@ void StreamCommandLineParser::parse(const QStringList &args, StreamingPreference
     // Resolve --video-codec option
     if (parser.isSet("video-codec")) {
         preferences->videoCodecConfig = mapValue(m_VideoCodecMap, parser.getChoiceOptionValue("video-codec"));
+    }
+
+    // Umbra's multi-display launcher passes these to each child process. They are
+    // 1-based on the command line to match how both Windows and the host's web UI
+    // number displays, and are stored 0-based.
+    if (parser.isSet("host-display")) {
+        preferences->preferredHostDisplay = parser.getIntOption("host-display");
+    }
+    if (parser.isSet("client-screen")) {
+        preferences->clientScreenIndex = parser.getIntOption("client-screen") - 1;
     }
 
     // Resolve --video-decoder option

@@ -14,6 +14,11 @@ public:
     explicit AutoUpdateChecker(QObject *parent = nullptr);
 
     Q_INVOKABLE void start();
+
+    // A user-initiated check. Unlike start(), this always reports an outcome —
+    // silence is fine for the automatic check at launch, but a button the user
+    // pressed has to say something back.
+    Q_INVOKABLE void checkNow();
     Q_INVOKABLE bool supportsInAppUpdate() const;
     Q_INVOKABLE void installUpdate(QString url);
 
@@ -21,6 +26,10 @@ signals:
     void onUpdateAvailable(QString newVersion, QString url);
     void onPortableUpdateStatusChanged(QString message);
     void onPortableUpdateFailed(QString message);
+
+    // Only emitted for checkNow().
+    void onUpToDate();
+    void onCheckFailed(QString message);
 
 private slots:
     void handleUpdateCheckRequestFinished(QNetworkReply* reply);
@@ -36,6 +45,10 @@ private:
     // 同一个后缀里再优先挑本机架构的那个资产（macOS 的 DMG 带 -arm64 / -x86_64）
     QString getPreferredAssetSuffix() const;
     QString getCurrentBuildArch() const;
+
+    // Set while a user-initiated check is in flight, so the reply handler knows
+    // whether to report "you're up to date" or stay quiet.
+    bool m_ManualCheck = false;
 
     QVector<int> m_CurrentVersionQuad;
     QNetworkAccessManager* m_Nam;

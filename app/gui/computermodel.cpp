@@ -1,4 +1,8 @@
 #include "computermodel.h"
+#include <QCoreApplication>
+#include <QProcess>
+#include <QScreen>
+#include <QGuiApplication>
 #include "appmodel.h"
 #include "backend/nvcomputer.h"
 
@@ -261,6 +265,71 @@ void ComputerModel::renameComputer(int computerIndex, QString name)
     Q_ASSERT(computerIndex < m_Computers.count());
 
     m_ComputerManager->renameHost(m_Computers[computerIndex], name);
+}
+
+void ComputerModel::setPairingPassphrase(int computerIndex, QString passphrase)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+
+    m_ComputerManager->setHostPairingPassphrase(m_Computers[computerIndex], passphrase);
+}
+
+bool ComputerModel::hasPairingPassphrase(int computerIndex) const
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+
+    QReadLocker lock(&m_Computers[computerIndex]->lock);
+    return !m_Computers[computerIndex]->pairingPassphrase.isEmpty();
+}
+
+int ComputerModel::getClientScreenCount() const
+{
+    return QGuiApplication::screens().count();
+}
+
+QString ComputerModel::launchAdditionalDisplays(int computerIndex, QString appName)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+
+    const int screenCount = getClientScreenCount();
+    if (screenCount < 2) {
+        return tr("This PC only has one screen, so there's nowhere to put a second display.");
+    }
+
+    QString uuid;
+    {
+        QReadLocker lock(&m_Computers[computerIndex]->lock);
+        uuid = m_Computers[computerIndex]->uuid;
+    }
+
+    // moonlight-common-c keeps its connection state in file-scope statics, so a
+    // process can only ever hold one stream open. Additional displays therefore have
+    // to be additional processes rather than additional sessions.
+    //
+    // Screen 1 keeps the session this process is about to start, so the children
+    // cover screens 2..n, each pulling the matching host display.
+    int launched = 0;
+    for (int screen = 2; screen <= screenCount; screen++) {
+        QStringList args;
+        args << QStringLiteral("stream")
+             << uuid
+             << appName
+             << QStringLiteral("--host-display") << QString::number(screen)
+             << QStringLiteral("--client-screen") << QString::number(screen);
+
+        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args)) {
+            qWarning() << "Failed to launch Umbra for client screen" << screen;
+            continue;
+        }
+
+        launched++;
+    }
+
+    if (launched == 0) {
+        return tr("Umbra couldn't start the extra display windows.");
+    }
+
+    return QString();
 }
 
 QString ComputerModel::generatePinString()

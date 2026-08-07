@@ -235,6 +235,7 @@ SOURCES += \
     streaming/bwtracker.cpp \
     streaming/streamutils.cpp \
     backend/autoupdatechecker.cpp \
+    backend/hostmanager.cpp \
     backend/portableupdateinstaller.cpp \
     path.cpp \
     settings/mappingmanager.cpp \
@@ -287,6 +288,7 @@ HEADERS += \
     streaming/bwtracker.h \
     streaming/streamutils.h \
     backend/autoupdatechecker.h \
+    backend/hostmanager.h \
     backend/portableupdateinstaller.h \
     path.h \
     settings/mappingmanager.h \

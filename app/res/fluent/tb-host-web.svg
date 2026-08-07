@@ -1,0 +1,9 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- A server rack with a globe on it: the host, opened in a browser. Traced on the
+     same 24x24 grid and 1.5px stroke weight as the other tb-*.svg icons. -->
+<path d="M4.25 3h15.5A2.25 2.25 0 0 1 22 5.25v3.5A2.25 2.25 0 0 1 19.75 11H4.25A2.25 2.25 0 0 1 2 8.75v-3.5A2.25 2.25 0 0 1 4.25 3Zm0 1.5a.75.75 0 0 0-.75.75v3.5c0 .414.336.75.75.75h15.5a.75.75 0 0 0 .75-.75v-3.5a.75.75 0 0 0-.75-.75H4.25Z" fill="#FFFFFF"/>
+<path d="M5.75 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" fill="#FFFFFF"/>
+<path d="M12 12.5a5.25 5.25 0 1 1 0 10.5 5.25 5.25 0 0 1 0-10.5Zm0 1.5a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5Z" fill="#FFFFFF"/>
+<path d="M12 12.5c1.243 0 2.25 2.35 2.25 5.25S13.243 23 12 23s-2.25-2.35-2.25-5.25S10.757 12.5 12 12.5Zm0 1.5c-.29 0-.75 1.35-.75 3.75s.46 3.75.75 3.75.75-1.35.75-3.75S12.29 14 12 14Z" fill="#FFFFFF"/>
+<path d="M7.15 15.5h9.7a.75.75 0 0 1 0 1.5h-9.7a.75.75 0 0 1 0-1.5Zm0 3h9.7a.75.75 0 0 1 0 1.5h-9.7a.75.75 0 0 1 0-1.5Z" fill="#FFFFFF"/>
+</svg>

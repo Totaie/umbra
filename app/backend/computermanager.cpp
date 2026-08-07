@@ -549,6 +549,18 @@ void ComputerManager::deleteHost(NvComputer* computer)
     QThreadPool::globalInstance()->start(new DeferredHostDeletionTask(this, computer));
 }
 
+void ComputerManager::setHostPairingPassphrase(NvComputer* computer, QString passphrase)
+{
+    {
+        QWriteLocker lock(&computer->lock);
+        computer->pairingPassphrase = passphrase.trimmed();
+    }
+
+    // Persist immediately. The passphrase is what makes pairing one-click, and losing
+    // it because the app didn't exit cleanly would be an unpleasant surprise.
+    saveHost(computer);
+}
+
 void ComputerManager::renameHost(NvComputer* computer, QString name)
 {
     {
@@ -602,7 +614,13 @@ private:
         NvPairingManager pairingManager(m_Computer);
 
         try {
-           NvPairingManager::PairState result = pairingManager.pair(m_Computer->appVersion, m_Pin, m_Computer->serverCert);
+           QString passphrase;
+           {
+               QReadLocker lock(&m_Computer->lock);
+               passphrase = m_Computer->pairingPassphrase;
+           }
+
+           NvPairingManager::PairState result = pairingManager.pair(m_Computer->appVersion, m_Pin, m_Computer->serverCert, passphrase);
            switch (result)
            {
            case NvPairingManager::PairState::PIN_WRONG:

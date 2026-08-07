@@ -6,6 +6,7 @@ import ".."
 import "../theme"
 
 import StreamingPreferences 1.0
+import AutoUpdateChecker 1.0
 import ComputerManager 1.0
 import SdlGamepadKeyNavigation 1.0
 import SystemProperties 1.0
@@ -605,7 +606,46 @@ Column {
                     ToolTip.delay: 1000
                     ToolTip.timeout: 5000
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Check for new versions of Moonlight when the app starts.")
+                    ToolTip.text: qsTr("Check for new versions of Umbra when the app starts.")
+                }
+
+                RowLayout {
+                    width: parent.width
+                    spacing: 12
+
+                    HardButton {
+                        id: checkForUpdatesButton
+                        text: qsTr("Check for Updates Now")
+                        font.pointSize: 12
+
+                        onClicked: {
+                            updateCheckStatus.text = qsTr("Checking…")
+                            AutoUpdateChecker.checkNow()
+                        }
+                    }
+
+                    Label {
+                        id: updateCheckStatus
+                        Layout.fillWidth: true
+                        text: ""
+                        font.pointSize: 12
+                        color: Theme.textDim
+                        wrapMode: Text.Wrap
+                    }
+
+                    Component.onCompleted: {
+                        // An update being available already opens the toolbar's update
+                        // dialog, so only the two quiet outcomes need reporting here.
+                        AutoUpdateChecker.onUpToDate.connect(function() {
+                            updateCheckStatus.text = qsTr("Umbra %1 is up to date.").arg(SystemProperties.versionString)
+                        })
+                        AutoUpdateChecker.onCheckFailed.connect(function(message) {
+                            updateCheckStatus.text = message
+                        })
+                        AutoUpdateChecker.onUpdateAvailable.connect(function(version) {
+                            updateCheckStatus.text = qsTr("Umbra %1 is available.").arg(version)
+                        })
+                    }
                 }
 
                 Label {

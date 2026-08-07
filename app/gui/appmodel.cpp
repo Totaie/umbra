@@ -1,4 +1,5 @@
 #include "appmodel.h"
+#include "settings/streamingpreferences.h"
 #include "../backend/nvhttp.h"
 
 #include <QReadLocker>
@@ -95,9 +96,21 @@ QVariantList AppModel::getDisplayList()
 
 int AppModel::getDirectLaunchAppIndex()
 {
+    // An app the user explicitly pinned always wins.
     for (int i = 0; i < m_VisibleApps.count(); i++) {
         if (m_VisibleApps[i].directLaunch) {
             return i;
+        }
+    }
+
+    // Umbra is desktop-oriented: with nothing pinned, go straight to the host's
+    // desktop rather than stopping at the grid to choose between Desktop, Steam Big
+    // Picture and friends. Hosts that publish no Desktop app still show the grid.
+    if (StreamingPreferences::get()->directConnectDesktop) {
+        for (int i = 0; i < m_VisibleApps.count(); i++) {
+            if (m_VisibleApps[i].name.compare(QLatin1String("Desktop"), Qt::CaseInsensitive) == 0) {
+                return i;
+            }
         }
     }
 

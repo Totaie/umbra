@@ -130,6 +130,10 @@ public:
     QSslCertificate serverCert;
     QVector<NvApp> appList;
     bool isNvidiaServerSoftware;
+
+    // Persistent pairing passphrase configured on this host. When set, Umbra pairs
+    // with it directly and nothing has to be entered on the host.
+    QString pairingPassphrase;
     // Remember to update isEqualSerialized() when adding fields here!
 
     // Synchronization

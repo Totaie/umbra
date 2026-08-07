@@ -55,6 +55,30 @@ void AutoUpdateChecker::installUpdate(QString url)
     m_PortableUpdateInstaller->installUpdate(url, expectedDigest);
 }
 
+void AutoUpdateChecker::checkNow()
+{
+    // The reply handler tears the QNetworkAccessManager down after every check so the
+    // bearer plugin stops polling in the background, which means a second check has to
+    // build a new one.
+    if (!m_Nam) {
+        m_Nam = new QNetworkAccessManager(this);
+        m_Nam->setStrictTransportSecurityEnabled(true);
+        m_Nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+        connect(m_Nam, &QNetworkAccessManager::finished,
+                this, &AutoUpdateChecker::handleUpdateCheckRequestFinished);
+    }
+
+    m_ManualCheck = true;
+    start();
+
+#if !defined(Q_OS_WIN32) && !defined(Q_OS_DARWIN) && !defined(STEAM_LINK) && !defined(APP_IMAGE)
+    // start() compiles to nothing on platforms without an update feed, so the button
+    // would otherwise spin forever.
+    m_ManualCheck = false;
+    emit onCheckFailed(tr("Update checking isn't available in this build of Umbra."));
+#endif
+}
+
 void AutoUpdateChecker::start()
 {
     if (!m_Nam) {
@@ -224,6 +248,11 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
     m_Nam->deleteLater();
     m_Nam = nullptr;
 
+    // Consumed once per reply, so the paths below can return without worrying about
+    // leaving a manual check latched on.
+    const bool manualCheck = m_ManualCheck;
+    m_ManualCheck = false;
+
     if (reply->error() == QNetworkReply::NoError) {
         QTextStream stream(reply);
 
@@ -241,11 +270,17 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonString.toUtf8(), &error);
         if (jsonDoc.isNull()) {
             qWarning() << "GitHub release response malformed:" << error.errorString();
+            if (manualCheck) {
+                emit onCheckFailed(tr("The update server sent a response Umbra couldn't read."));
+            }
             return;
         }
 
         if (!jsonDoc.isObject()) {
             qWarning() << "GitHub release response is not a JSON object";
+            if (manualCheck) {
+                emit onCheckFailed(tr("The update server sent a response Umbra couldn't read."));
+            }
             return;
         }
 
@@ -269,11 +304,18 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         // Skip pre-releases and drafts
         if (releaseObj["prerelease"].toBool(false) || releaseObj["draft"].toBool(false)) {
             qDebug() << "Latest GitHub release is a pre-release or draft, skipping";
+            if (manualCheck) {
+                // Not an error: the newest thing published just isn't a stable release.
+                emit onUpToDate();
+            }
             return;
         }
 
         if (!releaseObj.contains("tag_name") || !releaseObj["tag_name"].isString()) {
             qWarning() << "GitHub release missing tag_name";
+            if (manualCheck) {
+                emit onCheckFailed(tr("The update server sent a response Umbra couldn't read."));
+            }
             return;
         }
 
@@ -360,13 +402,31 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         }
         else if (res > 0) {
             qDebug() << "Current version is newer than latest release";
+            if (manualCheck) {
+                emit onUpToDate();
+            }
         }
         else {
             qDebug() << "Current version matches latest release";
+            if (manualCheck) {
+                emit onUpToDate();
+            }
         }
     }
     else {
         qWarning() << "Update checking failed:" << reply->error() << reply->errorString();
+
+        if (manualCheck) {
+            if (reply->error() == QNetworkReply::ContentNotFoundError) {
+                // Nothing published yet, or only prereleases. Not worth an error.
+                emit onUpToDate();
+            }
+            else {
+                emit onCheckFailed(tr("Umbra couldn't reach the update server: %1")
+                                   .arg(reply->errorString()));
+            }
+        }
+
         reply->deleteLater();
     }
 }

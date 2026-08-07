@@ -13,6 +13,68 @@
 #define VK_NUMPAD0 0x60
 #endif
 
+// Left-hand modifier VKEYs, matching what we send for real modifier key presses
+#define VK_LSHIFT_LOCAL 0xA0
+#define VK_LCONTROL_LOCAL 0xA2
+#define VK_LMENU_LOCAL 0xA4
+
+// Host shortcut VKEYs. See apply_shortcut() in the host's src/input.cpp.
+#define VK_HOST_TOGGLE_CURSOR 0x4E  // 'N'
+#define VK_HOST_DISPLAY_FIRST 0x70  // F1 selects display 0, F2 display 1, ...
+#define HOST_MAX_SWITCHABLE_DISPLAYS 13
+
+void SdlInputHandler::sendHostShortcut(short keyCode)
+{
+    // The host only treats a key as a shortcut when Ctrl, Alt and Shift are all held,
+    // and it tracks that from the modifier key events themselves rather than from the
+    // modifier flags on the packet. So the modifiers have to be genuinely pressed and
+    // released around the key instead of just setting the flags.
+    const int allMods = MODIFIER_CTRL | MODIFIER_ALT | MODIFIER_SHIFT;
+
+    LiSendKeyboardEvent(VK_LCONTROL_LOCAL, KEY_ACTION_DOWN, MODIFIER_CTRL);
+    LiSendKeyboardEvent(VK_LMENU_LOCAL, KEY_ACTION_DOWN, MODIFIER_CTRL | MODIFIER_ALT);
+    LiSendKeyboardEvent(VK_LSHIFT_LOCAL, KEY_ACTION_DOWN, allMods);
+
+    LiSendKeyboardEvent(keyCode, KEY_ACTION_DOWN, allMods);
+    LiSendKeyboardEvent(keyCode, KEY_ACTION_UP, allMods);
+
+    LiSendKeyboardEvent(VK_LSHIFT_LOCAL, KEY_ACTION_UP, MODIFIER_CTRL | MODIFIER_ALT);
+    LiSendKeyboardEvent(VK_LMENU_LOCAL, KEY_ACTION_UP, MODIFIER_CTRL);
+    LiSendKeyboardEvent(VK_LCONTROL_LOCAL, KEY_ACTION_UP, 0);
+}
+
+void SdlInputHandler::hideHostCursor()
+{
+    // NB: The host shortcut is a toggle, not a set, and the flag behind it is a
+    // process-wide global that survives across sessions. If something else already
+    // hid the cursor this shows it again; Ctrl+Alt+Shift+N flips it back.
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Asking host to stop drawing its cursor");
+    sendHostShortcut(VK_HOST_TOGGLE_CURSOR);
+}
+
+void SdlInputHandler::switchHostDisplay(int displayIndex)
+{
+    if (displayIndex < 0 || displayIndex >= HOST_MAX_SWITCHABLE_DISPLAYS) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Ignoring out of range host display index: %d", displayIndex);
+        return;
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Switching host to display %d", displayIndex);
+    sendHostShortcut(VK_HOST_DISPLAY_FIRST + displayIndex);
+}
+
+void SdlInputHandler::setLocalCursorVisible(bool visible)
+{
+    m_MouseCursorCapturedVisibilityState = visible ? SDL_ENABLE : SDL_DISABLE;
+
+    // In relative mode the cursor is captured and must stay hidden. Setting the state
+    // is still worthwhile so it applies if the user toggles to absolute mode.
+    if (!SDL_GetRelativeMouseMode()) {
+        SDL_ShowCursor(m_MouseCursorCapturedVisibilityState);
+    }
+}
+
 void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
 {
     switch (combo) {

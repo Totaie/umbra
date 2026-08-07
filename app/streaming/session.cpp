@@ -1702,6 +1702,16 @@ void Session::getWindowDimensions(int& x, int& y,
         displayIndex = SDL_GetWindowDisplayIndex(m_Window);
         SDL_assert(displayIndex >= 0);
     }
+    // --client-screen pins this session to a particular screen. Multi-display
+    // launches use it to put each host display on the screen it belongs to,
+    // instead of stacking every child window wherever the Qt UI happened to be.
+    else if (m_Preferences->clientScreenIndex >= 0 &&
+             m_Preferences->clientScreenIndex < SDL_GetNumVideoDisplays()) {
+        displayIndex = m_Preferences->clientScreenIndex;
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Placing this session on client screen %d as requested",
+                    displayIndex);
+    }
     // Create our window on the same display that Qt's UI
     // was being displayed on.
     else {
@@ -3635,6 +3645,24 @@ void Session::exec()
 
     // Toggle the stats overlay if requested by the user
     m_OverlayManager.setOverlayState(Overlay::OverlayDebug, m_Preferences->showPerformanceOverlay);
+
+    // Apply Umbra's host-side session preferences. Apollo/Sunshine-derived hosts expose
+    // these only as Ctrl+Alt+Shift chords, so we drive them through the input channel.
+    if (m_Preferences->preferredHostDisplay > 0) {
+        // The preference is 1-based so 0 can mean "leave the host alone".
+        m_InputHandler->switchHostDisplay(m_Preferences->preferredHostDisplay - 1);
+    }
+
+    if (m_Preferences->clientSideCursor && m_Preferences->absoluteMouseMode) {
+        // Stop the host compositing its cursor into the video and draw ours instead.
+        // The host's cursor only moves once per encoded frame, which is what makes the
+        // pointer feel laggy; a local cursor has no round trip at all.
+        //
+        // Deliberately before input capture is activated below, because
+        // setCaptureActive() is what actually applies the cursor visibility state.
+        m_InputHandler->hideHostCursor();
+        m_InputHandler->setLocalCursorVisible(true);
+    }
 
     // Initialize mouse state for menu
     m_WasCapturedBeforeMenu = false;

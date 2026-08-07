@@ -242,6 +242,8 @@ public:
 
     void renameHost(NvComputer* computer, QString name);
 
+    void setHostPairingPassphrase(NvComputer* computer, QString passphrase);
+
     void clientSideAttributeUpdated(NvComputer* computer);
 
 signals:

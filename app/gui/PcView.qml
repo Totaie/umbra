@@ -401,6 +401,33 @@ CenteredGridView {
                 }
 
                 NavigableMenuItem {
+                    text: qsTr("Stream to All Screens")
+                    onTriggered: {
+                        var error = computerModel.launchAdditionalDisplays(index, "Desktop")
+                        if (error) {
+                            errorDialog.text = error
+                            errorDialog.helpText = ""
+                            errorDialog.open()
+                        }
+                        else {
+                            // The children cover screens 2..n; this process takes the first.
+                            openAppView(index, model.name, false)
+                        }
+                    }
+                    visible: model.online && model.paired && computerModel.getClientScreenCount() > 1
+                }
+                NavigableMenuItem {
+                    text: computerModel.hasPairingPassphrase(index)
+                          ? qsTr("Change Pairing Token")
+                          : qsTr("Set Pairing Token")
+                    onTriggered: {
+                        pairingTokenDialog.pcIndex = index
+                        pairingTokenDialog.pcName = model.name
+                        pairingTokenDialog.hasToken = computerModel.hasPairingPassphrase(index)
+                        pairingTokenDialog.open()
+                    }
+                }
+                NavigableMenuItem {
                     text: qsTr("Rename PC")
                     onTriggered: {
                         renamePcDialog.pcIndex = index
@@ -436,6 +463,15 @@ CenteredGridView {
                 else if (model.paired) {
                     // Go directly to app view; IP can be changed from there
                     openAppView(index, model.name, false)
+                }
+                else if (computerModel.hasPairingPassphrase(index)) {
+                    // The token is the shared secret, so there's nothing to type on the
+                    // host. Pass a PIN anyway: hosts that don't understand tokens fall
+                    // back to it rather than failing outright.
+                    computerModel.pairComputer(index, computerModel.generatePinString())
+
+                    pairDialog.pin = ""
+                    pairDialog.open()
                 }
                 else {
                     var pin = computerModel.generatePinString()
@@ -492,9 +528,12 @@ CenteredGridView {
         closePolicy: Popup.CloseOnEscape
 
         // don't allow edits to the rest of the window while open
+        // An empty PIN means we're pairing with a token, so there is nothing to enter.
         property string pin : "0000"
-        text:qsTr("Please enter %1 on your host PC. This dialog will close when pairing is completed.").arg(pin)+"\n\n"+
-             qsTr("If your host PC is running Sunshine, navigate to the Sunshine web UI to enter the PIN.")
+        text: pin === ""
+              ? qsTr("Pairing with this PC using its pairing token. This dialog will close when pairing is completed.")
+              : qsTr("Please enter %1 on your host PC. This dialog will close when pairing is completed.").arg(pin)+"\n\n"+
+                qsTr("If your host PC is running Sunshine, navigate to the Sunshine web UI to enter the PIN.")
         standardButtons: DialogButtonBox.Cancel
         onRejected: {
             // FIXME: We should interrupt pairing here
@@ -590,6 +629,72 @@ CenteredGridView {
 
                 Keys.onEnterPressed: {
                     renamePcDialog.accept()
+                }
+            }
+        }
+    }
+
+    NavigableDialog {
+        id: pairingTokenDialog
+
+        property int pcIndex: -1
+        property string pcName
+        property bool hasToken: false
+
+        standardButtons: DialogButtonBox.Ok | DialogButtonBox.Cancel
+
+        onOpened: {
+            tokenText.forceActiveFocus()
+        }
+
+        onClosed: {
+            // Never leave the secret sitting in a text field between uses.
+            tokenText.clear()
+        }
+
+        onAccepted: {
+            // An empty field clears the token and returns this PC to PIN pairing.
+            computerModel.setPairingPassphrase(pcIndex, tokenText.text)
+        }
+
+        ColumnLayout {
+            spacing: 10
+
+            Text {
+                text: qsTr("Pairing token for %1").arg(pairingTokenDialog.pcName)
+                color: Theme.text
+                font.family: Theme.fontSans
+                font.pointSize: Theme.fontRowTitle
+                font.weight: Font.DemiBold
+                Layout.fillWidth: true
+            }
+
+            Text {
+                text: qsTr("Generate a token in the Umbra Host web interface, then paste it here. Umbra will use it instead of a PIN, so pairing needs nothing typed on the host.")
+                color: Theme.textDim
+                font.family: Theme.fontSans
+                font.pointSize: Theme.fontBody
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.maximumWidth: 420
+            }
+
+            HardTextField {
+                id: tokenText
+                Layout.fillWidth: true
+                Layout.minimumWidth: 420
+                focus: true
+                echoMode: TextInput.Password
+                placeholderText: pairingTokenDialog.hasToken
+                                 ? qsTr("A token is set. Type a new one, or leave blank to remove it.")
+                                 : qsTr("Paste the host's pairing token")
+
+                Keys.onReturnPressed: {
+                    pairingTokenDialog.accept()
+                }
+
+                Keys.onEnterPressed: {
+                    pairingTokenDialog.accept()
                 }
             }
         }
