@@ -138,6 +138,30 @@ if not exist "!PACKAGE!" (
     exit /b 1
 )
 
+rem ---------------------------------------------------------------------------
+rem Refuse to ship an installer older than the binary it is supposed to contain.
+rem
+rem v0.2.7 went out as a byte-for-byte copy of v0.2.6 because Windows Defender
+rem quarantined cpack.exe while it was running. cpack died without writing an
+rem installer and without a failing exit code, the build continued, and this script
+rem copied the previous day's package under the new version's name. Nothing anywhere
+rem said so - the release looked perfectly normal, and installing it left the old
+rem host in place.
+rem ---------------------------------------------------------------------------
+for %%f in ("!PACKAGE!") do set PKG_TIME=%%~tf
+for %%f in ("%SOURCE_ROOT%\build\sunshine.exe") do set BIN_TIME=%%~tf
+echo Installer timestamp: !PKG_TIME!
+echo Binary timestamp:    !BIN_TIME!
+
+powershell -NoProfile -Command "exit [int]((Get-Item '!PACKAGE!').LastWriteTime -lt (Get-Item '%SOURCE_ROOT%\build\sunshine.exe').LastWriteTime)"
+if !ERRORLEVEL! EQU 1 (
+    echo.
+    echo REFUSING TO PUBLISH: the installer is older than sunshine.exe, so packaging
+    echo did not run for this build and the installer holds an earlier version.
+    echo Re-run the build and check that cpack produced a new installer.
+    exit /b 1
+)
+
 set TAG=v!VERSION!
 
 set ASSET_NAME=UmbraHostSetup-%ARCH%-!VERSION!.exe

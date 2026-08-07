@@ -143,9 +143,44 @@ fi
 
 if [[ "$DO_PACKAGE" == "1" ]]; then
     echo "Packaging..."
+
+    if ! command -v cpack >/dev/null 2>&1; then
+        echo "ERROR: cpack was not found." >&2
+        echo "       It ships with the MSYS2 cmake package; reinstall with:" >&2
+        echo "         pacman -S mingw-w64-ucrt-x86_64-cmake" >&2
+        echo "       Windows Defender has previously quarantined ucrt64/bin/cpack.exe" >&2
+        echo "       as Trojan:Win32/Bearfoos.A!ml, so also check your quarantine." >&2
+        exit 1
+    fi
+
+    # Record what the package looked like before, so a cpack that starts and then
+    # dies - which is what happened when Defender quarantined cpack.exe mid-run -
+    # cannot pass for success. It exited without writing anything and without a
+    # non-zero status, the build carried on, and the release script shipped the
+    # previous day's installer as a new version.
+    package_before=""
+    if [[ -f "${BUILD_DIR}/cpack_artifacts/UmbraHost.exe" ]]; then
+        package_before=$(stat -c %Y "${BUILD_DIR}/cpack_artifacts/UmbraHost.exe")
+    fi
+
     # NSIS is the installer the Umbra client bundle chains; see scripts/fetch-host.ps1
     # in the client repo.
-    cpack -G NSIS --config "${BUILD_DIR}/CPackConfig.cmake"
+    if ! cpack -G NSIS --config "${BUILD_DIR}/CPackConfig.cmake"; then
+        echo "ERROR: cpack failed." >&2
+        exit 1
+    fi
+
+    if [[ ! -f "${BUILD_DIR}/cpack_artifacts/UmbraHost.exe" ]]; then
+        echo "ERROR: cpack reported success but wrote no installer." >&2
+        exit 1
+    fi
+
+    package_after=$(stat -c %Y "${BUILD_DIR}/cpack_artifacts/UmbraHost.exe")
+    if [[ -n "$package_before" && "$package_after" == "$package_before" ]]; then
+        echo "ERROR: cpack left the previous installer in place - it did not repackage." >&2
+        echo "       Refusing to hand a stale installer to the release script." >&2
+        exit 1
+    fi
 fi
 
 echo
