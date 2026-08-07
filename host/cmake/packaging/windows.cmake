@@ -278,6 +278,49 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "Umbra Host")
 # point is `sunshine.exe --shortcut`, which tolerates a missing config directory
 # and elevates itself when it needs to.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# NSIS pre-install: shut the host down before any files are copied.
+#
+# NSIS cannot overwrite a running executable, and when File fails it carries on
+# and the install still exits 0. Upgrading over a running host therefore left
+# sunshine.exe and tools\sunshinesvc.exe at their old versions while every other
+# file updated, with nothing anywhere saying so. That is how an "0.2.4" install
+# ended up still running the 0.2.1 host.
+#
+# This has to run before the component sections, and CPack's own hooks
+# (EXTRA_PREINSTALL_COMMANDS included) all land inside "-Core installation",
+# which NSIS runs *after* them. CPACK_NSIS_INSTALLATION_TYPES is emitted at file
+# scope immediately above the component sections, so a section declared here is
+# the first one NSIS executes. It's a documented CPack variable and we have no
+# InstType entries of our own, so nothing is being displaced.
+#
+# The leading dash makes the section hidden and always-run. The name has no
+# spaces on purpose: CPack round-trips this value through a CMake list, so spaces
+# come out the other side as semicolons - which NSIS then reads as a comment.
+# ---------------------------------------------------------------------------
+set(CPACK_NSIS_INSTALLATION_TYPES "
+Section -UmbraStopHost
+  DetailPrint 'Stopping Umbra Host before upgrading...'
+
+  ; Stop the service and wait for it, so the file locks are gone before we copy.
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\net.exe\\\" stop UmbraService'
+  Pop $0
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\net.exe\\\" stop ApolloService'
+  Pop $0
+
+  ; The service launches sunshine.exe into the user session, and that copy keeps
+  ; its own handle on the binary after the service is gone.
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\taskkill.exe\\\" /F /IM sunshine.exe /T'
+  Pop $0
+  nsExec::ExecToLog '\\\"$SYSDIR\\\\taskkill.exe\\\" /F /IM sunshinesvc.exe /T'
+  Pop $0
+
+  ; Windows releases the file handles asynchronously after the process dies.
+  Sleep 1500
+SectionEnd
+")
+
 set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
   DetailPrint 'Registering the Umbra Host service...'
   nsExec::ExecToLog '\\\"$SYSDIR\\\\cmd.exe\\\" /c \\\"$INSTDIR\\\\scripts\\\\install-service.bat\\\"'

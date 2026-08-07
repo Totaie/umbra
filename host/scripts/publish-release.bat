@@ -31,16 +31,53 @@ set PRERELEASE=0
 set DRYRUN=0
 set VERSION=
 
+set BUMP=
+
 :parse
 if "%~1"=="" goto parsed
 if /I "%~1"=="prerelease" (set PRERELEASE=1) else (
     if /I "%~1"=="dry-run" (set DRYRUN=1) else (
-        set VERSION=%~1
+        if /I "%~1"=="bump-patch" (set BUMP=patch) else (
+            if /I "%~1"=="bump-minor" (set BUMP=minor) else (
+                if /I "%~1"=="bump-major" (set BUMP=major) else (
+                    set VERSION=%~1
+                )
+            )
+        )
     )
 )
 shift
 goto parse
 :parsed
+
+rem --- version ---------------------------------------------------------------
+rem The host used to take its version only as an argument, so releasing it meant
+rem remembering a number the client bumps for itself. That is exactly how the two
+rem drifted apart, with a 0.2.4 client bundling a 0.2.1 host. version.txt is now
+rem the record, and bump-patch works the same way it does in the client.
+set VERSION_FILE=%SOURCE_ROOT%\version.txt
+
+if not "%BUMP%"=="" (
+    if not exist "%VERSION_FILE%" (
+        echo %VERSION_FILE% is missing; pass an explicit version once to create it.
+        exit /b 1
+    )
+    set /p VERSION=<"%VERSION_FILE%"
+    for /f "tokens=1,2,3 delims=." %%a in ("!VERSION!") do (
+        set MAJOR=%%a
+        set MINOR=%%b
+        set PATCH=%%c
+    )
+    if "!PATCH!"=="" (
+        echo version.txt should hold a three part version like 1.2.3, found '!VERSION!'.
+        exit /b 1
+    )
+    if "%BUMP%"=="major" set /a MAJOR=!MAJOR!+1 & set MINOR=0 & set PATCH=0
+    if "%BUMP%"=="minor" set /a MINOR=!MINOR!+1 & set PATCH=0
+    if "%BUMP%"=="patch" set /a PATCH=!PATCH!+1
+    set VERSION=!MAJOR!.!MINOR!.!PATCH!
+    echo Version bumped to !VERSION!
+)
 
 if "%VERSION%"=="" (
     echo Usage: scripts\publish-release.bat ^<version^> [prerelease] [dry-run]
@@ -183,5 +220,9 @@ if !ERRORLEVEL! NEQ 0 (
 del /q "!NOTES!" 2>nul
 
 echo.
+rem Record it only after a successful publish, so a failed run does not skip a
+rem version number.
+<nul set /p="!VERSION!" > "%VERSION_FILE%"
+
 echo Published !TAG!
 exit /b 0
