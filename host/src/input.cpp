@@ -303,6 +303,18 @@ namespace input {
       case 0x4E /* VKEY_N */:
         display_cursor = !display_cursor;
         return 1;
+
+      // Set, rather than toggle. display_cursor outlives the session, so a client
+      // asking with N can never know which way it left things - reconnect after a
+      // crash, or ask twice, and the host is drawing its pointer again underneath the
+      // one the client is drawing itself. A client that wants it off says so.
+      case 0x4F /* VKEY_O */:
+        display_cursor = false;
+        return 1;
+
+      case 0x50 /* VKEY_P */:
+        display_cursor = true;
+        return 1;
     }
 
     return 0;

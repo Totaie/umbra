@@ -1287,6 +1287,29 @@ namespace nvhttp {
       return std::nullopt;
     }
 
+    // Set by load_state_locked() when it had to invent an identity, so load_state()
+    // can write it out after dropping the state mutex.
+    bool identity_needs_persisting = false;
+
+    // Both are defined below; load_state() is the entry point everything else calls.
+    void load_state_locked();
+    void save_state();
+
+    void load_state() {
+      load_state_locked();
+
+      // A host that answers to a different id every time it starts looks like a
+      // different machine to every client, which is how one PC ends up as a row of
+      // dead tiles. Write the identity out the moment it is invented rather than
+      // waiting for a pairing change to do it. Deliberately outside load_state_locked():
+      // save_state() takes the same non-recursive mutex that was held in there.
+      if (identity_needs_persisting) {
+        identity_needs_persisting = false;
+        BOOST_LOG(info) << "Persisting newly generated host identity "sv << http::unique_id;
+        save_state();
+      }
+    }
+
     void save_state() {
       statefile::migrate_recent_state_keys();
       const auto &sunshine_path = statefile::sunshine_state_path();
@@ -1425,7 +1448,7 @@ namespace nvhttp {
       }
     }
 
-    void load_state() {
+    void load_state_locked() {
       statefile::migrate_recent_state_keys();
       const auto &sunshine_path = statefile::sunshine_state_path();
       const auto &vibeshine_path = statefile::vibeshine_state_path();
@@ -1435,7 +1458,9 @@ namespace nvhttp {
 
       if (!fs::exists(sunshine_path)) {
         BOOST_LOG(info) << "File "sv << sunshine_path << " doesn't exist"sv;
-        http::unique_id = uuid_util::uuid_t::generate().string();
+        http::uuid = uuid_util::uuid_t::generate();
+        http::unique_id = http::uuid.string();
+        identity_needs_persisting = true;
         update::state.last_notified_version.clear();
         return;
       }
@@ -1488,6 +1513,7 @@ namespace nvhttp {
       if (!root.contains("uniqueid")) {
         http::uuid = uuid_util::uuid_t::generate();
         http::unique_id = http::uuid.string();
+        identity_needs_persisting = true;
         return;
       }
 
