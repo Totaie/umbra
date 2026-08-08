@@ -4,6 +4,9 @@
 #include <QNetworkAccessManager>
 #include <QVector>
 
+class QFile;
+class QUrl;
+
 class QNetworkReply;
 class PortableUpdateInstaller;
 
@@ -35,6 +38,13 @@ private slots:
     void handleUpdateCheckRequestFinished(QNetworkReply* reply);
 
 private:
+    // Fetch the installer and run it. Only for installed copies - a portable one is
+    // updated by PortableUpdateInstaller, which swaps files in place instead.
+    void downloadAndRunSetup(const QString& url, const QString& expectedDigest);
+    void finishSetupDownload();
+    static bool isTrustedReleaseHost(const QUrl& url);
+
+private:
     void parseStringToVersionQuad(const QString& string, QVector<int>& version);
 
     int compareVersion(const QVector<int>& version1, const QVector<int>& version2);
@@ -55,4 +65,10 @@ private:
     PortableUpdateInstaller* m_PortableUpdateInstaller;
     QString m_UpdateDownloadUrl;
     QString m_UpdateAssetDigest;
+
+    // In-flight installer download
+    QNetworkReply* m_SetupReply = nullptr;
+    QFile* m_SetupFile = nullptr;
+    QString m_SetupPath;
+    QString m_SetupExpectedDigest;
 };

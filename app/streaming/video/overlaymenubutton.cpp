@@ -68,6 +68,18 @@ void OverlayMenuButton::repositionTo(int parentX, int parentY, int parentW, int 
     setGeometry(x, y, kButtonSize, kButtonSize);
 }
 
+void OverlayMenuButton::anchorPointSdl(int& sdlX, int& sdlY) const
+{
+#ifdef Q_OS_MACOS
+    qreal dpr = 1.0;
+#else
+    qreal dpr = screen() ? screen()->devicePixelRatio() : 1.0;
+#endif
+
+    sdlX = qRound(x() * dpr);
+    sdlY = qRound((y() + kButtonSize) * dpr);
+}
+
 void OverlayMenuButton::keepOnTop()
 {
     if (!m_ButtonVisible) {

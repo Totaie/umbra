@@ -62,6 +62,13 @@ public:
 
     bool isButtonVisible() const { return m_ButtonVisible; }
 
+    /**
+     * Bottom-left of the button in SDL pixel coordinates, which is where a menu
+     * hanging off it should start. The button lives in Qt's logical coordinates and
+     * the caller works in SDL's pixels, so the conversion belongs here.
+     */
+    void anchorPointSdl(int& sdlX, int& sdlY) const;
+
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;

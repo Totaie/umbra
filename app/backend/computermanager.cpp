@@ -179,13 +179,77 @@ ComputerManager::ComputerManager(StreamingPreferences* prefs)
     }
 
     // Inflate our hosts from QSettings
+    QVector<NvComputer*> loaded;
     for (int i = 0; i < hosts; i++) {
         settings.setArrayIndex(i);
-        NvComputer* computer = new NvComputer(settings);
-        m_KnownHosts[computer->uuid] = computer;
-        m_LastSerializedHosts[computer->uuid] = *computer;
+        loaded.append(new NvComputer(settings));
     }
     settings.endArray();
+
+    // Collapse the copies our own host left behind.
+    //
+    // Umbra Host regenerated its identity on every start until it learned to write one
+    // down, and a client keys a PC by that identity - so one machine accumulated a tile
+    // per restart, all with the same name, none of them reachable, because the
+    // certificate each was paired against belonged to an identity that no longer
+    // exists. Fixing the host stops new ones appearing; it does nothing about the ones
+    // already saved, and the user should not have to delete them by hand.
+    //
+    // Same name and an address in common, which is the same test used when a host turns
+    // up with a new identity while running. A paired entry wins over an unpaired one so
+    // that if any of them still works, that is the one kept.
+    bool discardedDuplicate = false;
+    for (NvComputer* computer : std::as_const(loaded)) {
+        NvComputer* existing = nullptr;
+        for (NvComputer* candidate : std::as_const(m_KnownHosts)) {
+            if (candidate->name != computer->name) {
+                continue;
+            }
+
+            const QVector<NvAddress> candidateAddresses = candidate->uniqueAddresses();
+            for (const NvAddress& address : computer->uniqueAddresses()) {
+                if (candidateAddresses.contains(address)) {
+                    existing = candidate;
+                    break;
+                }
+            }
+
+            if (existing != nullptr) {
+                break;
+            }
+        }
+
+        if (existing == nullptr) {
+            m_KnownHosts[computer->uuid] = computer;
+            m_LastSerializedHosts[computer->uuid] = *computer;
+            continue;
+        }
+
+        discardedDuplicate = true;
+
+        // Keep whichever of the two has a pairing
+        bool replaceExisting = !existing->serverCert.isNull() ? false
+                                                              : !computer->serverCert.isNull();
+        if (replaceExisting) {
+            qInfo() << "Dropping stale duplicate of" << existing->name << existing->uuid;
+            m_KnownHosts.remove(existing->uuid);
+            m_LastSerializedHosts.remove(existing->uuid);
+            delete existing;
+
+            m_KnownHosts[computer->uuid] = computer;
+            m_LastSerializedHosts[computer->uuid] = *computer;
+        }
+        else {
+            qInfo() << "Dropping stale duplicate of" << computer->name << computer->uuid;
+            delete computer;
+        }
+    }
+
+    if (discardedDuplicate) {
+        // Written back on the delayed flush thread once it is running, so the list
+        // doesn't grow them back on the next launch.
+        m_NeedsDelayedFlush = true;
+    }
 
     // Fetch latest compatibility data asynchronously
     m_CompatFetcher.start();

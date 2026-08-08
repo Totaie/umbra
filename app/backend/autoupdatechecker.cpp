@@ -1,3 +1,9 @@
+#include <QCryptographicHash>
+#include <QProcess>
+#include <QStandardPaths>
+#include <QRegularExpression>
+#include <QFileInfo>
+#include <memory>
 #include "autoupdatechecker.h"
 #include "umbraversion.h"
 #include "portableupdateinstaller.h"
@@ -47,13 +53,191 @@ AutoUpdateChecker::AutoUpdateChecker(QObject *parent) :
 
 bool AutoUpdateChecker::supportsInAppUpdate() const
 {
-    return m_PortableUpdateInstaller->supportsInAppUpdate();
+    if (m_PortableUpdateInstaller->supportsInAppUpdate()) {
+        return true;
+    }
+
+#if defined(Q_OS_WIN32)
+    // An installed copy updates by running the installer, which already closes the
+    // running Umbra and elevates itself. Nothing for us to do but fetch it and hand
+    // over - but only if the release actually published a package we can verify.
+    return !isPortableInstall() &&
+            m_UpdateDownloadUrl.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive) &&
+            !m_UpdateAssetDigest.isEmpty();
+#else
+    return false;
+#endif
 }
 
 void AutoUpdateChecker::installUpdate(QString url)
 {
     const QString expectedDigest = url == m_UpdateDownloadUrl ? m_UpdateAssetDigest : QString();
-    m_PortableUpdateInstaller->installUpdate(url, expectedDigest);
+
+    if (m_PortableUpdateInstaller->supportsInAppUpdate()) {
+        m_PortableUpdateInstaller->installUpdate(url, expectedDigest);
+        return;
+    }
+
+#if defined(Q_OS_WIN32)
+    downloadAndRunSetup(url, expectedDigest);
+#else
+    Q_UNUSED(expectedDigest);
+    emit onPortableUpdateFailed(tr("In-app update is not supported for this installation."));
+#endif
+}
+
+bool AutoUpdateChecker::isTrustedReleaseHost(const QUrl& url)
+{
+    if (url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) != 0) {
+        return false;
+    }
+
+    // Where our releases and their assets actually live. Checked again after every
+    // redirect, because browser_download_url redirects to the storage host and a
+    // redirect is somewhere we did not choose to go.
+    const QString host = url.host().toLower();
+    return host == QStringLiteral("github.com") ||
+           host.endsWith(QStringLiteral(".githubusercontent.com"));
+}
+
+void AutoUpdateChecker::downloadAndRunSetup(const QString& url, const QString& expectedDigest)
+{
+    if (m_SetupReply != nullptr) {
+        emit onPortableUpdateStatusChanged(tr("An update is already in progress."));
+        return;
+    }
+
+    const QUrl downloadUrl(url);
+    if (!downloadUrl.isValid() || !isTrustedReleaseHost(downloadUrl) ||
+            !downloadUrl.path().endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
+        emit onPortableUpdateFailed(tr("That update package didn't come from Umbra's releases."));
+        return;
+    }
+
+    // Required, not optional. This runs what it downloads, on a machine the user
+    // intends to put on the internet - a package we can't check against what GitHub
+    // published is one they should fetch themselves.
+    QString normalizedDigest = expectedDigest.trimmed();
+    if (normalizedDigest.startsWith(QStringLiteral("sha256:"), Qt::CaseInsensitive)) {
+        normalizedDigest.remove(0, 7);
+    }
+
+    static const QRegularExpression sha256Pattern(QStringLiteral("^[0-9a-fA-F]{64}$"));
+    if (!sha256Pattern.match(normalizedDigest).hasMatch()) {
+        emit onPortableUpdateFailed(tr("This release didn't publish a checksum for its installer, so Umbra won't run it. Download it from the release page instead."));
+        return;
+    }
+
+    m_SetupExpectedDigest = normalizedDigest.toLower();
+
+    // Somewhere the installer can still be read after we exit, and that the running
+    // Umbra doesn't have open when the installer tries to replace it.
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    m_SetupPath = QDir(dir).filePath(QFileInfo(downloadUrl.path()).fileName());
+
+    m_SetupFile = new QFile(m_SetupPath, this);
+    if (!m_SetupFile->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        delete m_SetupFile;
+        m_SetupFile = nullptr;
+        emit onPortableUpdateFailed(tr("Umbra couldn't write the update to disk."));
+        return;
+    }
+
+    QNetworkRequest request(downloadUrl);
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Umbra"));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    emit onPortableUpdateStatusChanged(tr("Downloading update..."));
+
+    m_SetupReply = m_Nam->get(request);
+    connect(m_SetupReply, &QNetworkReply::readyRead, this, [this]() {
+        if (m_SetupFile != nullptr) {
+            m_SetupFile->write(m_SetupReply->readAll());
+        }
+    });
+    connect(m_SetupReply, &QNetworkReply::downloadProgress, this,
+            [this](qint64 received, qint64 total) {
+        if (total > 0) {
+            emit onPortableUpdateStatusChanged(tr("Downloading update... %1%")
+                                               .arg(received * 100 / total));
+        }
+    });
+    connect(m_SetupReply, &QNetworkReply::finished, this, &AutoUpdateChecker::finishSetupDownload);
+}
+
+void AutoUpdateChecker::finishSetupDownload()
+{
+    QNetworkReply* reply = m_SetupReply;
+    m_SetupReply = nullptr;
+
+    std::unique_ptr<QFile> file(m_SetupFile);
+    m_SetupFile = nullptr;
+
+    if (reply != nullptr) {
+        reply->deleteLater();
+    }
+
+    auto discard = [this, &file]() {
+        if (file) {
+            file->close();
+            file->remove();
+        }
+        m_SetupPath.clear();
+    };
+
+    if (reply == nullptr || reply->error() != QNetworkReply::NoError) {
+        discard();
+        emit onPortableUpdateFailed(tr("The update download failed: %1")
+                                    .arg(reply != nullptr ? reply->errorString() : tr("unknown error")));
+        return;
+    }
+
+    // Where we ended up, not where we asked to go.
+    if (!isTrustedReleaseHost(reply->url())) {
+        discard();
+        emit onPortableUpdateFailed(tr("The update download was redirected somewhere unexpected."));
+        return;
+    }
+
+    if (file) {
+        file->write(reply->readAll());
+        file->flush();
+        file->close();
+    }
+
+    QFile verify(m_SetupPath);
+    if (!verify.open(QIODevice::ReadOnly)) {
+        discard();
+        emit onPortableUpdateFailed(tr("Umbra couldn't read the update it just downloaded."));
+        return;
+    }
+
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    if (!hash.addData(&verify)) {
+        verify.close();
+        discard();
+        emit onPortableUpdateFailed(tr("Umbra couldn't check the update it just downloaded."));
+        return;
+    }
+    verify.close();
+
+    if (hash.result().toHex().toLower() != m_SetupExpectedDigest.toLatin1()) {
+        discard();
+        emit onPortableUpdateFailed(tr("The update didn't match the checksum GitHub published for it, so Umbra won't run it."));
+        return;
+    }
+
+    emit onPortableUpdateStatusChanged(tr("Starting the installer..."));
+
+    // Detached on purpose: the installer closes this process as part of its own work,
+    // so it must outlive us. It elevates itself; nothing here needs administrator
+    // rights, which is what makes this work over a remote session.
+    if (!QProcess::startDetached(m_SetupPath, QStringList())) {
+        emit onPortableUpdateFailed(tr("Umbra couldn't start the installer. It was saved to %1.")
+                                    .arg(QDir::toNativeSeparators(m_SetupPath)));
+        return;
+    }
 }
 
 void AutoUpdateChecker::checkNow()
@@ -195,10 +379,13 @@ QString AutoUpdateChecker::getExpectedAssetPrefix() const
 {
 #if defined(Q_OS_WIN32)
     if (isPortableInstall()) {
-        return QStringLiteral("MoonlightPortable-%1-").arg(getCurrentBuildArch());
+        return QStringLiteral("UmbraPortable-%1-").arg(getCurrentBuildArch());
     }
 
-    return QStringLiteral("MoonlightSetup-");
+    // The releases publish UmbraSetup-x64-<version>.exe. This said MoonlightSetup-
+    // until now, so nothing ever matched and every update fell back to opening the
+    // release page in a browser.
+    return QStringLiteral("UmbraSetup-");
 #else
     return QString();
 #endif

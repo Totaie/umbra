@@ -1979,8 +1979,16 @@ void Session::showQtOverlayMenu()
     m_MenuPanel->updateGamepadMouseState(m_InputHandler->isMouseEmulationActive());
     updateFileMappingMenuState();
 
-    // Under the button, which is where the pointer already is.
-    m_MenuPanel->showAtCursor(wx, wy, ww, wh, wx + ww - 40, wy + 40);
+    // Under the button, wherever the button has been dragged to. This used to be a
+    // fixed offset from the top-right corner, so moving the button left the menu
+    // behind at the corner it started in.
+    int anchorX = wx + ww - 40;
+    int anchorY = wy + 40;
+    if (m_MenuButton != nullptr) {
+        m_MenuButton->anchorPointSdl(anchorX, anchorY);
+    }
+
+    m_MenuPanel->showAtCursor(wx, wy, ww, wh, anchorX, anchorY);
 
     // The button would otherwise sit on top of the menu it just opened.
     if (m_MenuButton) {

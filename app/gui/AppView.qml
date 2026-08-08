@@ -31,7 +31,18 @@ CenteredGridView {
     property bool showHiddenGames
     property bool showGames
 
+    // True until we know whether there is an app to launch straight into. The grid
+    // stays hidden meanwhile: clicking a PC is supposed to put you on its desktop, and
+    // a list of Desktop and Steam Big Picture flashing up on the way there is the app
+    // picker we said we had skipped. Resolved in onActivated below.
+    property bool resolvingDirectLaunch: !showGames && !showHiddenGames
+
     id: appGrid
+
+    // Nothing to look at until the direct-launch question is settled - see
+    // resolvingDirectLaunch above. Kept as opacity rather than visible so the view
+    // still lays out and onActivated still runs.
+    opacity: resolvingDirectLaunch ? 0 : 1
     focus: true
     activeFocusOnTab: true
     topMargin: 72   // 工具栏 56 + 一格间距
@@ -374,6 +385,10 @@ CenteredGridView {
 
                 // Set showGames so we will not loop when the stream ends
                 showGames = true
+            }
+            else {
+                // Nothing to launch into, so this really is a list to choose from
+                resolvingDirectLaunch = false
             }
         }
     }

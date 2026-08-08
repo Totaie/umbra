@@ -595,22 +595,6 @@ Column {
                     ToolTip.text: qsTr("Prevents the screensaver from starting or the display from going to sleep while streaming.")
                 }
 
-                HardCheckBox {
-                    id: autoUpdateCheckBox
-                    width: parent.width
-                    text: qsTr("Automatically check for updates")
-                    font.pointSize: 12
-                    checked: StreamingPreferences.autoUpdateCheck
-                    onCheckedChanged: {
-                        StreamingPreferences.autoUpdateCheck = checked
-                    }
-
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 5000
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Check for new versions of Umbra when the app starts.")
-                }
-
                 Label {
                     width: parent.width
                     text: qsTr("Wallpaper")
@@ -660,16 +644,6 @@ Column {
                     ToolTip.timeout: 5000
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Random downloads a new wallpaper from a third-party image service, replacing it weekly. Choose None to stop Umbra contacting it at all.")
-                }
-
-                Label {
-                    id: hostUpdateStatus
-                    width: parent.width
-                    text: ""
-                    visible: text !== ""
-                    font.pointSize: 12
-                    color: Theme.textDim
-                    wrapMode: Text.Wrap
                 }
 
                 RowLayout {
@@ -738,68 +712,6 @@ Column {
                         StreamingPreferences.backgroundImagePath = decodeURIComponent(path)
                         StreamingPreferences.backgroundMode = StreamingPreferences.BG_CUSTOM
                         StreamingPreferences.save()
-                    }
-                }
-
-                RowLayout {
-                    width: parent.width
-                    spacing: 12
-
-                    HardButton {
-                        id: checkForUpdatesButton
-                        text: qsTr("Check for Updates Now")
-                        font.pointSize: 12
-
-                        onClicked: {
-                            updateCheckStatus.text = qsTr("Checking…")
-                            hostUpdateStatus.text = ""
-                            AutoUpdateChecker.checkNow()
-
-                            // Also check the host, but only where one is installed.
-                            // Declining the host during setup is a supported choice,
-                            // and a client-only machine shouldn't be told anything
-                            // about a host it doesn't have.
-                            if (HostManager.isHostInstalled()) {
-                                hostUpdateStatus.text = qsTr("Checking Umbra Host…")
-                                HostManager.checkHostForUpdate()
-                            }
-                        }
-                    }
-
-                    Label {
-                        id: updateCheckStatus
-                        Layout.fillWidth: true
-                        text: ""
-                        font.pointSize: 12
-                        color: Theme.textDim
-                        wrapMode: Text.Wrap
-                    }
-
-                    Component.onCompleted: {
-                        // An update being available already opens the toolbar's update
-                        // dialog, so only the two quiet outcomes need reporting here.
-                        AutoUpdateChecker.onUpToDate.connect(function() {
-                            updateCheckStatus.text = qsTr("Umbra %1 is up to date.").arg(SystemProperties.versionString)
-                        })
-                        AutoUpdateChecker.onCheckFailed.connect(function(message) {
-                            updateCheckStatus.text = message
-                        })
-                        AutoUpdateChecker.onUpdateAvailable.connect(function(version) {
-                            updateCheckStatus.text = qsTr("Umbra %1 is available.").arg(version)
-                        })
-
-                        HostManager.hostUpToDate.connect(function(version) {
-                            hostUpdateStatus.text = qsTr("Umbra Host %1 is up to date.").arg(version)
-                        })
-                        HostManager.hostCheckFailed.connect(function(message) {
-                            hostUpdateStatus.text = message
-                        })
-                        HostManager.hostUpdateAvailable.connect(function(version, url) {
-                            hostUpdateDialog.newVersion = version
-                            hostUpdateDialog.releaseUrl = url
-                            hostUpdateStatus.text = qsTr("Umbra Host %1 is available.").arg(version)
-                            hostUpdateDialog.open()
-                        })
                     }
                 }
 
@@ -1203,6 +1115,101 @@ Column {
             Column {
                 anchors.fill: parent
                 spacing: 5
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Updates")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                HardCheckBox {
+                    id: autoUpdateCheckBox
+                    width: parent.width
+                    text: qsTr("Automatically check for updates")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.autoUpdateCheck
+                    onCheckedChanged: {
+                        StreamingPreferences.autoUpdateCheck = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Check for new versions of Umbra when the app starts.")
+                }
+
+                RowLayout {
+                    width: parent.width
+                    spacing: 12
+
+                    HardButton {
+                        id: checkForUpdatesButton
+                        text: qsTr("Check for Updates Now")
+                        font.pointSize: 12
+
+                        onClicked: {
+                            updateCheckStatus.text = qsTr("Checking…")
+                            hostUpdateStatus.text = ""
+                            AutoUpdateChecker.checkNow()
+
+                            // Also check the host, but only where one is installed.
+                            // Declining the host during setup is a supported choice,
+                            // and a client-only machine shouldn't be told anything
+                            // about a host it doesn't have.
+                            if (HostManager.isHostInstalled()) {
+                                hostUpdateStatus.text = qsTr("Checking Umbra Host…")
+                                HostManager.checkHostForUpdate()
+                            }
+                        }
+                    }
+
+                    Label {
+                        id: updateCheckStatus
+                        Layout.fillWidth: true
+                        text: ""
+                        font.pointSize: 12
+                        color: Theme.textDim
+                        wrapMode: Text.Wrap
+                    }
+
+                    Component.onCompleted: {
+                        // An update being available already opens the toolbar's update
+                        // dialog, so only the two quiet outcomes need reporting here.
+                        AutoUpdateChecker.onUpToDate.connect(function() {
+                            updateCheckStatus.text = qsTr("Umbra %1 is up to date.").arg(SystemProperties.versionString)
+                        })
+                        AutoUpdateChecker.onCheckFailed.connect(function(message) {
+                            updateCheckStatus.text = message
+                        })
+                        AutoUpdateChecker.onUpdateAvailable.connect(function(version) {
+                            updateCheckStatus.text = qsTr("Umbra %1 is available.").arg(version)
+                        })
+
+                        HostManager.hostUpToDate.connect(function(version) {
+                            hostUpdateStatus.text = qsTr("Umbra Host %1 is up to date.").arg(version)
+                        })
+                        HostManager.hostCheckFailed.connect(function(message) {
+                            hostUpdateStatus.text = message
+                        })
+                        HostManager.hostUpdateAvailable.connect(function(version, url) {
+                            hostUpdateDialog.newVersion = version
+                            hostUpdateDialog.releaseUrl = url
+                            hostUpdateStatus.text = qsTr("Umbra Host %1 is available.").arg(version)
+                            hostUpdateDialog.open()
+                        })
+                    }
+                }
+
+                Label {
+                    id: hostUpdateStatus
+                    width: parent.width
+                    text: ""
+                    visible: text !== ""
+                    font.pointSize: 12
+                    color: Theme.textDim
+                    wrapMode: Text.Wrap
+                }
 
                 Label {
                     width: parent.width
