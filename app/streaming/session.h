@@ -121,6 +121,14 @@ public:
     Q_INVOKABLE void interrupt();
     Q_PROPERTY(QStringList launchWarnings MEMBER m_LaunchWarnings NOTIFY launchWarningsChanged);
 
+    // Which machine this session is for, so the connect screen can say so. Fixed for
+    // the life of the session - the computer is chosen before one is constructed.
+    Q_PROPERTY(QString hostName READ getHostName CONSTANT);
+    Q_PROPERTY(QString hostAddress READ getHostAddress CONSTANT);
+
+    QString getHostName() const;
+    QString getHostAddress() const;
+
     static
     void getDecoderInfo(SDL_Window* window,
                         bool& isHardwareAccelerated, bool& isFullScreenOnly,
@@ -197,6 +205,14 @@ private:
     void syncQtOverlayWindowsWithSdlWindowState();
     void dispatchQtMenuAction(OverlayMenuPanel::MenuAction action);
     void requestRuntimeBitrateChange(int bitrateKbps);
+
+    // Pull the host's display list so the menu can name them and Ctrl+Shift+D knows
+    // where to wrap. Best effort - a host that doesn't answer just hides the submenu.
+    void refreshHostDisplays();
+
+    // Spawn a sibling Umbra per additional client screen, each on its own host
+    // display. Returns an empty string on success or a message to show the user.
+    QString launchAdditionalDisplays();
     void showStreamingToast(const QString& message, int durationMs = 2000);
     void updateFileMappingMenuState();
     bool openFileMappingMountPath();
@@ -365,7 +381,6 @@ private:
     std::shared_ptr<FileMappingUx::MountState> m_FileMappingMountState;
     QString m_FileMappingMountPath;
     QString m_FileMappingSessionId;
-    Uint32 m_MenuCloseTicks;       // 菜单关闭时间戳（防抖）
     class ClipboardHelperClient* m_ClipboardHelper; // Bidirectional clipboard sync helper process; nullptr when stream not active
     std::mutex m_CursorUpdateMutex;
     std::shared_ptr<RemoteCursorUpdate> m_PendingCursorUpdate;

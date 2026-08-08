@@ -577,6 +577,28 @@ NvHTTP::openConnectionToString(QUrl baseUrl,
     return ret;
 }
 
+QStringList
+NvHTTP::getSwitchableDisplays(int* currentIndex)
+{
+    QJsonObject response = openJsonConnectionToObject(m_BaseUrlHttps,
+                                                      "actions/displays",
+                                                      QJsonObject(),
+                                                      false,
+                                                      FAST_FAIL_TIMEOUT_MS,
+                                                      NvLogLevel::NVLL_ERROR);
+    if (currentIndex != nullptr) {
+        *currentIndex = response.value("current").toInt(0);
+    }
+
+    QStringList names;
+    const QJsonArray displays = response.value("displays").toArray();
+    for (const QJsonValue& value : displays) {
+        names.append(value.toObject().value("name").toString());
+    }
+
+    return names;
+}
+
 bool
 NvHTTP::getAbrCapabilities(int* hostMaxBitrateKbps)
 {

@@ -803,9 +803,24 @@ Column {
                     }
                 }
 
+                HardCheckBox {
+                    width: parent.width
+                    text: qsTr("Stream to all screens")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.streamAllScreens
+                    onCheckedChanged: {
+                        StreamingPreferences.streamAllScreens = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Connecting opens one Umbra window per screen on this PC, each showing a different display on the host. Also available from the in-session menu.")
+                }
+
                 Label {
                     width: parent.width
-                    text: qsTr("Overlay menu position")
+                    text: qsTr("In-session menu")
                     font.pointSize: 12
                     wrapMode: Text.Wrap
                 }
@@ -828,15 +843,7 @@ Column {
                     model: ListModel {
                         id: overlayMenuModel
                         ListElement {
-                            text: qsTr("Right edge (default)")
-                            val: StreamingPreferences.OMP_RIGHT_EDGE
-                        }
-                        ListElement {
-                            text: qsTr("Left edge")
-                            val: StreamingPreferences.OMP_LEFT_EDGE
-                        }
-                        ListElement {
-                            text: qsTr("Floating button")
+                            text: qsTr("Floating button (default)")
                             val: StreamingPreferences.OMP_BUTTON
                         }
                         ListElement {

@@ -62,6 +62,23 @@ void SdlInputHandler::switchHostDisplay(int displayIndex)
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Switching host to display %d", displayIndex);
     sendHostShortcut(VK_HOST_DISPLAY_FIRST + displayIndex);
+    m_CurrentHostDisplay = displayIndex;
+}
+
+void SdlInputHandler::setHostDisplays(int count, int current)
+{
+    m_HostDisplayCount = count;
+    m_CurrentHostDisplay = current;
+}
+
+void SdlInputHandler::cycleHostDisplay()
+{
+    // A host that never answered leaves the count at zero. Guess two rather than do
+    // nothing: the host clamps an index past its last display instead of failing, so
+    // guessing high on a single-display host just switches it to the display it is
+    // already on, and guessing low on a three-display host still reaches two of them.
+    int count = m_HostDisplayCount > 0 ? m_HostDisplayCount : 2;
+    switchHostDisplay((m_CurrentHostDisplay + 1) % count);
 }
 
 void SdlInputHandler::setLocalCursorVisible(bool visible)
@@ -247,6 +264,19 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
     if (event->repeat) {
         // Ignore repeat key down events
         SDL_assert(event->state == SDL_PRESSED);
+        return;
+    }
+
+    // Ctrl+Shift+D moves to the host's next display. Deliberately not the
+    // Ctrl+Alt+Shift the combos below use: this is something you reach for in the
+    // middle of working, and three modifiers plus a letter is not a one-handed
+    // gesture. The cost is that the host never sees Ctrl+Shift+D itself.
+    if ((event->state == SDL_PRESSED) &&
+            (event->keysym.mod & KMOD_CTRL) &&
+            (event->keysym.mod & KMOD_SHIFT) &&
+            !(event->keysym.mod & KMOD_ALT) &&
+            event->keysym.sym == SDLK_d) {
+        cycleHostDisplay();
         return;
     }
 

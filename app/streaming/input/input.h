@@ -200,6 +200,13 @@ public:
     // Switches which host display is captured, without reconnecting. Zero-based.
     void switchHostDisplay(int displayIndex);
 
+    // What the host reported through /actions/displays, so cycling knows when to
+    // wrap. Safe to never call - see cycleHostDisplay().
+    void setHostDisplays(int count, int current);
+
+    // Move the stream to the host's next display, wrapping at the last one.
+    void cycleHostDisplay();
+
     // Whether the client's own cursor stays visible over the video while input is
     // captured. Only meaningful in absolute (remote desktop) mouse mode.
     void setLocalCursorVisible(bool visible);
@@ -393,6 +400,8 @@ private:
     int m_StreamWidth;
     int m_StreamHeight;
     bool m_AbsoluteMouseMode;
+    int m_HostDisplayCount;
+    int m_CurrentHostDisplay;
     bool m_AbsoluteTouchMode;
     bool m_DisabledTouchFeedback;
 

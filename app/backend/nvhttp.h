@@ -147,6 +147,12 @@ public:
     bool
     getAbrCapabilities(int* hostMaxBitrateKbps = nullptr);
 
+    // Names of the displays the host will switch the stream between, in the order
+    // switchHostDisplay() indexes them. Empty when the host is too old to answer or
+    // isn't streaming yet; currentIndex receives which one is live.
+    QStringList
+    getSwitchableDisplays(int* currentIndex = nullptr);
+
     QJsonObject
     configureAbr(bool enabled,
                  int minBitrateKbps,

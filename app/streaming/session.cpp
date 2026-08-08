@@ -816,18 +816,37 @@ Session::getDecoderAvailability(SDL_Window* window,
 {
     IVideoDecoder* decoder;
 
+    // Answering this means building a decoder, feeding it a sample frame and tearing
+    // it back down, which costs the better part of a second. The answer depends on
+    // the GPU and its driver and on nothing that changes while we're running, so ask
+    // once per process. A driver update takes effect the next time Umbra starts,
+    // which is also when the driver itself does.
+    static QHash<QString, DecoderAvailability> s_ProbeCache;
+    const QString cacheKey = QStringLiteral("%1/%2/%3x%4x%5")
+            .arg((int)vds).arg(videoFormat).arg(width).arg(height).arg(frameRate);
+
+    auto cached = s_ProbeCache.constFind(cacheKey);
+    if (cached != s_ProbeCache.constEnd()) {
+        return cached.value();
+    }
+
+    auto remember = [&cacheKey](DecoderAvailability da) {
+        s_ProbeCache.insert(cacheKey, da);
+        return da;
+    };
+
     if (!chooseDecoder(vds,
                        StreamingPreferences::RS_PROBE_ONLY,
                        window, videoFormat, width, height, frameRate,
                        false, false, false, false, true, decoder)) {
-        return DecoderAvailability::None;
+        return remember(DecoderAvailability::None);
     }
 
     bool hw = decoder->isHardwareAccelerated();
 
     delete decoder;
 
-    return hw ? DecoderAvailability::Hardware : DecoderAvailability::Software;
+    return remember(hw ? DecoderAvailability::Hardware : DecoderAvailability::Software);
 }
 
 bool Session::populateDecoderProperties(SDL_Window* window)
@@ -926,7 +945,6 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_FileMappingMountState(nullptr),
       m_FileMappingMountPath(),
       m_FileMappingSessionId(QUuid::createUuid().toString(QUuid::WithoutBraces)),
-      m_MenuCloseTicks(0),
       m_MicStream(nullptr)
 {
     memset(&m_LastAbrVideoStats, 0, sizeof(m_LastAbrVideoStats));
@@ -1351,10 +1369,6 @@ bool Session::validateLaunch(SDL_Window* testWindow)
     if (!m_Computer->isSupportedServerVersion) {
         emit displayLaunchError(tr("The version of GeForce Experience on %1 is not supported by this build of Umbra. You must update Umbra to stream from %1.").arg(m_Computer->name));
         return false;
-    }
-
-    if (m_Preferences->absoluteMouseMode && !m_App.isAppCollectorGame) {
-        emitLaunchWarning(tr("Your selection to enable remote desktop mouse mode may cause problems in games."));
     }
 
     if (m_Preferences->videoDecoderSelection == StreamingPreferences::VDS_FORCE_SOFTWARE) {
@@ -1965,24 +1979,12 @@ void Session::showQtOverlayMenu()
     m_MenuPanel->updateGamepadMouseState(m_InputHandler->isMouseEmulationActive());
     updateFileMappingMenuState();
 
-    // Show menu based on user preference
-    switch (m_Preferences->overlayMenuPosition) {
-    case StreamingPreferences::OMP_LEFT_EDGE:
-        m_MenuPanel->showAtLeftEdge(wx, wy, ww, wh);
-        break;
-    case StreamingPreferences::OMP_BUTTON:
-        // Show menu at the button's position (top-right corner)
-        m_MenuPanel->showAtCursor(wx, wy, ww, wh,
-                                  wx + ww - 40, wy + 40);
-        // Hide button while menu is visible
-        if (m_MenuButton) {
-            m_MenuButton->hideButton();
-        }
-        break;
-    case StreamingPreferences::OMP_RIGHT_EDGE:
-    default:
-        m_MenuPanel->showAtRightEdge(wx, wy, ww, wh);
-        break;
+    // Under the button, which is where the pointer already is.
+    m_MenuPanel->showAtCursor(wx, wy, ww, wh, wx + ww - 40, wy + 40);
+
+    // The button would otherwise sit on top of the menu it just opened.
+    if (m_MenuButton) {
+        m_MenuButton->hideButton();
     }
 
     // Pump Qt events immediately to trigger first paint
@@ -2146,6 +2148,38 @@ void Session::dispatchQtMenuAction(OverlayMenuPanel::MenuAction action)
         return;
     }
 
+    // --- Every host screen onto every client screen ---
+    case OverlayMenuPanel::MenuAction::StreamAllScreens:
+    {
+        QString error = launchAdditionalDisplays();
+        showStreamingToast(error.isEmpty() ? tr("Opening your other screens...") : error,
+                           error.isEmpty() ? 2500 : 4000);
+        return;
+    }
+
+    // --- Host display selection ---
+    case OverlayMenuPanel::MenuAction::SwitchDisplayNext:
+        if (m_InputHandler) {
+            m_InputHandler->cycleHostDisplay();
+            refreshHostDisplays();
+        }
+        return;
+
+    case OverlayMenuPanel::MenuAction::SwitchDisplay0:
+    case OverlayMenuPanel::MenuAction::SwitchDisplay1:
+    case OverlayMenuPanel::MenuAction::SwitchDisplay2:
+    case OverlayMenuPanel::MenuAction::SwitchDisplay3:
+    case OverlayMenuPanel::MenuAction::SwitchDisplay4:
+    case OverlayMenuPanel::MenuAction::SwitchDisplay5:
+    case OverlayMenuPanel::MenuAction::SwitchDisplay6:
+    case OverlayMenuPanel::MenuAction::SwitchDisplay7:
+        if (m_InputHandler) {
+            m_InputHandler->switchHostDisplay(
+                    (int)action - (int)OverlayMenuPanel::MenuAction::SwitchDisplay0);
+            refreshHostDisplays();
+        }
+        return;
+
     // --- Bitrate presets ---
     case OverlayMenuPanel::MenuAction::SetBitrate1000:
     case OverlayMenuPanel::MenuAction::SetBitrate2000:
@@ -2295,6 +2329,83 @@ bool Session::openFileMappingMountPath()
             m_Computer ? m_Computer->uuid : QString(),
             m_FileMappingSessionId);
     return opened;
+}
+
+QString Session::launchAdditionalDisplays()
+{
+    if (m_Computer == nullptr) {
+        return tr("That PC is no longer available.");
+    }
+
+    const int screenCount = QGuiApplication::screens().count();
+    if (screenCount < 2) {
+        return tr("This PC only has one screen, so there's nowhere to put a second display.");
+    }
+
+    // moonlight-common-c keeps its connection state in file-scope statics, so a
+    // process can only ever hold one stream open. Additional screens are therefore
+    // additional processes, each pulling a different host display onto a different
+    // client screen. This one keeps screen 1, so the children cover 2..n.
+    int launched = 0;
+    for (int screen = 2; screen <= screenCount; screen++) {
+        QStringList args;
+        args << QStringLiteral("stream")
+             << m_Computer->uuid
+             << m_App.name
+             << QStringLiteral("--host-display") << QString::number(screen)
+             << QStringLiteral("--client-screen") << QString::number(screen);
+
+        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args)) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "Failed to launch Umbra for client screen %d", screen);
+            continue;
+        }
+
+        launched++;
+    }
+
+    if (launched == 0) {
+        return tr("Umbra couldn't start the extra display windows.");
+    }
+
+    return QString();
+}
+
+QString Session::getHostName() const
+{
+    return m_Computer != nullptr ? m_Computer->name : QString();
+}
+
+QString Session::getHostAddress() const
+{
+    if (m_Computer == nullptr) {
+        return QString();
+    }
+
+    QReadLocker lock(&m_Computer->lock);
+    return m_Computer->activeAddress.address();
+}
+
+void Session::refreshHostDisplays()
+{
+    if (m_Computer == nullptr) {
+        return;
+    }
+
+    // The switch itself goes down the input stream, which is instant. This is only
+    // the names for the menu, so a host that doesn't answer costs nothing but a
+    // submenu that stays hidden.
+    NvHTTP http(m_Computer);
+
+    int current = 0;
+    QStringList displays = http.getSwitchableDisplays(&current);
+
+    if (m_InputHandler != nullptr) {
+        m_InputHandler->setHostDisplays(displays.count(), current);
+    }
+    if (m_MenuPanel != nullptr) {
+        m_MenuPanel->setHostDisplays(displays, current);
+    }
 }
 
 void Session::requestRuntimeBitrateChange(int bitrateKbps)
@@ -3373,6 +3484,11 @@ void Session::queryDisplayHdrBrightness(float& maxNits, float& minNits, float& m
 // 两边要一起改。
 static const int k_StreamEnterVeilMs = 380;
 
+// Someone who asked to land straight on a desktop is waiting on a machine, not being
+// walked into a game, and the fade is shortened to match (see StreamSegue.qml). This
+// is that shorter fade plus the same small margin.
+static const int k_DirectStreamEnterVeilMs = 140;
+
 // 等全屏切换完成的兜底超时。macOS 的全屏动画约 0.5~0.7s，取个宽松上限；
 // 万一平台不发 SIZE_CHANGED，也不能让界面窗口一直留着。
 static const Uint32 k_FullScreenEntryTimeoutMs = 1200;
@@ -3439,9 +3555,11 @@ void Session::exec()
     // 必须在这儿做完：exec() 往下就进 SDL 事件循环了，那之后 Qt 的定时器和队列信号
     // 只在串流覆盖层可见时才会被 pump，QML 侧再也等不到机会。
     if (m_QtWindow != nullptr) {
+        const int veilMs = m_Preferences->directConnectDesktop ? k_DirectStreamEnterVeilMs
+                                                              : k_StreamEnterVeilMs;
         QElapsedTimer veilTimer;
         veilTimer.start();
-        while (veilTimer.elapsed() < k_StreamEnterVeilMs) {
+        while (veilTimer.elapsed() < veilMs) {
             QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
             SDL_Delay(4);
         }
@@ -3653,6 +3771,32 @@ void Session::exec()
         m_InputHandler->switchHostDisplay(m_Preferences->preferredHostDisplay - 1);
     }
 
+    // Ask the host which displays it can switch between, so the menu can name them
+    // and Ctrl+Shift+D knows where to wrap. Best effort: an older host just 404s and
+    // cycling falls back to a guess rather than disappearing.
+    refreshHostDisplays();
+
+    // Open the other screens too, if that's what the user asked clicking a PC to do.
+    // Guarded on clientScreenIndex, which the parent leaves at -1 and sets on every
+    // child it spawns - without that, each child would spawn its own children.
+    if (m_Preferences->streamAllScreens && m_Preferences->clientScreenIndex < 0) {
+        QString error = launchAdditionalDisplays();
+        if (!error.isEmpty()) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "Could not stream to all screens: %s", qPrintable(error));
+        }
+    }
+
+    // Put the pointer on the screen the session opened on. It would otherwise stay
+    // wherever it happened to be, which on a multi-monitor client is regularly a
+    // different monitor - and in absolute mode that reads as a session ignoring you,
+    // because a position is only sent while the pointer is inside the video.
+    {
+        int ww, wh;
+        SDL_GetWindowSize(m_Window, &ww, &wh);
+        SDL_WarpMouseInWindow(m_Window, ww / 2, wh / 2);
+    }
+
     if (m_Preferences->clientSideCursor && m_Preferences->absoluteMouseMode) {
         // Stop the host compositing its cursor into the video and draw ours instead.
         // The host's cursor only moves once per encoded frame, which is what makes the
@@ -3671,13 +3815,15 @@ void Session::exec()
     m_MenuPanel = new OverlayMenuPanel();
     m_MenuButton = nullptr;
     m_Toast = new OverlayToast();
+    // Nothing to offer on a single-screen client, and a child window covering
+    // screen 2 shouldn't offer to spawn siblings of its own.
+    m_MenuPanel->setHasMultipleScreens(QGuiApplication::screens().count() > 1 &&
+                                       m_Preferences->clientScreenIndex < 0);
+
     m_MenuPanel->setActionCallback([this](OverlayMenuPanel::MenuAction action) {
         dispatchQtMenuAction(action);
     });
     m_MenuPanel->setCloseCallback([this]() {
-        // Record close timestamp for edge-trigger debounce
-        m_MenuCloseTicks = SDL_GetTicks();
-
         // Restore mouse capture after menu closes
         // Note: for actions that change window state (fullscreen, minimize),
         // we defer capture restoration to after the action completes.
@@ -4147,28 +4293,9 @@ void Session::exec()
         }
         case SDL_MOUSEMOTION:
         {
-            // Qt overlay menu: edge detection with debounce (500ms cooldown after close)
-            // Only trigger for edge-based positions (not disabled, at-cursor, or button)
-            if (m_MenuPanel && !m_MenuPanel->isMenuVisible() &&
-                m_Preferences->overlayMenuPosition != StreamingPreferences::OMP_DISABLED &&
-                m_Preferences->overlayMenuPosition != StreamingPreferences::OMP_BUTTON) {
-                Uint32 elapsed = SDL_GetTicks() - m_MenuCloseTicks;
-                if (elapsed > 500) {
-                    int ww, wh;
-                    SDL_GetWindowSize(m_Window, &ww, &wh);
-                    bool atEdge = false;
-                    if (m_Preferences->overlayMenuPosition == StreamingPreferences::OMP_LEFT_EDGE) {
-                        atEdge = (event.motion.x <= 5);
-                    } else {
-                        // OMP_RIGHT_EDGE (default)
-                        atEdge = (event.motion.x >= ww - 5);
-                    }
-                    if (atEdge) {
-                        showQtOverlayMenu();
-                        break;
-                    }
-                }
-            }
+            // Pointer position no longer opens anything - the menu is the button's
+            // job. Reaching the edge of the window is something you do constantly
+            // on a remote desktop, and it should stay a way to reach a scrollbar.
 
             // When Qt menu is visible, don't forward motion to input handler
             if (m_MenuPanel && m_MenuPanel->isMenuVisible()) {

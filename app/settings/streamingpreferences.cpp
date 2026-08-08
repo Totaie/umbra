@@ -65,6 +65,7 @@
 #define SER_BACKGROUNDMODE "backgroundmode"
 #define SER_BACKGROUNDIMAGEPATH "backgroundimagepath"
 #define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
+#define SER_STREAMALLSCREENS "streamallscreens"
 #define SER_CLIENTSIDECURSOR "clientsidecursor"
 #define SER_PREFERREDHOSTDISPLAY "preferredhostdisplay"
 #define SER_KEEPAWAKE "keepawake"
@@ -165,7 +166,14 @@ void StreamingPreferences::reload()
     multiController = settings.value(SER_MULTICONT, true).toBool();
     enableMdns = settings.value(SER_MDNS, true).toBool();
     quitAppAfter = settings.value(SER_QUITAPPAFTER, false).toBool();
-    absoluteMouseMode = settings.value(SER_ABSMOUSEMODE, false).toBool();
+    // Moonlight calls this "remote desktop mouse mode" and ships it off, which is
+    // right for a game that does its own pointer handling and wrong for everything
+    // Umbra is used for. Relative mode sends deltas that the host then applies its
+    // own acceleration to on top of the client's, and that mismatch is what makes a
+    // remote pointer feel unlike the local one. Absolute sends where the pointer
+    // actually is. It also gates the locally drawn cursor, which is the other half
+    // of making the remote mouse feel attached to your hand.
+    absoluteMouseMode = settings.value(SER_ABSMOUSEMODE, true).toBool();
     showLocalCursor = settings.value(SER_SHOWLOCALCURSOR, false).toBool();
     absoluteTouchMode = settings.value(SER_ABSTOUCHMODE, true).toBool();
     enableNativeTouchpad = settings.value(SER_NATIVETOUCHPAD, false).toBool();
@@ -173,7 +181,13 @@ void StreamingPreferences::reload()
     videoEnhancement = settings.value(SER_VIDEOENHANCEMENT, false).toBool();
     enableMicrophone = settings.value(SER_MICROPHONE, false).toBool();
     overlayMenuPosition = static_cast<OverlayMenuPosition>(settings.value(SER_OVERLAYMENUPOS,
-                                                           static_cast<int>(OverlayMenuPosition::OMP_RIGHT_EDGE)).toInt());
+                                                           static_cast<int>(OverlayMenuPosition::OMP_BUTTON)).toInt());
+    // Only two settings survive, so anything that isn't "off" is the button. That
+    // quietly carries over both retired edge values rather than leaving anyone who
+    // had one saved with a menu they can no longer open.
+    if (overlayMenuPosition != OverlayMenuPosition::OMP_DISABLED) {
+        overlayMenuPosition = OverlayMenuPosition::OMP_BUTTON;
+    }
     autoUpdateCheck = settings.value(SER_AUTOUPDATECHECK, true).toBool();
 
     streamResolutionScale = settings.value(SER_STREAMRESOLUTIONSCALE, false).toBool();
@@ -232,6 +246,10 @@ void StreamingPreferences::reload()
                                                  static_cast<int>(BackgroundMode::BG_NONE)).toInt());
     backgroundImagePath = settings.value(SER_BACKGROUNDIMAGEPATH).toString();
     directConnectDesktop = settings.value(SER_DIRECTCONNECTDESKTOP, true).toBool();
+
+    // Off by default: it opens one Umbra per screen, which is a lot to have happen to
+    // someone who only meant to connect. Reachable from the in-session menu either way.
+    streamAllScreens = settings.value(SER_STREAMALLSCREENS, false).toBool();
     clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
     preferredHostDisplay = settings.value(SER_PREFERREDHOSTDISPLAY, 0).toInt();
     // Runtime-only, set by --client-screen for multi-display children. Never persisted,
@@ -466,6 +484,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_BACKGROUNDMODE, static_cast<int>(backgroundMode));
     settings.setValue(SER_BACKGROUNDIMAGEPATH, backgroundImagePath);
     settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
+    settings.setValue(SER_STREAMALLSCREENS, streamAllScreens);
     settings.setValue(SER_CLIENTSIDECURSOR, clientSideCursor);
     settings.setValue(SER_PREFERREDHOSTDISPLAY, preferredHostDisplay);
     settings.setValue(SER_KEEPAWAKE, keepAwake);

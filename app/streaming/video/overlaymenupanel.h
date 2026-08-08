@@ -46,6 +46,19 @@ public:
         ToggleMicrophone,
         // Gamepad mouse emulation
         ToggleGamepadMouse,
+        // Every host screen onto every client screen
+        StreamAllScreens,
+        // Host display selection. SwitchDisplay0 through SwitchDisplay7 must stay
+        // contiguous - the index is read back as the offset from SwitchDisplay0.
+        SwitchDisplayNext,
+        SwitchDisplay0,
+        SwitchDisplay1,
+        SwitchDisplay2,
+        SwitchDisplay3,
+        SwitchDisplay4,
+        SwitchDisplay5,
+        SwitchDisplay6,
+        SwitchDisplay7,
         // Bitrate presets (kbps)
         SetBitrate1000,
         SetBitrate2000,
@@ -84,12 +97,6 @@ public:
     void setActionCallback(ActionCallback cb) { m_ActionCallback = cb; }
     void setCloseCallback(CloseCallback cb)   { m_CloseCallback = cb; }
 
-    // Position the panel at the right edge of the given parent rect (SDL pixel coords)
-    void showAtRightEdge(int parentX, int parentY, int parentW, int parentH);
-
-    // Position the panel at the left edge of the given parent rect (SDL pixel coords)
-    void showAtLeftEdge(int parentX, int parentY, int parentW, int parentH);
-
     // Position the panel at a specific cursor position (SDL pixel coords)
     void showAtCursor(int parentX, int parentY, int parentW, int parentH,
                       int cursorX, int cursorY);
@@ -104,6 +111,14 @@ public:
     void updateBitrateState(int bitrateKbps);
     void updateGamepadMouseState(bool enabled);
     void updateFileMappingState(FileMappingState state, const QString& detail);
+
+    // The host's displays, so the Display submenu can name them instead of counting
+    // to thirteen and hoping. An empty list hides the submenu.
+    void setHostDisplays(const QStringList& names, int current);
+
+    // Whether this client has somewhere to put a second display. Hides the all
+    // screens entry when it doesn't.
+    void setHasMultipleScreens(bool has);
     void setHasGamepads(bool has) {
         if (m_HasGamepads != has) {
             m_HasGamepads = has;
@@ -140,8 +155,6 @@ private:
         std::vector<MenuItem> items;
     };
 
-    enum class AnchorMode { RightEdge, LeftEdge, AtCursor };
-
     void buildMenuLevels();
     void navigateToLevel(int level);
     void repositionWindow();
@@ -156,6 +169,9 @@ private:
     bool m_HasGamepads;
     FileMappingState m_FileMappingState;
     QString m_FileMappingDetail;
+    QStringList m_HostDisplays;
+    int m_CurrentHostDisplay;
+    bool m_HasMultipleScreens;
 
     ActionCallback m_ActionCallback;
     CloseCallback  m_CloseCallback;
@@ -190,7 +206,6 @@ private:
     bool   m_Closing;         // true while close animation is running
     int    m_TargetX;         // cached final x position for show animation
 
-    // Menu anchor mode and cursor position (for AtCursor mode)
-    AnchorMode m_AnchorMode;
-    int m_CursorX, m_CursorY; // SDL pixel coords for AtCursor mode
+    // Where the menu was asked to appear, in SDL pixel coords
+    int m_CursorX, m_CursorY;
 };

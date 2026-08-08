@@ -16,12 +16,13 @@ OverlayMenuPanel::OverlayMenuPanel(QWindow* parent)
       m_Visible(false),
       m_HasGamepads(false),
       m_FileMappingState(FileMappingState::Unknown),
+      m_CurrentHostDisplay(0),
+      m_HasMultipleScreens(false),
       m_FileMappingDetail(tr("Checking")),
       m_ParentX(0), m_ParentY(0), m_ParentW(0), m_ParentH(0),
       m_ContentOffset(0),
       m_Closing(false),
       m_TargetX(0),
-      m_AnchorMode(AnchorMode::RightEdge),
       m_CursorX(0), m_CursorY(0)
 {
     setFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint
@@ -142,7 +143,7 @@ void OverlayMenuPanel::buildMenuLevels()
 
     // === Level 0: Top-level categories ===
     MenuLevel top;
-    top.title = QString::fromUtf8("\xe6\x9d\x82\xe9\xb1\xbc\xe2\x99\xa1");  // 杂鱼♡
+    top.title = QStringLiteral("Umbra");
     top.items.push_back({tr("Quick Actions"), QString(),  MenuItemType::SubMenu,
                          MenuAction::MenuActionMax, 1, true, false, false});
     top.items.push_back({tr("Bitrate"),       QString(),  MenuItemType::SubMenu,
@@ -151,6 +152,18 @@ void OverlayMenuPanel::buildMenuLevels()
                          MenuAction::ShowHostFiles, 0, true,
                          m_FileMappingState == FileMappingState::Available ||
                          m_FileMappingState == FileMappingState::Open, true});   // separator
+    if (m_HasMultipleScreens) {
+        top.items.push_back({tr("Stream to All Screens"), QString(), MenuItemType::Action,
+                             MenuAction::StreamAllScreens, 0, true, false, false});
+    }
+    // Only worth a submenu when there is more than one display to choose between.
+    if (m_HostDisplays.size() > 1) {
+        top.items.push_back({tr("Display"),
+                             m_CurrentHostDisplay >= 0 && m_CurrentHostDisplay < m_HostDisplays.size()
+                                 ? m_HostDisplays.at(m_CurrentHostDisplay) : QString(),
+                             MenuItemType::SubMenu,
+                             MenuAction::MenuActionMax, 3, true, false, false});
+    }
     top.items.push_back({tr("Toggle Fullscreen"), QString(), MenuItemType::Action,
                          MenuAction::ToggleFullScreen, 0, true, false, false});
     top.items.push_back({tr("Microphone"),    QString(),  MenuItemType::Toggle,
@@ -205,6 +218,43 @@ void OverlayMenuPanel::buildMenuLevels()
     bitrate.items.push_back({tr("100 Mbps"),  QString(), MenuItemType::Action,
                              MenuAction::SetBitrate100000, 0, true, false, false});
     m_MenuLevels.push_back(bitrate);
+
+    // === Level 3: Host displays ===
+    // Always built, even with nothing to put in it, because the levels are indexed
+    // by position and the Display entry above targets 3.
+    MenuLevel displays;
+    displays.title = tr("Display");
+    displays.items.push_back({tr("Next Display"), QStringLiteral("Ctrl+Shift+D"),
+                              MenuItemType::Action, MenuAction::SwitchDisplayNext,
+                              0, true, false, true});
+    const int selectable = qMin(m_HostDisplays.size(),
+                                (int)MenuAction::SwitchDisplay7 - (int)MenuAction::SwitchDisplay0 + 1);
+    for (int i = 0; i < selectable; i++) {
+        displays.items.push_back({m_HostDisplays.at(i), i == m_CurrentHostDisplay ? QStringLiteral("\u2713") : QString(),
+                                  MenuItemType::Action,
+                                  (MenuAction)((int)MenuAction::SwitchDisplay0 + i),
+                                  0, true, false, false});
+    }
+    m_MenuLevels.push_back(displays);
+}
+
+void OverlayMenuPanel::setHasMultipleScreens(bool has)
+{
+    if (m_HasMultipleScreens != has) {
+        m_HasMultipleScreens = has;
+        buildMenuLevels();
+    }
+}
+
+void OverlayMenuPanel::setHostDisplays(const QStringList& names, int current)
+{
+    if (m_HostDisplays == names && m_CurrentHostDisplay == current) {
+        return;
+    }
+
+    m_HostDisplays = names;
+    m_CurrentHostDisplay = current;
+    buildMenuLevels();
 }
 
 // ---------------------------------------------------------------------------
@@ -296,30 +346,9 @@ void OverlayMenuPanel::updateFileMappingState(FileMappingState state, const QStr
 // Show / hide / navigate
 // ---------------------------------------------------------------------------
 
-void OverlayMenuPanel::showAtRightEdge(int parentX, int parentY, int parentW, int parentH)
-{
-    m_AnchorMode = AnchorMode::RightEdge;
-    m_ParentX = parentX;
-    m_ParentY = parentY;
-    m_ParentW = parentW;
-    m_ParentH = parentH;
-    showInternal();
-}
-
-void OverlayMenuPanel::showAtLeftEdge(int parentX, int parentY, int parentW, int parentH)
-{
-    m_AnchorMode = AnchorMode::LeftEdge;
-    m_ParentX = parentX;
-    m_ParentY = parentY;
-    m_ParentW = parentW;
-    m_ParentH = parentH;
-    showInternal();
-}
-
 void OverlayMenuPanel::showAtCursor(int parentX, int parentY, int parentW, int parentH,
                                      int cursorX, int cursorY)
 {
-    m_AnchorMode = AnchorMode::AtCursor;
     m_ParentX = parentX;
     m_ParentY = parentY;
     m_ParentW = parentW;
@@ -350,9 +379,9 @@ void OverlayMenuPanel::showInternal()
     repositionWindow();
     m_TargetX = x();
 
-    // Slide direction depends on anchor mode
+    // Slides in from the right, toward the button it hangs off
     int slideDistance = 40;
-    int slideDir = (m_AnchorMode == AnchorMode::LeftEdge) ? -1 : 1;
+    int slideDir = 1;
     setPosition(m_TargetX + slideDistance * slideDir, y());
     setOpacity(0.0);
 
@@ -373,11 +402,6 @@ void OverlayMenuPanel::showInternal()
 
     m_SlideAnim->start();
     m_OpacityAnim->start();
-
-    // Warp cursor into center of the content area (excluding shadow)
-    QRect contentRect(m_TargetX + m_ShadowMargin, y() + m_ShadowMargin,
-                       m_MenuWidth, height() - 2 * m_ShadowMargin);
-    QCursor::setPos(contentRect.center());
 
     forceRepaint();
 }
@@ -403,37 +427,20 @@ void OverlayMenuPanel::repositionWindow()
     int titleH     = (m_CurrentLevel > 0) ? m_TitleHeight : 0;
     int menuHeight = titleH + itemCount * m_ItemHeight + m_Padding * 2;
 
-    int cx, cy; // content top-left position
-
-    switch (m_AnchorMode) {
-    case AnchorMode::LeftEdge:
-        cx = qpX;
-        cy = qpY + (qpH - menuHeight) / 2;
-        break;
-
-    case AnchorMode::AtCursor: {
+    // Content top-left, hung under the point the menu was opened from
 #ifdef Q_OS_MACOS
-        int qcX = m_CursorX;
-        int qcY = m_CursorY;
+    int qcX = m_CursorX;
+    int qcY = m_CursorY;
 #else
-        int qcX = qRound(m_CursorX / dpr);
-        int qcY = qRound(m_CursorY / dpr);
+    int qcX = qRound(m_CursorX / dpr);
+    int qcY = qRound(m_CursorY / dpr);
 #endif
-        // Position menu so cursor is near top-left corner
-        cx = qcX;
-        cy = qcY;
-        // Clamp within parent bounds
-        if (cx + m_MenuWidth > qpX + qpW) cx = qpX + qpW - m_MenuWidth;
-        if (cx < qpX) cx = qpX;
-        break;
-    }
+    int cx = qcX;
+    int cy = qcY;
 
-    case AnchorMode::RightEdge:
-    default:
-        cx = qpX + qpW - m_MenuWidth;
-        cy = qpY + (qpH - menuHeight) / 2;
-        break;
-    }
+    // Clamp within parent bounds
+    if (cx + m_MenuWidth > qpX + qpW) cx = qpX + qpW - m_MenuWidth;
+    if (cx < qpX) cx = qpX;
 
     // Clamp vertical position within parent
     if (cy < qpY) cy = qpY;

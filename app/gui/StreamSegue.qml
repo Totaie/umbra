@@ -2,6 +2,7 @@ import QtQuick 2.0
 import QtQuick.Controls
 import QtQuick.Window 2.2
 
+import ComputerManager 1.0
 import SdlGamepadKeyNavigation 1.0
 import Session 1.0
 import StreamingPreferences 1.0
@@ -9,30 +10,93 @@ import SystemProperties 1.0
 
 import "theme"
 
+// The screen between clicking a PC and being on it.
+//
+// This used to be a game launcher: box art behind a fourteen-second zoom, one line of
+// text that said the same thing for the whole wait, and a tip about a gamepad. None of
+// that is what someone connecting to a machine wants to know. They want to know which
+// machine, and what is taking so long - so this shows the host being reached and the
+// stages the client already reports, each keeping the time it took. A slow connect then
+// points at whoever caused it instead of just feeling broken.
 Item {
     property Session session
     property string appName
 
-    // 正在启动的这个游戏的封面。加载页用它做背景，而不是首页的主机壁纸——
-    // 你正要进的是这个游戏，画面就该先切过去。取不到时退回主机壁纸。
+    // Still passed by AppView. Nothing draws it any more.
     property string boxArtUrl: ""
 
     // 自带背景，main.qml 的全局壁纸层不用再垫一层
     readonly property bool usesOwnBackground: true
-    property string stageText : isResume ? qsTr("Resuming %1...").arg(appName) :
-                                           qsTr("Starting %1...").arg(appName)
     property bool isResume : false
     property bool quitAfter : false
 
+    // 0 reaching the host, 1 negotiating, 2 opening streams, 3 waiting for a frame.
+    // Everything below this index has finished.
+    property int currentStage: 0
+    property bool failed: false
+
+    // How long each finished stage took. Measured from the arrival of the signals
+    // rather than by a running timer: Session::exec() owns the main loop from here on
+    // and pumps Qt by hand, so queued signals get through where a Timer ticking every
+    // 100 ms would not.
+    property var stageMs: [0, 0, 0, 0]
+    property double stageStartedAt: 0
+
+    readonly property var stageNames: [
+        qsTr("Reached the host"),
+        qsTr("Session negotiated"),
+        qsTr("Opening video, audio and input"),
+        qsTr("Waiting for the first frame")
+    ]
+
+    // A quarter of a second of flourish is worth it when you're being walked into a
+    // game. It isn't when you clicked a machine and want to be on it - there the
+    // animation is just time spent not working. Session::exec() holds the main loop
+    // open for whichever length this is.
+    readonly property int exitDurationMs: StreamingPreferences.directConnectDesktop ? 120 : 340
+
+    function advanceTo(stage)
+    {
+        if (stage <= currentStage || failed) {
+            return
+        }
+
+        var now = Date.now()
+        var elapsed = stageMs.slice()
+        for (var i = currentStage; i < stage && i < 4; i++) {
+            elapsed[i] = now - stageStartedAt
+            stageStartedAt = now
+        }
+
+        stageMs = elapsed
+        currentStage = stage
+    }
+
     function stageStarting(stage)
     {
-        // Update the spinner text
-        stageText = qsTr("Starting %1...").arg(stage)
+        // These names come from the connection library, so match on what they contain
+        // rather than on an exact string. Anything unrecognised is early setup, which
+        // is stage 0 and already counted as done by the time it arrives - the host
+        // answered the launch request to get us here at all.
+        var name = stage.toLowerCase()
+
+        if (name.indexOf("rtsp") !== -1) {
+            advanceTo(1)
+        }
+        else if (name.indexOf("control") !== -1 || name.indexOf("video") !== -1 ||
+                 name.indexOf("input") !== -1 || name.indexOf("audio stream") !== -1) {
+            advanceTo(2)
+        }
     }
 
     function stageFailed(stage, errorCode, failingPorts)
     {
-        // Display the error dialog after Session::exec() returns
+        failed = true
+        errorTitle.text = qsTr("%1 failed.").arg(stage)
+        errorDetail.text = failingPorts
+                ? qsTr("Nothing reached port(s) %1. Check your firewall and port forwarding rules.").arg(failingPorts)
+                : qsTr("The host stopped answering during setup.")
+        // Also queue the dialog Session::exec() shows once it returns
         streamSegueErrorDialog.text = qsTr("Starting %1 failed: Error %2").arg(stage).arg(errorCode)
 
         if (failingPorts) {
@@ -44,9 +108,7 @@ Item {
     {
         // Hide the UI contents so the user doesn't
         // see them briefly when we pop off the StackView
-        stageSpinner.visible = false
-        stageLabel.visible = false
-        hintText.visible = false
+        contentRoot.visible = false
 
         // 窗口本身不在这里藏，由 Session::exec() 在串流窗口进入全屏之后隐藏。
         // 提前藏的话，macOS 切进新 Space 的整个动画期间旧 Space 露出来的是桌面，
@@ -55,14 +117,19 @@ Item {
 
     function connectionStarted()
     {
+        advanceTo(4)
+
         // 淡出到全黑。Session::exec() 会等这条动画跑完再创建串流窗口，
         // 所以交接是在一块纯黑上完成的，中间不会闪。
-        backgroundZoomAnimation.stop()
         exitAnimation.start()
     }
 
     function displayLaunchError(text)
     {
+        failed = true
+        errorTitle.text = text
+        errorDetail.text = ""
+
         // Display the error dialog after Session::exec() returns
         streamSegueErrorDialog.text = text
         console.error(text)
@@ -131,6 +198,16 @@ Item {
         // Hide the toolbar before we start loading
         toolBar.shown = false
 
+        // Stop polling now rather than when the window hides, which doesn't happen
+        // until the stream is already up. Every poll is a serverinfo request the
+        // host answers instead of getting on with starting capture, and they were
+        // landing right through the handshake. It restarts by itself when the
+        // window comes back afterwards.
+        if (window.pollingActive) {
+            ComputerManager.stopPollingAsync()
+            window.pollingActive = false
+        }
+
         // Hook up our signals
         session.stageStarting.connect(stageStarting)
         session.stageFailed.connect(stageFailed)
@@ -144,92 +221,23 @@ Item {
         // since it may currently be using the SDL video subsystem
         SystemProperties.waitForAsyncLoad()
 
+        stageStartedAt = Date.now()
         enterAnimation.start()
-        backgroundZoomAnimation.start()
 
         // Kick off the stream
-        spinnerTimer.start()
         streamLoader.active = true
     }
 
-    // 上一页（游戏列表）的背景先留在最底层。封面在它上面淡入，
-    // 这样从列表切到加载页不是整张图硬换，而是接着上一张继续。
-    Image {
-        id: previousBackground
-
-        anchors.fill: parent
-        source: window.backgroundImageUrl
-        visible: source != ""
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        cache: true
-        opacity: 0.3
-        z: -3
-    }
-
-    // 封面加载失败过一次就别再试了，直接退回主机壁纸。
-    // 只看 boxArtUrl 是不是空串不够：地址在但图取不下来（换过封面、缓存失效、
-    // 主机没这张图）时 status 会停在 Error，而 opacity 绑的是 status === Ready，
-    // 结果整层永远是全透明的，加载页只剩一块压暗的底。
-    property bool boxArtFailed: false
-
-    onBoxArtUrlChanged: boxArtFailed = false
-
-    Image {
-        id: segueBackground
-
-        anchors.fill: parent
-        source: (boxArtUrl !== "" && !boxArtFailed)
-                    ? boxArtUrl
-                    : (window.backgroundImageUrl !== "" ? window.backgroundImageUrl
-                                                        : "qrc:/res/gura.png")
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        cache: true
-        z: -2
-
-        // 声明式地跟着加载状态淡入。不要用 onStatusChanged 触发动画：
-        // 封面通常已经在缓存里，status 在处理器挂上之前就已经是 Ready，
-        // 那样动画永远不会触发，背景会一直停在全透明。
-        opacity: status === Image.Ready ? 1 : 0
-
-        // 失败要靠事件记下来。同样因为缓存的关系，也可能在处理器挂上之前
-        // 就已经是 Error 了，所以创建时再补查一次。
-        onStatusChanged: if (status === Image.Error) boxArtFailed = true
-        Component.onCompleted: if (status === Image.Error) boxArtFailed = true
-
-        Behavior on opacity {
-            NumberAnimation { duration: 700; easing.type: Easing.OutCubic }
-        }
-
-        // 缓慢推近，让等待的这几秒不是一张死图
-        transform: Scale {
-            id: backgroundZoom
-            origin.x: segueBackground.width / 2
-            origin.y: segueBackground.height / 2
-        }
-    }
-
-    ParallelAnimation {
-        id: backgroundZoomAnimation
-        NumberAnimation {
-            target: backgroundZoom; property: "xScale"
-            from: 1.0; to: 1.08; duration: 14000; easing.type: Easing.InOutSine
-        }
-        NumberAnimation {
-            target: backgroundZoom; property: "yScale"
-            from: 1.0; to: 1.08; duration: 14000; easing.type: Easing.InOutSine
-        }
-    }
-
-    // 压暗，保证进度条和文字在任何封面上都读得清
+    // Flat, and the app's own surface rather than a picture of a game. Something that
+    // moves for fourteen seconds behind a progress bar is a promise about how long the
+    // wait is going to be.
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(Theme.ink.r, Theme.ink.g, Theme.ink.b, 0.72)
-        z: -1
+        color: Theme.ink
+        z: -2
     }
 
-    // 进入串流时盖上来的幕，替代原来「一帧之内直接隐藏窗口」的硬切。
+    // 进入串流时盖上来的幕。
     //
     // 这一层刻意用纯黑而不是 Theme.ink：接手它的是 SDL 串流窗口，而 SDL 窗口在拿到
     // 第一帧之前就是纯黑的（实测 macOS 上是 0,0,0）。两边同色，交接那一刻才没有色阶跳变。
@@ -246,52 +254,30 @@ Item {
         id: enterAnimation
         NumberAnimation {
             target: contentRoot; property: "opacity"
-            from: 0; to: 1; duration: 420; easing.type: Easing.OutCubic
+            from: 0; to: 1; duration: 260; easing.type: Easing.OutCubic
         }
         NumberAnimation {
             target: contentShift; property: "y"
-            from: 14; to: 0; duration: 480; easing.type: Easing.OutCubic
+            from: 10; to: 0; duration: 300; easing.type: Easing.OutCubic
         }
     }
 
-    // 进入串流：内容淡出、背景轻微推近、黑幕盖上来，三件事一起做，
-    // 读起来像是「被带进游戏」而不是窗口突然不见了。
     ParallelAnimation {
         id: exitAnimation
 
         NumberAnimation {
             target: contentRoot; property: "opacity"
-            to: 0; duration: 260; easing.type: Easing.InCubic
-        }
-        NumberAnimation {
-            target: backgroundZoom; property: "xScale"
-            to: 1.14; duration: 340; easing.type: Easing.InOutQuad
-        }
-        NumberAnimation {
-            target: backgroundZoom; property: "yScale"
-            to: 1.14; duration: 340; easing.type: Easing.InOutQuad
+            to: 0; duration: Math.round(exitDurationMs * 0.76); easing.type: Easing.InCubic
         }
         SequentialAnimation {
             NumberAnimation {
                 target: exitVeil; property: "opacity"
-                to: 1; duration: 340; easing.type: Easing.InOutQuad
+                to: 1; duration: exitDurationMs; easing.type: Easing.InOutQuad
             }
             ScriptAction {
                 script: hideForStreaming()
             }
         }
-    }
-
-    Timer {
-        id: spinnerTimer
-
-        // Display the spinner appearance a bit to allow us to reach
-        // the code in Session.exec() that pumps the event loop.
-        // If we display it immediately, it will briefly hang in the
-        // middle of the animation on Windows, which looks very
-        // obviously broken.
-        interval: 100
-        onTriggered: stageSpinner.visible = true
     }
 
     Timer {
@@ -313,13 +299,6 @@ Item {
         asynchronous: true
 
         onLoaded: {
-            // Set the hint text. We do this here rather than
-            // in the hintText control itself to synchronize
-            // with Session.exec() which requires no concurrent
-            // gamepad usage.
-            hintText.text = qsTr("Tip:") + " " + qsTr("Press %1 to disconnect your session").arg(SdlGamepadKeyNavigation.getConnectedGamepads() > 0 ?
-                                                  qsTr("Start+Select+L1+R1") : qsTr("Ctrl+Alt+Shift+Q"))
-
             // Stop GUI gamepad usage now
             SdlGamepadKeyNavigation.disable()
 
@@ -378,54 +357,272 @@ Item {
         // 淡入的同时轻微上浮
         transform: Translate {
             id: contentShift
-            y: 14
+            y: 10
         }
 
-        // 阶段文字 + 斜条纹读条。转圈的 BusyIndicator 换成 HardProgress。
-        // stageSpinner 这个 id 和 visible 语义保持不变：spinnerTimer 和
-        // hideForStreaming() 都在用。
         Column {
+            id: panel
+
             anchors.centerIn: parent
             width: Math.min(parent.width - Theme.spaceXl * 2, 620)
-            spacing: Theme.spaceLg
+            spacing: Theme.spaceXl
 
-            Text {
-                id: stageLabel
-
+            // ---- which machine ----
+            Item {
                 width: parent.width
-                text: stageText
-                color: Theme.text
-                font.family: Theme.fontSans
-                font.pointSize: 24
-                font.weight: Font.ExtraBold
-                font.letterSpacing: Theme.trackingTight(24)
-                // 左对齐。居中大字是那种「优雅」排版的做法，这套风格里所有东西都
-                // 咬着一条左基线走（工具栏字标、卡片标题、设置行），读条上的阶段文字
-                // 也一样 —— 而且它会随阶段变长变短，居中的话每换一句都在左右横跳。
-                horizontalAlignment: Text.AlignLeft
-                wrapMode: Text.Wrap
+                height: Math.max(hostBlock.height, statusChip.height)
+
+                Row {
+                    id: hostBlock
+
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - statusChip.width - Theme.spaceLg
+                    spacing: Theme.spaceLg
+
+                    Rectangle {
+                        width: 52
+                        height: 52
+                        color: Theme.surface2
+                        border.width: 1
+                        border.color: Theme.lineStrong
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        // The same monitor glyph the PC tiles use, for the same reason:
+                        // it reads as a machine where a letter in a circle reads as a person.
+                        Canvas {
+                            anchors.centerIn: parent
+                            width: 26
+                            height: 26
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                ctx.strokeStyle = Theme.accent
+                                ctx.lineWidth = 1.6
+                                ctx.strokeRect(2.5, 4, 21, 13)
+                                ctx.beginPath()
+                                ctx.moveTo(8, 22); ctx.lineTo(18, 22)
+                                ctx.moveTo(13, 17); ctx.lineTo(13, 22)
+                                ctx.stroke()
+                            }
+                        }
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - 52 - Theme.spaceLg
+                        spacing: 3
+
+                        Text {
+                            width: parent.width
+                            text: session && session.hostName ? session.hostName : appName
+                            color: Theme.text
+                            font.family: Theme.fontSans
+                            font.pointSize: 20
+                            font.weight: Font.ExtraBold
+                            font.letterSpacing: Theme.trackingTight(20)
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: {
+                                var addr = session && session.hostAddress ? session.hostAddress : ""
+                                return addr !== "" ? addr + "  ·  " + appName : appName
+                            }
+                            color: Theme.textDim
+                            font.family: Theme.fontMono
+                            font.pointSize: Theme.fontBody
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: statusChip
+
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: chipText.implicitWidth + Theme.spaceLg
+                    height: chipText.implicitHeight + Theme.spaceSm + 2
+                    color: "transparent"
+                    border.width: 1
+                    border.color: failed ? Theme.danger : Theme.lineStrong
+
+                    Text {
+                        id: chipText
+
+                        anchors.centerIn: parent
+                        text: failed ? qsTr("Failed")
+                                     : (isResume ? qsTr("Resuming") : qsTr("Connecting"))
+                        color: failed ? Theme.danger : Theme.textDim
+                        font.family: Theme.fontMono
+                        font.pointSize: Theme.fontCaption
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: Theme.trackingCaption
+                    }
+                }
+            }
+
+            // ---- how far along ----
+            Column {
+                width: parent.width
+                spacing: 0
+
+                Repeater {
+                    model: 4
+
+                    Item {
+                        width: panel.width
+                        height: 40
+
+                        readonly property bool isDone: index < currentStage
+                        readonly property bool isNow: index === currentStage && !failed
+                        readonly property bool isFail: index === currentStage && failed
+
+                        Rectangle {
+                            id: tick
+
+                            width: 14
+                            height: 14
+                            anchors.left: parent.left
+                            anchors.leftMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: isFail ? Theme.danger
+                                          : (isDone ? Theme.accentDim
+                                                    : (isNow ? Theme.accent : "transparent"))
+                            border.width: 1
+                            border.color: isFail ? Theme.danger
+                                                 : (isDone ? Theme.accentDim
+                                                           : (isNow ? Theme.accent : Theme.lineStrong))
+
+                            SequentialAnimation on opacity {
+                                running: isNow
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.35; duration: 550; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0;  duration: 550; easing.type: Easing.InOutSine }
+                            }
+                        }
+
+                        Text {
+                            anchors.left: tick.right
+                            anchors.leftMargin: Theme.spaceLg
+                            anchors.right: elapsed.left
+                            anchors.rightMargin: Theme.spaceMd
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: stageNames[index]
+                            color: isFail ? Theme.danger
+                                          : (isNow ? Theme.text
+                                                   : (isDone ? Theme.textDim : Theme.textFaint))
+                            font.family: Theme.fontSans
+                            font.pointSize: 12
+                            font.weight: (isNow || isFail) ? Font.DemiBold : Font.Normal
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            id: elapsed
+
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: stageMs[index] > 0 ? (stageMs[index] / 1000).toFixed(1) + "s" : ""
+                            color: Theme.textFaint
+                            font.family: Theme.fontMono
+                            font.pointSize: Theme.fontCaption
+                        }
+
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            width: parent.width
+                            height: 1
+                            color: Theme.line
+                            visible: index < 3
+                        }
+                    }
+                }
             }
 
             HardProgress {
                 id: stageSpinner
 
                 width: parent.width
-                visible: false
+                visible: !failed
+            }
+
+            // ---- what went wrong, in place ----
+            Item {
+                width: parent.width
+                height: failed ? errorColumn.height + Theme.spaceLg * 2 : 0
+                visible: failed
+                clip: true
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: Theme.surface
+                }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    width: Theme.accentBarStrong
+                    height: parent.height
+                    color: Theme.danger
+                }
+
+                Column {
+                    id: errorColumn
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: Theme.accentBarStrong + Theme.spaceLg
+                    anchors.right: parent.right
+                    anchors.rightMargin: Theme.spaceLg
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Theme.spaceXs
+
+                    Text {
+                        id: errorTitle
+
+                        width: parent.width
+                        color: Theme.text
+                        font.family: Theme.fontSans
+                        font.pointSize: 12
+                        font.weight: Font.ExtraBold
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        id: errorDetail
+
+                        width: parent.width
+                        color: Theme.textDim
+                        font.family: Theme.fontSans
+                        font.pointSize: Theme.fontBody
+                        wrapMode: Text.Wrap
+                        visible: text !== ""
+                    }
+                }
             }
         }
 
+        // ---- the shortcuts that matter once you're in ----
         Text {
             id: hintText
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 50
-            anchors.horizontalCenter: parent.horizontalCenter
-            color: Theme.textDim
-            font.family: Theme.fontMono
-            font.pointSize: Theme.fontBody
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
 
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 44
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: Theme.textFaint
+            font.family: Theme.fontMono
+            font.pointSize: Theme.fontCaption
+            horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
+
+            // The gamepad chord is only worth mentioning when a gamepad is attached.
+            text: {
+                var disconnect = SdlGamepadKeyNavigation.getConnectedGamepads() > 0
+                        ? qsTr("Start+Select+L1+R1") : qsTr("Ctrl+Alt+Shift+Q")
+                return qsTr("%1 disconnects").arg(disconnect) + "   ·   " +
+                       qsTr("Ctrl+Shift+D switches display")
+            }
         }
     }
 }

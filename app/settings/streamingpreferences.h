@@ -133,12 +133,17 @@ public:
     };
     Q_ENUM(BackgroundMode);
 
+    // The in-session menu is opened from the floating button, the way Parsec and
+    // the rest of them do it. The edge triggers this replaced - put the pointer on
+    // the very edge of the window and a panel slid out - are gone: on a desktop
+    // session you touch that edge constantly just using the remote machine, and a
+    // menu that appears uninvited over what you were doing is worse than one that
+    // waits behind a button. Values 0 and 1 were those edges; see the migration in
+    // reload() for what happens to anyone who had them saved.
     enum OverlayMenuPosition
     {
-        OMP_RIGHT_EDGE = 0,  // Default: show on right edge of streaming window
-        OMP_LEFT_EDGE  = 1,  // Show on left edge
-        OMP_DISABLED   = 3,  // Do not show overlay menu (keep old value for compat)
-        OMP_BUTTON     = 4,  // Show a floating button on the streaming window
+        OMP_DISABLED   = 3,  // No in-session menu at all
+        OMP_BUTTON     = 4,  // Floating button on the streaming window (default)
     };
     Q_ENUM(OverlayMenuPosition);
 
@@ -227,6 +232,7 @@ public:
     Q_PROPERTY(BackgroundMode backgroundMode MEMBER backgroundMode NOTIFY umbraSettingsChanged)
     Q_PROPERTY(QString backgroundImagePath MEMBER backgroundImagePath NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY umbraSettingsChanged)
+    Q_PROPERTY(bool streamAllScreens MEMBER streamAllScreens NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool clientSideCursor MEMBER clientSideCursor NOTIFY umbraSettingsChanged)
     Q_PROPERTY(int preferredHostDisplay MEMBER preferredHostDisplay NOTIFY umbraSettingsChanged)
     Q_PROPERTY(int clientScreenIndex MEMBER clientScreenIndex NOTIFY umbraSettingsChanged)
@@ -300,6 +306,7 @@ public:
     // Absolute path, not a URL. Empty unless backgroundMode is BG_CUSTOM.
     QString backgroundImagePath;
     bool directConnectDesktop;
+    bool streamAllScreens;
     // Draw the cursor locally rather than letting the host composite it into video.
     bool clientSideCursor;
     // 0 means leave the host on whatever display it is already capturing.
