@@ -2634,6 +2634,23 @@ namespace video {
     refresh_displays(dev_type, display_names, current_display_index, empty_str);
   }
 
+  switchable_displays_t switchable_displays() {
+    switchable_displays_t listing;
+
+    // No encoder means no session, and the list depends on which one was picked.
+    auto *encoder = chosen_encoder;
+    if (!encoder || !encoder->platform_formats) {
+      return listing;
+    }
+
+    // Deliberately the same call the capture loop makes when it reinitialises, so
+    // an index handed to a client means the same display when it comes back as a
+    // switch request. Enumerating some other way would be a list that happens to
+    // look right until a display is unplugged.
+    refresh_displays(encoder->platform_formats->dev_type, listing.names, listing.current);
+    return listing;
+  }
+
   void captureThread(
     std::shared_ptr<safe::queue_t<capture_ctx_t>> capture_ctx_queue,
     sync_util::sync_t<std::weak_ptr<platf::display_t>> &display_wp,

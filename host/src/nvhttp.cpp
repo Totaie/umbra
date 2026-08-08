@@ -4380,6 +4380,43 @@ namespace nvhttp {
     tree.put("root.<xmlattr>.status_code", 200);
   }
 
+  /**
+   * @brief Report the displays this client can switch the stream to.
+   *
+   * Switching itself is not here: a client asks for it by sending the
+   * Ctrl+Alt+Shift+F1..F13 chord down the input stream it already has, which the
+   * host has always understood. This endpoint exists only so the client can show
+   * real display names instead of offering thirteen function keys.
+   */
+  void getDisplays(resp_https_t response, req_https_t request) {
+    print_req<SunshineHTTPS>(request);
+
+    auto verified_client = get_verified_cert(request);
+    if (!has_client_perm(verified_client, PERM::_allow_view)) {
+      log_permission_denied("Displays"sv, "View stream"sv, verified_client, true);
+      response->write(SimpleWeb::StatusCode::client_error_unauthorized);
+      response->close_connection_after_response = true;
+      return;
+    }
+
+    const auto listing = video::switchable_displays();
+
+    nlohmann::json body = nlohmann::json::object();
+    body["current"] = listing.current;
+    body["displays"] = nlohmann::json::array();
+    for (std::size_t i = 0; i < listing.names.size(); ++i) {
+      nlohmann::json entry = nlohmann::json::object();
+      entry["index"] = (int) i;
+      entry["name"] = listing.names[i];
+      body["displays"].push_back(std::move(entry));
+    }
+
+    SimpleWeb::CaseInsensitiveMultimap headers;
+    headers.emplace("Content-Type", "application/json");
+    response->write(SimpleWeb::StatusCode::success_ok, body.dump(), headers);
+    response->close_connection_after_response = true;
+  }
+
   void getAbrCapabilities(resp_https_t response, req_https_t request) {
     print_req<SunshineHTTPS>(request);
 
@@ -4594,6 +4631,7 @@ namespace nvhttp {
     https_server.resource["^/actions/clipboard$"]["POST"] = setClipboard;
     https_server.resource["^/bitrate$"]["GET"] = setBitrate;
     https_server.resource["^/api/abr/capabilities$"]["GET"] = getAbrCapabilities;
+    https_server.resource["^/actions/displays$"]["GET"] = getDisplays;
 
     https_server.config.reuse_address = true;
     https_server.config.address = net::get_bind_address(address_family);

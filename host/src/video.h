@@ -419,6 +419,21 @@ namespace video {
   bool has_attempted_encoder_probe();
   bool has_successful_encoder_probe();
 
+  /**
+   * @brief The displays the running capture can be switched between.
+   *
+   * Indices mean the same thing as the mail::switch_display event, which is what
+   * both the Ctrl+Alt+Shift+F1..F13 shortcut and a client's display picker end up
+   * raising. Comes back empty when nothing is streaming, because which displays are
+   * capturable depends on the encoder the session settled on.
+   */
+  struct switchable_displays_t {
+    std::vector<std::string> names;
+    int current = 0;
+  };
+
+  switchable_displays_t switchable_displays();
+
   struct advertised_encoder_capabilities_t {
     int hevc_mode = 0;
     int av1_mode = 0;
