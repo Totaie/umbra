@@ -850,6 +850,21 @@ bool D3D11VARenderer::prepareDecoderContextInGetFormat(AVCodecContext *context, 
     auto framesContext = (AVHWFramesContext*)context->hw_frames_ctx->data;
     auto d3d11vaFramesContext = (AVD3D11VAFramesContext*)framesContext->hwctx;
 
+    // FFmpeg is supposed to derive this from the codec context, and when it doesn't
+    // av_hwframe_ctx_init() fails with "Unsupported pixel format: (null)". From
+    // there every packet is rejected with EPERM and the window stays black forever
+    // with nothing reported, because the renderer was already chosen by a test
+    // decode that passed. D3D11VA only ever decodes to NV12 or P010, so filling it
+    // in is safe and does nothing when FFmpeg got there first.
+    if (framesContext->sw_format == AV_PIX_FMT_NONE) {
+        framesContext->sw_format = (m_DecoderParams.videoFormat & VIDEO_FORMAT_MASK_10BIT)
+                                       ? AV_PIX_FMT_P010
+                                       : AV_PIX_FMT_NV12;
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "hwframes context had no sw_format; using %s",
+                    av_get_pix_fmt_name(framesContext->sw_format));
+    }
+
     // If we're binding output textures directly, we need to add the SRV bind flag
     if (m_BindDecoderOutputTextures) {
         d3d11vaFramesContext->BindFlags |= D3D11_BIND_SHADER_RESOURCE;
@@ -869,8 +884,30 @@ bool D3D11VARenderer::prepareDecoderContextInGetFormat(AVCodecContext *context, 
     if (err < 0) {
         av_buffer_unref(&context->hw_frames_ctx);
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "Failed initialize hwframes context: %d",
-                     err);
+                     "Failed initialize hwframes context: %d "
+                     "(sw_pix_fmt=%s frames sw_format=%s separate devices=%s bind=%s)",
+                     err,
+                     av_get_pix_fmt_name(context->sw_pix_fmt),
+                     av_get_pix_fmt_name(framesContext->sw_format),
+                     m_DecodeDevice != m_RenderDevice ? "yes" : "no",
+                     m_BindDecoderOutputTextures ? "yes" : "no");
+
+        // Decoding into a texture array shared across two devices is the fragile
+        // path here - this renderer already refuses it outright for several GPU
+        // vendors known to break on it. Rather than hand back a black window, drop
+        // to one device and try again. It costs a copy per frame; a picture at a
+        // small cost beats no picture.
+        if (m_DecodeDevice != m_RenderDevice) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "Retrying with a single device for decoding and rendering");
+
+            m_DecodeDevice = m_RenderDevice;
+            m_DecodeDeviceContext = m_RenderDeviceContext;
+            m_BindDecoderOutputTextures = false;
+
+            return prepareDecoderContextInGetFormat(context, pixelFormat);
+        }
+
         return false;
     }
 
