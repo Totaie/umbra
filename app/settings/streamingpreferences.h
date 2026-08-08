@@ -4,6 +4,10 @@
 #include <QRect>
 #include <QQmlEngine>
 
+// Bumped when a default changes in a way that should also reach people who already
+// have settings saved. See the migration at the end of reload().
+#define UMBRA_DEFAULTS_REVISION 1
+
 class StreamingPreferences : public QObject
 {
     Q_OBJECT
@@ -233,6 +237,12 @@ public:
     Q_PROPERTY(QString backgroundImagePath MEMBER backgroundImagePath NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool streamAllScreens MEMBER streamAllScreens NOTIFY umbraSettingsChanged)
+
+    // Where the user dragged the in-session button to, as a fraction of the stream
+    // window: 0,0 is the top-left corner, 1,1 the bottom-right. Stored this way so it
+    // stays put across a different window size or a different monitor.
+    Q_PROPERTY(qreal overlayButtonFracX MEMBER overlayButtonFracX NOTIFY umbraSettingsChanged)
+    Q_PROPERTY(qreal overlayButtonFracY MEMBER overlayButtonFracY NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool clientSideCursor MEMBER clientSideCursor NOTIFY umbraSettingsChanged)
     Q_PROPERTY(int preferredHostDisplay MEMBER preferredHostDisplay NOTIFY umbraSettingsChanged)
     Q_PROPERTY(int clientScreenIndex MEMBER clientScreenIndex NOTIFY umbraSettingsChanged)
@@ -307,6 +317,8 @@ public:
     QString backgroundImagePath;
     bool directConnectDesktop;
     bool streamAllScreens;
+    qreal overlayButtonFracX;
+    qreal overlayButtonFracY;
     // Draw the cursor locally rather than letting the host composite it into video.
     bool clientSideCursor;
     // 0 means leave the host on whatever display it is already capturing.

@@ -6,7 +6,12 @@
 OverlayMenuButton::OverlayMenuButton(QWindow* parent)
     : QRasterWindow(parent),
       m_Hovered(false),
-      m_ButtonVisible(false)
+      m_ButtonVisible(false),
+      m_Pressed(false),
+      m_Dragging(false),
+      m_FracX(1.0),
+      m_FracY(0.0),
+      m_ParentX(0), m_ParentY(0), m_ParentW(0), m_ParentH(0)
 {
     setFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint
              | Qt::WindowDoesNotAcceptFocus);
@@ -22,24 +27,56 @@ OverlayMenuButton::~OverlayMenuButton()
 {
 }
 
-void OverlayMenuButton::repositionTo(int parentX, int parentY, int parentW, int /*parentH*/)
+void OverlayMenuButton::setPositionFraction(qreal fracX, qreal fracY)
 {
+    m_FracX = qBound(0.0, fracX, 1.0);
+    m_FracY = qBound(0.0, fracY, 1.0);
+
+    if (m_ParentW > 0 && m_ParentH > 0) {
+        repositionTo(m_ParentX, m_ParentY, m_ParentW, m_ParentH);
+    }
+}
+
+void OverlayMenuButton::repositionTo(int parentX, int parentY, int parentW, int parentH)
+{
+    m_ParentX = parentX;
+    m_ParentY = parentY;
+    m_ParentW = parentW;
+    m_ParentH = parentH;
+
 #ifdef Q_OS_MACOS
     int qpX = parentX;
     int qpY = parentY;
     int qpW = parentW;
+    int qpH = parentH;
 #else
     qreal dpr = screen() ? screen()->devicePixelRatio() : 1.0;
     int qpX = qRound(parentX / dpr);
     int qpY = qRound(parentY / dpr);
     int qpW = qRound(parentW / dpr);
+    int qpH = qRound(parentH / dpr);
 #endif
 
-    // Position at top-right corner of the streaming window
-    int x = qpX + qpW - kButtonSize - kMargin;
-    int y = qpY + kMargin;
+    // The fraction spans the area the button can actually occupy, so 1.0 puts its
+    // right edge on the window's right edge rather than pushing it off-screen.
+    int travelX = qMax(0, qpW - kButtonSize - 2 * kMargin);
+    int travelY = qMax(0, qpH - kButtonSize - 2 * kMargin);
+
+    int x = qpX + kMargin + qRound(m_FracX * travelX);
+    int y = qpY + kMargin + qRound(m_FracY * travelY);
 
     setGeometry(x, y, kButtonSize, kButtonSize);
+}
+
+void OverlayMenuButton::keepOnTop()
+{
+    if (!m_ButtonVisible) {
+        return;
+    }
+
+    // Asking once at show() isn't enough against a fullscreen window that keeps
+    // presenting; this is called from the same place the overlay windows are synced.
+    raise();
 }
 
 void OverlayMenuButton::showButton(int parentX, int parentY, int parentW, int parentH)
@@ -109,19 +146,82 @@ void OverlayMenuButton::paintEvent(QPaintEvent*)
 
 void OverlayMenuButton::mousePressEvent(QMouseEvent* event)
 {
-    if (event->button() == Qt::LeftButton) {
-        if (m_ClickCallback) {
-            m_ClickCallback();
-        }
+    if (event->button() != Qt::LeftButton) {
+        return;
     }
+
+    // The click fires on release, not here, because until the pointer either moves or
+    // comes back up there is no way to know whether this is a press or a drag.
+    m_Pressed = true;
+    m_Dragging = false;
+    m_PressPos = event->globalPosition().toPoint() - position();
 }
 
-void OverlayMenuButton::mouseMoveEvent(QMouseEvent*)
+void OverlayMenuButton::mouseMoveEvent(QMouseEvent* event)
 {
     if (!m_Hovered) {
         m_Hovered = true;
         setOpacity(0.95);
         requestUpdate();
+    }
+
+    if (!m_Pressed) {
+        return;
+    }
+
+    QPoint target = event->globalPosition().toPoint() - m_PressPos;
+
+    if (!m_Dragging) {
+        // Far enough that it can't be a shaky click
+        if ((target - position()).manhattanLength() < kDragThreshold) {
+            return;
+        }
+        m_Dragging = true;
+    }
+
+    setPosition(target);
+}
+
+void OverlayMenuButton::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button() != Qt::LeftButton) {
+        return;
+    }
+
+    bool wasDragging = m_Dragging;
+    m_Pressed = false;
+    m_Dragging = false;
+
+    if (!wasDragging) {
+        if (m_ClickCallback) {
+            m_ClickCallback();
+        }
+        return;
+    }
+
+    // Convert back to a fraction of the window so it stays where it was put even if
+    // the stream comes back at another size, or on another monitor.
+#ifdef Q_OS_MACOS
+    qreal dpr = 1.0;
+#else
+    qreal dpr = screen() ? screen()->devicePixelRatio() : 1.0;
+#endif
+    int qpX = qRound(m_ParentX / dpr);
+    int qpY = qRound(m_ParentY / dpr);
+    int qpW = qRound(m_ParentW / dpr);
+    int qpH = qRound(m_ParentH / dpr);
+
+    int travelX = qMax(1, qpW - kButtonSize - 2 * kMargin);
+    int travelY = qMax(1, qpH - kButtonSize - 2 * kMargin);
+
+    m_FracX = qBound(0.0, (qreal)(x() - qpX - kMargin) / travelX, 1.0);
+    m_FracY = qBound(0.0, (qreal)(y() - qpY - kMargin) / travelY, 1.0);
+
+    // Snap back inside if it was dragged past an edge
+    repositionTo(m_ParentX, m_ParentY, m_ParentW, m_ParentH);
+
+    if (m_MovedCallback) {
+        m_MovedCallback(m_FracX, m_FracY);
     }
 }
 

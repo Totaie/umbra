@@ -42,20 +42,55 @@ public:
      */
     void hideButton();
 
+    /**
+     * Re-assert topmost. A fullscreen window redrawing underneath will otherwise end
+     * up above this one, and a button you cannot click is not a button.
+     */
+    void keepOnTop();
+
+    /**
+     * Called when a drag finishes, with the button's new position as a fraction of the
+     * stream window. Wired to the preference so it survives the session.
+     */
+    using MovedCallback = std::function<void(qreal fracX, qreal fracY)>;
+    void setMovedCallback(MovedCallback cb) { m_MovedCallback = std::move(cb); }
+
+    /**
+     * Where to sit, as a fraction of the parent rect. 1,0 is the top-right corner.
+     */
+    void setPositionFraction(qreal fracX, qreal fracY);
+
     bool isButtonVisible() const { return m_ButtonVisible; }
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
     bool event(QEvent* event) override;
 
 private:
     void drawCrescentMoon(QPainter& p, qreal cx, qreal cy, qreal radius);
 
     ClickCallback m_ClickCallback;
+    MovedCallback m_MovedCallback;
     bool m_Hovered;
     bool m_ButtonVisible;
+
+    // Drag state. A press only becomes a drag once it has moved far enough that it
+    // can't be an unsteady click, otherwise the button would be impossible to press.
+    bool m_Pressed;
+    bool m_Dragging;
+    QPoint m_PressPos;
+
+    // Where it sits, as a fraction of the parent rect
+    qreal m_FracX;
+    qreal m_FracY;
+
+    // The rect it was last positioned against, needed to turn a drag back into a fraction
+    int m_ParentX, m_ParentY, m_ParentW, m_ParentH;
+
+    static constexpr int kDragThreshold = 4;
 
     // Button size (logical pixels)
     static constexpr int kButtonSize = 36;

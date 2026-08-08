@@ -3771,11 +3771,6 @@ void Session::exec()
         m_InputHandler->switchHostDisplay(m_Preferences->preferredHostDisplay - 1);
     }
 
-    // Ask the host which displays it can switch between, so the menu can name them
-    // and Ctrl+Shift+D knows where to wrap. Best effort: an older host just 404s and
-    // cycling falls back to a guess rather than disappearing.
-    refreshHostDisplays();
-
     // Open the other screens too, if that's what the user asked clicking a PC to do.
     // Guarded on clientScreenIndex, which the parent leaves at -1 and sets on every
     // child it spawns - without that, each child would spawn its own children.
@@ -3820,6 +3815,12 @@ void Session::exec()
     m_MenuPanel->setHasMultipleScreens(QGuiApplication::screens().count() > 1 &&
                                        m_Preferences->clientScreenIndex < 0);
 
+    // Deliberately here and not up with the other host-side setup: this hands the
+    // list to the panel, and until a moment ago the panel did not exist yet - so the
+    // Display submenu was being told about displays by way of a null pointer and never
+    // appeared at all.
+    refreshHostDisplays();
+
     m_MenuPanel->setActionCallback([this](OverlayMenuPanel::MenuAction action) {
         dispatchQtMenuAction(action);
     });
@@ -3848,6 +3849,13 @@ void Session::exec()
         m_MenuButton->setClickCallback([this]() {
             showQtOverlayMenu();
         });
+        m_MenuButton->setPositionFraction(m_Preferences->overlayButtonFracX,
+                                          m_Preferences->overlayButtonFracY);
+        m_MenuButton->setMovedCallback([this](qreal fracX, qreal fracY) {
+            m_Preferences->overlayButtonFracX = fracX;
+            m_Preferences->overlayButtonFracY = fracY;
+            m_Preferences->save();
+        });
         // Show button at initial position
         int wx, wy, ww, wh;
         SDL_GetWindowPosition(m_Window, &wx, &wy);
@@ -3863,8 +3871,15 @@ void Session::exec()
     // event loop and is serviced via pipe polling below.
     constexpr Uint32 QT_UI_EVENT_PUMP_INTERVAL_MS = 10;
     Uint32 lastQtEventPumpTicks = 0;
-    auto processQtEventsDuringStream = [this, &lastQtEventPumpTicks](bool force = false) {
+    Uint32 lastKeepOnTopTicks = 0;
+    auto processQtEventsDuringStream = [this, &lastQtEventPumpTicks, &lastKeepOnTopTicks](bool force = false) {
+        // The button counts. It is a Qt window like the other two, and leaving it out
+        // meant that while it was the only thing on screen nothing pumped Qt at all -
+        // so it never saw a hover, never saw a click, and never repainted. It looked
+        // like a button that was behind the stream. It was a button nobody was
+        // listening to.
         const bool qtUiVisible = (m_MenuPanel && m_MenuPanel->needsEventProcessing()) ||
+                                 (m_MenuButton && m_MenuButton->isButtonVisible()) ||
                                  (m_Toast && m_Toast->isVisible());
         if (!qtUiVisible) {
             return;
@@ -3876,6 +3891,16 @@ void Session::exec()
         }
         lastQtEventPumpTicks = now;
         QCoreApplication::processEvents(QEventLoop::AllEvents);
+
+        // Topmost is a request, not a guarantee, against a fullscreen window that is
+        // presenting continuously. Renewing it twice a second is cheap and is the
+        // difference between a button that is always there and one that disappears
+        // under the stream after a while.
+        constexpr Uint32 KEEP_ON_TOP_INTERVAL_MS = 500;
+        if (m_MenuButton != nullptr && now - lastKeepOnTopTicks >= KEEP_ON_TOP_INTERVAL_MS) {
+            lastKeepOnTopTicks = now;
+            m_MenuButton->keepOnTop();
+        }
     };
 
     auto processClipboardHelperMessages = [this]() {

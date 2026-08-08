@@ -66,6 +66,9 @@
 #define SER_BACKGROUNDIMAGEPATH "backgroundimagepath"
 #define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
 #define SER_STREAMALLSCREENS "streamallscreens"
+#define SER_UMBRADEFAULTSREV "umbradefaultsrev"
+#define SER_OVERLAYBTNX "overlaybuttonfracx"
+#define SER_OVERLAYBTNY "overlaybuttonfracy"
 #define SER_CLIENTSIDECURSOR "clientsidecursor"
 #define SER_PREFERREDHOSTDISPLAY "preferredhostdisplay"
 #define SER_KEEPAWAKE "keepawake"
@@ -250,6 +253,23 @@ void StreamingPreferences::reload()
     // Off by default: it opens one Umbra per screen, which is a lot to have happen to
     // someone who only meant to connect. Reachable from the in-session menu either way.
     streamAllScreens = settings.value(SER_STREAMALLSCREENS, false).toBool();
+
+    // Top-right by default, out of the way of a title bar and of anything centred.
+    overlayButtonFracX = qBound(0.0, settings.value(SER_OVERLAYBTNX, 1.0).toDouble(), 1.0);
+    overlayButtonFracY = qBound(0.0, settings.value(SER_OVERLAYBTNY, 0.0).toDouble(), 1.0);
+
+    // Changing a default above only reaches a fresh install: save() writes every key
+    // on every exit, so anyone who has run Umbra before has the old value on disk and
+    // never sees the new one. This carries the ones that matter across once.
+    //
+    // Only absoluteMouseMode so far. It was off, which is right for a game doing its
+    // own pointer handling and wrong for everything Umbra is used for - relative mode
+    // never sends a pointer position at all, so a locally drawn cursor has nothing to
+    // agree with and the two drift apart as you move.
+    int defaultsRevision = settings.value(SER_UMBRADEFAULTSREV, 0).toInt();
+    if (defaultsRevision < 1) {
+        absoluteMouseMode = true;
+    }
     clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
     preferredHostDisplay = settings.value(SER_PREFERREDHOSTDISPLAY, 0).toInt();
     // Runtime-only, set by --client-screen for multi-display children. Never persisted,
@@ -485,6 +505,9 @@ void StreamingPreferences::save()
     settings.setValue(SER_BACKGROUNDIMAGEPATH, backgroundImagePath);
     settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
     settings.setValue(SER_STREAMALLSCREENS, streamAllScreens);
+    settings.setValue(SER_UMBRADEFAULTSREV, UMBRA_DEFAULTS_REVISION);
+    settings.setValue(SER_OVERLAYBTNX, overlayButtonFracX);
+    settings.setValue(SER_OVERLAYBTNY, overlayButtonFracY);
     settings.setValue(SER_CLIENTSIDECURSOR, clientSideCursor);
     settings.setValue(SER_PREFERREDHOSTDISPLAY, preferredHostDisplay);
     settings.setValue(SER_KEEPAWAKE, keepAwake);

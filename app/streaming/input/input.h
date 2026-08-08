@@ -200,6 +200,9 @@ public:
     // Switches which host display is captured, without reconnecting. Zero-based.
     void switchHostDisplay(int displayIndex);
 
+    // Ask the host to stop, or resume, compositing its own pointer into the video.
+    void showHostCursor();
+
     // What the host reported through /actions/displays, so cycling knows when to
     // wrap. Safe to never call - see cycleHostDisplay().
     void setHostDisplays(int count, int current);

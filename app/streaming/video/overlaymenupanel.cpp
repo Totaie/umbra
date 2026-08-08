@@ -32,15 +32,18 @@ OverlayMenuPanel::OverlayMenuPanel(QWindow* parent)
     fmt.setAlphaBufferSize(8);
     setFormat(fmt);
 
-    // Logical (unscaled) values — Qt 6 handles DPI automatically
-    // Win11 dark context menu style
-    m_ItemHeight   = 38;
-    m_Padding      = 4;
-    m_MenuWidth    = 280;
-    m_BorderRadius = 8;
-    m_ShadowMargin = 8;
-    m_TitleHeight  = 32;
-    m_IconAreaWidth = 24;
+    // Logical (unscaled) values - Qt 6 handles DPI automatically.
+    //
+    // Square, like everything else in Umbra. This arrived from upstream wearing a
+    // Windows 11 context menu - rounded, grey, a soft gradient shadow - in an app whose
+    // whole visual language is hard corners, a solid offset shadow and one teal accent.
+    m_ItemHeight   = 40;
+    m_Padding      = 6;
+    m_MenuWidth    = 300;
+    m_BorderRadius = 0;
+    m_ShadowMargin = 10;
+    m_TitleHeight  = 36;
+    m_IconAreaWidth = 26;
 
     // Load ModeSeven.ttf (same font as performance stats overlay)
     int fontId = QFontDatabase::addApplicationFont(QStringLiteral(":/data/ModeSeven.ttf"));
@@ -573,28 +576,21 @@ void OverlayMenuPanel::paintEvent(QPaintEvent*)
     p.fillRect(0, 0, w, h, Qt::transparent);
     p.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
-    // === Soft drop shadow ===
-    for (int i = sm; i >= 1; i--) {
-        qreal t = 1.0 - (qreal)i / sm;
-        int alpha = qRound(28.0 * t * t);
-        QPainterPath sp;
-        sp.addRoundedRect(QRectF(sm - i, sm - i + 1, cw + 2 * i, ch + 2 * i),
-                          m_BorderRadius + i, m_BorderRadius + i);
-        p.fillPath(sp, QColor(0, 0, 0, alpha));
-    }
+    // === Drop shadow: zero blur, pure offset ===
+    // Theme.qml's shadowOffset/shadowColor, the same 6px 6px #0000008c the cards use.
+    p.fillRect(QRectF(sm + 6, sm + 6, cw, ch), QColor(0, 0, 0, 140));
 
     // Move to content area
     p.save();
     p.translate(sm, sm);
 
-    // === Win11 dark background ===
+    // === Umbra surface ===
     QPainterPath bgPath;
-    bgPath.addRoundedRect(QRectF(0, 0, cw, ch), m_BorderRadius, m_BorderRadius);
-    p.fillPath(bgPath, QColor(44, 44, 44, 242));
+    bgPath.addRect(QRectF(0, 0, cw, ch));
+    p.fillPath(bgPath, QColor(0x17, 0x1A, 0x20, 250));   // Theme.surface
 
-    // Subtle border (Win11 style: thin light outline)
-    p.setPen(QPen(QColor(255, 255, 255, 20), 1.0));
-    p.drawPath(bgPath);
+    p.setPen(QPen(QColor(0x3C, 0x43, 0x4E), 1.0));       // Theme.lineStrong
+    p.drawRect(QRectF(0.5, 0.5, cw - 1, ch - 1));
 
     // Clip content
     p.setClipPath(bgPath);
@@ -608,11 +604,11 @@ void OverlayMenuPanel::paintEvent(QPaintEvent*)
         p.setFont(m_TitleFont);
         bool titleHovered = (m_HoveredIndex == -2);
         if (titleHovered) {
-            QPainterPath hlPath;
-            hlPath.addRoundedRect(QRectF(4, 2, cw - 8, m_TitleHeight - 4), 4, 4);
-            p.fillPath(hlPath, QColor(255, 255, 255, 15));
+            p.fillRect(QRectF(1, 1, cw - 2, m_TitleHeight - 2),
+                       QColor(0x1F, 0x23, 0x2B));        // Theme.surface2
         }
-        p.setPen(titleHovered ? QColor(255, 255, 255, 230) : QColor(255, 255, 255, 140));
+        // A wide-tracked label, like the micro labels everywhere else in the app.
+        p.setPen(titleHovered ? QColor(0xEE, 0xF0, 0xEC) : QColor(0x8B, 0x8F, 0x86));
         QRect titleRect(textPad, 0, cw - 2 * textPad, m_TitleHeight);
         p.drawText(titleRect, Qt::AlignLeft | Qt::AlignVCenter,
                    QString::fromUtf8("\xe2\x97\x82 ") + level.title);

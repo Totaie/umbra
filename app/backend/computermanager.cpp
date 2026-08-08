@@ -978,6 +978,37 @@ private:
                 }
             }
             else {
+                // A host that reinstalled - or that regenerated its identity, which
+                // ours did on every restart until it learned to write one down -
+                // arrives here looking like a machine we have never seen. Left alone
+                // that leaves a dead tile behind for every restart: same name, none of
+                // them answering, because the id each was paired against is gone.
+                //
+                // Same name and an address in common is the signal. Both, because a
+                // name on its own is not unique and an address on its own gets handed
+                // to another machine by DHCP. Nothing is carried over from the old
+                // entry: its certificate was issued against the id that just changed,
+                // so pairing has to happen again regardless.
+                NvComputer* replaced = nullptr;
+                for (NvComputer* known : std::as_const(m_ComputerManager->m_KnownHosts)) {
+                    if (known->name != newComputer->name) {
+                        continue;
+                    }
+
+                    const QVector<NvAddress> newAddresses = newComputer->uniqueAddresses();
+                    const QVector<NvAddress> knownAddresses = known->uniqueAddresses();
+                    for (const NvAddress& address : knownAddresses) {
+                        if (newAddresses.contains(address)) {
+                            replaced = known;
+                            break;
+                        }
+                    }
+
+                    if (replaced != nullptr) {
+                        break;
+                    }
+                }
+
                 // Store this in our active sets
                 m_ComputerManager->m_KnownHosts[newComputer->uuid] = newComputer;
 
@@ -986,6 +1017,16 @@ private:
 
                 // Drop the lock before notifying
                 m_ComputerManager->m_Lock.unlock();
+
+                // Deliberately after unlocking, and through the normal deletion path
+                // rather than by hand: it takes the write lock itself, and it is what
+                // stops the polling threads still running against the old entry.
+                if (replaced != nullptr) {
+                    qInfo() << "Replacing" << replaced->name
+                            << "- same PC, new host identity" << replaced->uuid
+                            << "->" << newComputer->uuid;
+                    m_ComputerManager->deleteHost(replaced);
+                }
 
                 // If this wasn't added via mDNS but it is a RFC 1918 IPv4 address and not a VPN,
                 // go ahead and do the STUN request now to populate an external address.

@@ -20,6 +20,8 @@
 
 // Host shortcut VKEYs. See apply_shortcut() in the host's src/input.cpp.
 #define VK_HOST_TOGGLE_CURSOR 0x4E  // 'N'
+#define VK_HOST_HIDE_CURSOR 0x4F    // 'O', sets rather than toggles
+#define VK_HOST_SHOW_CURSOR 0x50    // 'P'
 #define VK_HOST_DISPLAY_FIRST 0x70  // F1 selects display 0, F2 display 1, ...
 #define HOST_MAX_SWITCHABLE_DISPLAYS 13
 
@@ -45,11 +47,20 @@ void SdlInputHandler::sendHostShortcut(short keyCode)
 
 void SdlInputHandler::hideHostCursor()
 {
-    // NB: The host shortcut is a toggle, not a set, and the flag behind it is a
-    // process-wide global that survives across sessions. If something else already
-    // hid the cursor this shows it again; Ctrl+Alt+Shift+N flips it back.
+    // Sets rather than toggles, so asking twice is harmless and a reconnect can't
+    // leave the host drawing its pointer under the one we draw ourselves. The old
+    // toggle is what made the host cursor reappear at random.
+    //
+    // A host too old to know this shortcut passes the key through to the desktop
+    // instead, which is untidy but harmless; Umbra ships both halves together.
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Asking host to stop drawing its cursor");
-    sendHostShortcut(VK_HOST_TOGGLE_CURSOR);
+    sendHostShortcut(VK_HOST_HIDE_CURSOR);
+}
+
+void SdlInputHandler::showHostCursor()
+{
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Asking host to draw its cursor again");
+    sendHostShortcut(VK_HOST_SHOW_CURSOR);
 }
 
 void SdlInputHandler::switchHostDisplay(int displayIndex)
@@ -63,6 +74,16 @@ void SdlInputHandler::switchHostDisplay(int displayIndex)
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Switching host to display %d", displayIndex);
     sendHostShortcut(VK_HOST_DISPLAY_FIRST + displayIndex);
     m_CurrentHostDisplay = displayIndex;
+
+    // Bring the pointer with us. The host tears capture down and brings it back up on
+    // the other display, and in absolute mode nothing tells it where the pointer is
+    // until the pointer moves - so without this you arrive on the new display and the
+    // mouse is still wherever it was on the old one until you jiggle it.
+    if (m_Window != nullptr && m_AbsoluteMouseMode) {
+        int ww, wh;
+        SDL_GetWindowSize(m_Window, &ww, &wh);
+        SDL_WarpMouseInWindow(m_Window, ww / 2, wh / 2);
+    }
 }
 
 void SdlInputHandler::setHostDisplays(int count, int current)
