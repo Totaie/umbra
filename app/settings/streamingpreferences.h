@@ -6,7 +6,7 @@
 
 // Bumped when a default changes in a way that should also reach people who already
 // have settings saved. See the migration at the end of reload().
-#define UMBRA_DEFAULTS_REVISION 1
+#define UMBRA_DEFAULTS_REVISION 2
 
 class StreamingPreferences : public QObject
 {

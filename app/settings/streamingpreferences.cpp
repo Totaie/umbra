@@ -177,7 +177,11 @@ void StreamingPreferences::reload()
     // actually is. It also gates the locally drawn cursor, which is the other half
     // of making the remote mouse feel attached to your hand.
     absoluteMouseMode = settings.value(SER_ABSMOUSEMODE, true).toBool();
-    showLocalCursor = settings.value(SER_SHOWLOCALCURSOR, false).toBool();
+    // Drawn by the client, not painted into the video by the host. This is what makes
+    // the pointer respond immediately and change shape over a text field or a window
+    // edge - the host's own cursor moves once per encoded frame. Off by default
+    // upstream, which is why the host's cursor was the one you could see.
+    showLocalCursor = settings.value(SER_SHOWLOCALCURSOR, true).toBool();
     absoluteTouchMode = settings.value(SER_ABSTOUCHMODE, true).toBool();
     enableNativeTouchpad = settings.value(SER_NATIVETOUCHPAD, false).toBool();
     framePacing = settings.value(SER_FRAMEPACING, false).toBool();
@@ -269,6 +273,12 @@ void StreamingPreferences::reload()
     int defaultsRevision = settings.value(SER_UMBRADEFAULTSREV, 0).toInt();
     if (defaultsRevision < 1) {
         absoluteMouseMode = true;
+    }
+    if (defaultsRevision < 2) {
+        // No longer a setting - see LegacySettingsPage. Anyone who ran an earlier build
+        // has false on disk and would keep watching the host's cursor.
+        showLocalCursor = true;
+        clientSideCursor = true;
     }
     clientSideCursor = settings.value(SER_CLIENTSIDECURSOR, true).toBool();
     preferredHostDisplay = settings.value(SER_PREFERREDHOSTDISPLAY, 0).toInt();

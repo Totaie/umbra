@@ -60,6 +60,18 @@ public:
 
     Q_INVOKABLE Session* createSessionForCurrentGame(int computerIndex);
 
+    // A session for this PC's desktop, so clicking a tile can go straight to a stream
+    // without an app list in between. Returns nullptr when the host publishes no
+    // Desktop app, which is the only case where the app list is worth showing.
+    Q_INVOKABLE Session* createDesktopSession(int computerIndex);
+
+    // Whether that PC has a desktop to connect straight to.
+    Q_INVOKABLE bool hasDesktopApp(int computerIndex);
+
+    // Name of whatever is already running on that PC, or empty. Resuming a running app
+    // is different from launching the desktop over the top of it.
+    Q_INVOKABLE QString runningAppName(int computerIndex);
+
     Q_INVOKABLE QVariantList getConnectionAddressesForComputer(int computerIndex) const;
 
     Q_INVOKABLE bool hasMultipleConnectionAddresses(int computerIndex) const;

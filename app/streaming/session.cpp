@@ -3343,6 +3343,41 @@ bool Session::startConnectionAsync()
     int err = LiStartConnection(&preparedHostInfo.info, &m_StreamConfig, &k_ConnCallbacks,
                                 &m_VideoCallbacks, &m_AudioCallbacks,
                                 NULL, 0, NULL, 0);
+
+    // A session the host still believes is running will refuse the RTSP handshake, and
+    // it stays that way until something clears it - which is why streaming can work all
+    // day and then start failing with "Starting RTSP handshake failed" until the host is
+    // restarted. Clear it and try once more before giving up.
+    //
+    // Deliberately only once, and only when the host says a session exists: retrying a
+    // genuine network failure just doubles the wait before the error appears.
+    if (err != 0 && !m_SuppressConnectionErrorDialog && m_Computer != nullptr) {
+        bool hostThinksSomethingIsRunning = false;
+        try {
+            NvHTTP http(m_Computer);
+            hostThinksSomethingIsRunning =
+                    NvHTTP::getCurrentGame(http.getServerInfo(NvHTTP::NVLL_NONE)) != 0;
+        } catch (...) {
+            // Unreachable is a different problem, and the error already says so
+        }
+
+        if (hostThinksSomethingIsRunning) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "Connection failed while the host reports a session in progress; "
+                        "clearing it and retrying once");
+            try {
+                NvHTTP http(m_Computer);
+                http.quitApp();
+            } catch (...) {
+                // Best effort - if it won't quit, the retry below reports the real error
+            }
+
+            err = LiStartConnection(&preparedHostInfo.info, &m_StreamConfig, &k_ConnCallbacks,
+                                    &m_VideoCallbacks, &m_AudioCallbacks,
+                                    NULL, 0, NULL, 0);
+        }
+    }
+
     if (err != 0) {
         // We already displayed an error dialog in the stage failure
         // listener.

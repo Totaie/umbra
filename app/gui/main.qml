@@ -512,29 +512,6 @@ ApplicationWindow {
             }
 
             NavigableToolButton {
-                id: qqButton
-                visible: SystemProperties.hasBrowser &&
-                         stackView.currentItem instanceof SettingsView
-
-                iconSource: "qrc:/res/qq-2.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                // 源串必须是英文：这个仓库的源语言是 en_GB，中文源串会变成 28 个
-                // 语言包里的 msgid，而且全都 unfinished —— 英语用户看到的就是那四个
-                // 中文字。梗放到 zh_CN 的译文里，两边都能要。
-                ToolTip.text: qsTr("Join our QQ group")
-
-                // TODO need to make sure browser is brought to foreground.
-                onClicked: Qt.openUrlExternally("https://qm.qq.com/cgi-bin/qm/qr?k=wI7aTvDQdd900n1L_wjjJw3qNP0yOgUa&jump_from=webapi&authKey=CDBn7sGy7HpCKYTcFmoEdNuG/zmkrBWUC/W5A/oZZycKzXwuO/XFCA97IpJRktj3");
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocusReason)
-                }
-            }
-
-            NavigableToolButton {
                 id: addPcButton
                 visible: stackView.currentItem instanceof PcView
 

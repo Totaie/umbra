@@ -128,6 +128,76 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     return names;
 }
 
+namespace {
+
+// The host publishes its desktop under this name. Matching by name rather than by id
+// because ids are assigned per host and change when apps are edited.
+const NvApp* findDesktopApp(NvComputer* computer)
+{
+    for (const NvApp& app : computer->appList) {
+        if (app.name.compare(QLatin1String("Desktop"), Qt::CaseInsensitive) == 0) {
+            return &app;
+        }
+    }
+
+    return nullptr;
+}
+
+}
+
+bool ComputerModel::hasDesktopApp(int computerIndex)
+{
+    if (computerIndex < 0 || computerIndex >= m_Computers.count()) {
+        return false;
+    }
+
+    QReadLocker lock(&m_Computers[computerIndex]->lock);
+    return findDesktopApp(m_Computers[computerIndex]) != nullptr;
+}
+
+QString ComputerModel::runningAppName(int computerIndex)
+{
+    if (computerIndex < 0 || computerIndex >= m_Computers.count()) {
+        return QString();
+    }
+
+    NvComputer* computer = m_Computers[computerIndex];
+    QReadLocker lock(&computer->lock);
+
+    if (computer->currentGameId == 0) {
+        return QString();
+    }
+
+    for (const NvApp& app : computer->appList) {
+        if (app.id == computer->currentGameId) {
+            return app.name;
+        }
+    }
+
+    return QString();
+}
+
+Session* ComputerModel::createDesktopSession(int computerIndex)
+{
+    if (computerIndex < 0 || computerIndex >= m_Computers.count()) {
+        return nullptr;
+    }
+
+    NvComputer* computer = m_Computers[computerIndex];
+
+    NvApp desktop;
+    {
+        QReadLocker lock(&computer->lock);
+        const NvApp* found = findDesktopApp(computer);
+        if (found == nullptr) {
+            return nullptr;
+        }
+        desktop = *found;
+    }
+
+    return new Session(computer, desktop);
+}
+
 Session* ComputerModel::createSessionForCurrentGame(int computerIndex)
 {
     Q_ASSERT(computerIndex < m_Computers.count());

@@ -99,6 +99,59 @@ CenteredGridView {
         return model
     }
 
+    // Straight from a PC tile to its desktop.
+    //
+    // This used to push AppView and let it auto-launch, which meant the app grid was
+    // built, transitioned to and rendered on the way to a stream that was already
+    // decided - so Desktop and Steam Big Picture appeared every time no matter how
+    // hard the grid was hidden. The session is built here instead.
+    function connectToDesktop(computerIndex, computerName)
+    {
+        // A host that publishes no Desktop app is the only case with a real choice to
+        // make, and that is what the app list is for.
+        if (!computerModel.hasDesktopApp(computerIndex)) {
+            openAppView(computerIndex, computerName, false)
+            return
+        }
+
+        // Something else is already running on that host. Quitting it is a decision,
+        // and the app list is where that conversation already lives.
+        var running = computerModel.runningAppName(computerIndex)
+        if (running !== "" && running.toLowerCase() !== "desktop") {
+            openAppView(computerIndex, computerName, false)
+            return
+        }
+
+        var session = computerModel.createDesktopSession(computerIndex)
+        if (!session) {
+            openAppView(computerIndex, computerName, false)
+            return
+        }
+
+        var component = Qt.createComponent("StreamSegue.qml")
+        if (component.status !== Component.Ready) {
+            console.error("Failed to open StreamSegue.qml: " + component.errorString())
+            errorDialog.text = qsTr("Unable to start a session with %1.").arg(computerName)
+            errorDialog.helpText = component.errorString()
+            errorDialog.open()
+            return
+        }
+
+        var segue = component.createObject(stackView, {
+                                               "appName": qsTr("Desktop"),
+                                               "session": session,
+                                               "isResume": running !== ""
+                                           })
+        if (!segue) {
+            errorDialog.text = qsTr("Unable to start a session with %1.").arg(computerName)
+            errorDialog.helpText = component.errorString()
+            errorDialog.open()
+            return
+        }
+
+        stackView.push(segue)
+    }
+
     function openAppView(computerIndex, computerName, showHiddenGames)
     {
         // 造不出来时 createObject 返回 null，push(null) 只会往日志里丢一句
@@ -398,13 +451,6 @@ CenteredGridView {
                     enabled: false
                 }
                 NavigableMenuItem {
-                    text: qsTr("View All Apps")
-                    onTriggered: {
-                        openAppView(index, model.name, true)
-                    }
-                    visible: model.online && model.paired
-                }
-                NavigableMenuItem {
                     text: qsTr("Select Connection IP")
                     onTriggered: showAddressSelectionForComputer(index, model.name, false)
                     visible: model.online && model.paired && computerModel.hasMultipleConnectionAddresses(index)
@@ -423,7 +469,14 @@ CenteredGridView {
                 }
 
                 NavigableMenuItem {
-                    text: qsTr("Stream to All Screens")
+                    text: qsTr("Connect to All Displays")
+
+                    // Shown whenever the PC can be streamed from, not only when this
+                    // machine happens to have a second screen. Hiding it meant nobody
+                    // could find out the feature existed; launchAdditionalDisplays()
+                    // already explains itself when there is nowhere to put them.
+                    visible: model.online && model.paired
+
                     onTriggered: {
                         var error = computerModel.launchAdditionalDisplays(index, "Desktop")
                         if (error) {
@@ -433,10 +486,9 @@ CenteredGridView {
                         }
                         else {
                             // The children cover screens 2..n; this process takes the first.
-                            openAppView(index, model.name, false)
+                            connectToDesktop(index, model.name)
                         }
                     }
-                    visible: model.online && model.paired && computerModel.getClientScreenCount() > 1
                 }
                 NavigableMenuItem {
                     text: computerModel.hasPairingPassphrase(index)
@@ -483,8 +535,7 @@ CenteredGridView {
                     errorDialog.open()
                 }
                 else if (model.paired) {
-                    // Go directly to app view; IP can be changed from there
-                    openAppView(index, model.name, false)
+                    connectToDesktop(index, model.name)
                 }
                 else {
                     // Not paired yet, so ask for the host's token. A PIN is only worth

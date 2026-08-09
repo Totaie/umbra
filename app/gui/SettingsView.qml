@@ -118,8 +118,12 @@ FocusScope {
 
     // Reuse the background already owned by the application window. Creating a
     // hidden PcView here duplicated its model, network work, and scene graph.
+    // Falls back to a bundled image only when a wallpaper is actually wanted. It used
+    // to fall back unconditionally, so turning wallpapers off left this page showing a
+    // picture nobody asked for and no setting could remove.
     Image {
         anchors.fill: parent
+        visible: StreamingPreferences.backgroundMode !== StreamingPreferences.BG_NONE
         source: Window.window && Window.window.backgroundImageUrl !== ""
                 ? Window.window.backgroundImageUrl
                 : "qrc:/res/gura.png"
