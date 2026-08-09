@@ -1557,6 +1557,23 @@ namespace nvhttp {
           named_cert_p->virtual_display_mode_override = el.value("virtual_display_mode", "");
           named_cert_p->virtual_display_layout_override = el.value("virtual_display_layout", "");
           named_cert_p->perm = (PERM) (util::get_non_string_json_value<uint32_t>(el, "perm", (uint32_t) PERM::_all)) & PERM::_all;
+
+          // Devices paired before this host granted full permission on pairing are
+          // sitting on exactly view|list: they can see the app list and watch a stream,
+          // but cannot launch anything or send a single mouse movement. It surfaces as a
+          // 403 at launch, which is a long way from the cause.
+          //
+          // Exactly PERM::_default is the signature of "never configured" - the web UI
+          // writes an explicit mask the moment anyone changes a device - so this only
+          // touches devices nobody has made a decision about. Anything deliberately
+          // narrowed differs from _default and is left alone.
+          if (named_cert_p->perm == PERM::_default) {
+            BOOST_LOG(info) << "Granting full permission to previously paired device ["sv
+                            << named_cert_p->name << "]; it had the shared-host default, "
+                            << "which cannot launch apps or send input"sv;
+            named_cert_p->perm = PERM::_all;
+          }
+
           named_cert_p->enable_legacy_ordering = util::get_non_string_json_value<bool>(el, "enable_legacy_ordering", true);
           named_cert_p->allow_client_commands = util::get_non_string_json_value<bool>(el, "allow_client_commands", true);
           named_cert_p->always_use_virtual_display = util::get_non_string_json_value<bool>(el, "always_use_virtual_display", false);
@@ -2337,17 +2354,23 @@ namespace nvhttp {
         }
         named_cert_p->cert = std::move(client.cert);
         named_cert_p->uuid = uuid_util::uuid_t::generate().string();
-        // If the device is the first one paired with the server, assign full permission.
-        bool first_client = false;
-        {
-          std::lock_guard<std::mutex> lock(client_mutex);
-          first_client = client_root.named_devices.empty();
-        }
-        if (first_client) {
-          named_cert_p->perm = PERM::_all;
-        } else {
-          named_cert_p->perm = PERM::_default;
-        }
+
+        // A device that finished pairing gets full permission, whether it is the first
+        // one or the fifth.
+        //
+        // Upstream gives the first device everything and every later one PERM::_default,
+        // which is view|list - no launch, and no input at all. That is the right shape
+        // for a host shared with people you don't control. It is the wrong shape for
+        // this: Umbra is one person's remote desktop, and pairing is already gated on a
+        // 256-bit token that only the host operator has. A second machine that pairs
+        // successfully and then cannot move the mouse isn't secured, it's broken - and
+        // it fails as a 403 at launch, long after the point where anyone would think to
+        // look at permissions.
+        //
+        // The token is the boundary. Per-device permissions can still be narrowed
+        // afterwards in the web UI under Client Management; this only sets where they
+        // start.
+        named_cert_p->perm = PERM::_all;
 
         named_cert_p->enable_legacy_ordering = true;
         named_cert_p->allow_client_commands = true;
