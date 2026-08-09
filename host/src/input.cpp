@@ -562,6 +562,16 @@ namespace input {
     auto &touch_port = input->touch_port;
     if (touch_port_event->peek()) {
       touch_port = *touch_port_event->pop();
+
+      // Raised once per capture (re)init, so this is rare and worth saying out loud.
+      // Absolute pointer placement depends on all of these agreeing, and when it goes
+      // wrong the symptom - host pointer sitting on a neighbouring monitor - looks
+      // like anything but a coordinate space mismatch.
+      BOOST_LOG(info) << "Input touch port: stream "sv << touch_port.width << 'x' << touch_port.height
+                      << ", display offset "sv << touch_port.offset_x << ',' << touch_port.offset_y
+                      << ", desktop "sv << touch_port.env_width << 'x' << touch_port.env_height
+                      << ", logical desktop "sv << touch_port.env_logical_width << 'x' << touch_port.env_logical_height
+                      << ", tpcoords scalar "sv << touch_port.scalar_tpcoords;
     }
     if (!touch_port) {
       BOOST_LOG(verbose) << "Ignoring early absolute input without a touch port"sv;
