@@ -627,13 +627,13 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         else if (res > 0) {
             qDebug() << "Current version is newer than latest release";
             if (manualCheck) {
-                emit onUpToDate();
+                emit onUpToDate(tagName);
             }
         }
         else {
             qDebug() << "Current version matches latest release";
             if (manualCheck) {
-                emit onUpToDate();
+                emit onUpToDate(tagName);
             }
         }
     }

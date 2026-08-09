@@ -70,7 +70,7 @@ signals:
     void webUiFailed(QString error);
 
     void hostUpdateAvailable(QString newVersion, QString url);
-    void hostUpToDate(QString currentVersion);
+    void hostUpToDate(QString currentVersion, QString latestVersion);
     void hostCheckFailed(QString error);
 
 private:

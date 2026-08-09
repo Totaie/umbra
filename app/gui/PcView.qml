@@ -1,4 +1,4 @@
-import QtQuick 2.9
+import QtQuick 2.15
 import QtQuick.Controls
 import QtQuick.Layouts 1.3
 import QtQuick.Window 2.2
@@ -240,123 +240,137 @@ CenteredGridView {
             }
         }
 
+        // Three states, and the tile says which in three ways: the stripe along the
+        // top, the colour of the glyph, and a word. A warning triangle in the corner
+        // had to stand for offline, unpaired and unreachable all at once.
+        readonly property color pcStateColor: !model.online ? Theme.lineStrong
+                                                            : (!model.paired ? Theme.danger : Theme.accent)
+        readonly property string pcStateText: model.statusUnknown ? qsTr("Checking")
+                                                                  : (!model.online ? qsTr("Offline")
+                                                                                   : (!model.paired ? qsTr("Not paired")
+                                                                                                    : qsTr("Online")))
+
         Rectangle {
             id: pcIcon
+
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
-            anchors.topMargin: 10
-            width: 160
-            height: 160
-            radius: width / 2
-            color: {
-                // 根据名称生成固定颜色，确保同一台PC总是相同颜色
-                var hash = 0;
-                for (var i = 0; i < model.name.length; i++) {
-                    hash = model.name.charCodeAt(i) + ((hash << 5) - hash);
-                }
-                var color = '#';
-                for (var j = 0; j < 3; j++) {
-                    var value = (hash >> (j * 8)) & 0xFF;
-                    color += ('00' + value.toString(16)).substr(-2);
-                }
-                return color;
-            }
+            anchors.topMargin: 8
+            width: 196
+            height: 184
+            color: Theme.surface
+            border.width: 1
+            border.color: Theme.lineStrong
 
-            Image {
-                id: moonMask
+            // The same zero-blur offset shadow the panels and cards use
+            Rectangle {
                 anchors.fill: parent
-                source: "qrc:/res/moon-mask.png"
-                opacity: 0.7
-                fillMode: Image.PreserveAspectFit
+                anchors.margins: 0
+                x: Theme.shadowOffset
+                y: Theme.shadowOffset
+                z: -1
+                color: Theme.shadowColor
+            }
 
-                // 根据PC名称生成旋转角度
-                property real rotationAngle: {
-                    var hash = 0;
-                    for (var i = 0; i < model.name.length; i++) {
-                        hash = model.name.charCodeAt(i) + ((hash << 5) - hash);
+            Rectangle {
+                id: pcStateBar
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: Theme.accentBar
+                color: pcStateColor
+            }
+
+            Rectangle {
+                id: pcGlyphBox
+
+                anchors.top: pcStateBar.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.topMargin: Theme.spaceLg
+                anchors.leftMargin: Theme.spaceLg
+                anchors.rightMargin: Theme.spaceLg
+                height: 74
+                color: Theme.surface2
+                border.width: 1
+                border.color: Theme.line
+
+                Image {
+                    anchors.centerIn: parent
+                    width: 38
+                    height: 38
+                    source: "qrc:/res/fluent/pc-tile.svg"
+                    sourceSize.width: width * 2
+                    sourceSize.height: height * 2
+                    fillMode: Image.PreserveAspectFit
+                    opacity: model.online ? 0.95 : 0.42
+                    smooth: true
+                    visible: !model.statusUnknown
+                }
+
+                // Still deciding whether it answers
+                Image {
+                    id: spinnerImage
+                    anchors.centerIn: parent
+                    width: 34
+                    height: 34
+                    source: "qrc:/res/loading.svg"
+                    visible: model.statusUnknown
+
+                    RotationAnimation {
+                        target: spinnerImage
+                        property: "rotation"
+                        from: 0
+                        to: 360
+                        duration: 1500
+                        loops: Animation.Infinite
+                        running: spinnerImage.visible
                     }
-                    return (hash % 180);
-                }
-
-                rotation: rotationAngle
-            }
-
-            // A machine, not an initial. The letter read as a contact avatar, which
-            // is the wrong idea entirely - these are computers, and two PCs whose
-            // names start with the same letter looked identical. The per-name colour
-            // of the disc still tells them apart at a glance.
-            Image {
-                anchors.centerIn: parent
-                width: parent.width * 0.46
-                height: width
-                source: "qrc:/res/fluent/pc-tile.svg"
-                sourceSize.width: width * 2
-                sourceSize.height: height * 2
-                fillMode: Image.PreserveAspectFit
-                opacity: model.online ? 0.92 : 0.4
-                smooth: true
-            }
-        }
-
-        Image {
-            // TODO: Tooltip
-            id: stateIcon
-            anchors {
-                right: pcIcon.right
-                bottom: pcIcon.bottom
-                rightMargin: 5
-                bottomMargin: 5
-            }
-            visible: !model.statusUnknown && (!model.online || !model.paired)
-            source: !model.online ? "qrc:/res/warning_FILL1_wght300_GRAD200_opsz24.svg" : "qrc:/res/baseline-lock-24px.svg"
-            sourceSize {
-                width: !model.online ? 32 : 28
-                height: !model.online ? 32 : 28
-            }
-            opacity: 0.8
-        }
-
-        Rectangle {
-            id: statusUnknownSpinner
-            anchors.horizontalCenter: pcIcon.horizontalCenter
-            anchors.verticalCenter: pcIcon.verticalCenter
-            anchors.verticalCenterOffset: 0
-            width: 160
-            height: 160
-            color: "transparent"
-            visible: model.statusUnknown
-
-            Image {
-                id: spinnerImage
-                anchors.centerIn: parent
-                width: 160
-                height: 160
-                source: "qrc:/res/loading.svg"
-
-                RotationAnimation {
-                    target: spinnerImage
-                    property: "rotation"
-                    from: 0
-                    to: 360
-                    duration: 1500
-                    loops: Animation.Infinite
-                    running: statusUnknownSpinner.visible
                 }
             }
-        }
 
-        Label {
-            id: pcNameText
-            text: model.name
+            Column {
+                anchors.top: pcGlyphBox.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.topMargin: Theme.spaceLg
+                anchors.leftMargin: Theme.spaceLg
+                anchors.rightMargin: Theme.spaceLg
+                spacing: 5
 
-            width: parent.width
-            anchors.top: pcIcon.bottom
-            anchors.topMargin: 20
-            anchors.bottom: parent.bottom
-            font.pointSize: 16
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            elide: Text.ElideRight
+                Text {
+                    id: pcNameText
+
+                    width: parent.width
+                    text: model.name
+                    color: Theme.text
+                    font.family: Theme.fontSans
+                    font.pointSize: 13
+                    font.weight: Font.ExtraBold
+                    font.letterSpacing: Theme.trackingTight(13)
+                    elide: Text.ElideRight
+                }
+
+                Row {
+                    spacing: 6
+
+                    Rectangle {
+                        width: 6
+                        height: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: model.online && model.paired ? Theme.acid : pcStateColor
+                    }
+
+                    Text {
+                        text: pcStateText
+                        color: model.online && model.paired ? Theme.textDim : pcStateColor
+                        font.family: Theme.fontMono
+                        font.pointSize: Theme.fontCaption
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: Theme.trackingCaption
+                    }
+                }
+            }
         }
 
         Loader {
@@ -492,13 +506,11 @@ CenteredGridView {
             openContextMenu(true)
         }
 
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.RightButton;
-            onClicked: {
-                parent.pressAndHold()
-            }
-        }
+        // No right-button handler here on purpose. There used to be one, and the
+        // wallpaper MouseArea that fills the whole view had one too, and the two of
+        // them raced - which is why right-clicking a PC offered to save the wallpaper.
+        // One owner now: the background handler decides what is under the cursor and
+        // calls openContextMenu() on the right delegate. See rightClickRouter below.
 
         Keys.onMenuPressed: {
             // We must use open() here so the menu is positioned on
@@ -1033,19 +1045,39 @@ CenteredGridView {
         }
     }
 
-    // 添加右键菜单功能
+    // The one and only right-click handler for this page.
+    //
+    // Both the delegate and this had their own before, and which one won was down to
+    // stacking order - so right-clicking a PC offered to save the wallpaper. Rather
+    // than fight over the grab, this sits on top of everything, works out what is
+    // under the cursor, and calls the right menu itself.
     MouseArea {
+        id: rightClickRouter
+
         anchors.fill: parent
         acceptedButtons: Qt.RightButton
-        propagateComposedEvents: true
-        z: -1  // 确保这个MouseArea位于PC条目之下
+        z: 100
 
         onClicked: function(mouse) {
-            if (mouse.button === Qt.RightButton) {
-                if (backgroundImage.currentImageUrl) {
-                    console.log("右键菜单被触发")
-                    backgroundContextMenu.popup()
+            if (mouse.button !== Qt.RightButton) {
+                return
+            }
+
+            // indexAt wants content coordinates; this MouseArea is in view coordinates
+            // and the grid scrolls underneath it.
+            var idx = pcGrid.indexAt(pcGrid.contentX + mouse.x, pcGrid.contentY + mouse.y)
+            if (idx >= 0) {
+                var item = pcGrid.itemAtIndex(idx)
+                if (item) {
+                    pcGrid.currentIndex = idx
+                    item.openContextMenu(true)
+                    return
                 }
+            }
+
+            // Empty space between the cards: the wallpaper is what's there.
+            if (backgroundImage.currentImageUrl) {
+                backgroundContextMenu.popup()
             }
         }
     }

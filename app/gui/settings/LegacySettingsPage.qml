@@ -1176,8 +1176,11 @@ Column {
                     Component.onCompleted: {
                         // An update being available already opens the toolbar's update
                         // dialog, so only the two quiet outcomes need reporting here.
-                        AutoUpdateChecker.onUpToDate.connect(function() {
-                            updateCheckStatus.text = qsTr("Umbra %1 is up to date.").arg(SystemProperties.versionString)
+                        AutoUpdateChecker.onUpToDate.connect(function(latest) {
+                            // Both numbers, because a single one can't tell "you have
+                            // the newest" apart from "the check read the wrong release".
+                            updateCheckStatus.text = qsTr("Umbra %1 is up to date (latest release %2).")
+                                .arg(SystemProperties.versionString).arg(latest)
                         })
                         AutoUpdateChecker.onCheckFailed.connect(function(message) {
                             updateCheckStatus.text = message
@@ -1186,8 +1189,9 @@ Column {
                             updateCheckStatus.text = qsTr("Umbra %1 is available.").arg(version)
                         })
 
-                        HostManager.hostUpToDate.connect(function(version) {
-                            hostUpdateStatus.text = qsTr("Umbra Host %1 is up to date.").arg(version)
+                        HostManager.hostUpToDate.connect(function(version, latest) {
+                            hostUpdateStatus.text = qsTr("Umbra Host %1 is up to date (latest release %2).")
+                                .arg(version).arg(latest)
                         })
                         HostManager.hostCheckFailed.connect(function(message) {
                             hostUpdateStatus.text = message

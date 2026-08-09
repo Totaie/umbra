@@ -359,6 +359,6 @@ void HostManager::handleHostReleasesReply(QNetworkReply* reply)
         emit hostUpdateAvailable(best.toString(), bestUrl);
     }
     else {
-        emit hostUpToDate(installed);
+        emit hostUpToDate(installed, best.toString());
     }
 }

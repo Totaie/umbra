@@ -945,7 +945,8 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_FileMappingMountState(nullptr),
       m_FileMappingMountPath(),
       m_FileMappingSessionId(QUuid::createUuid().toString(QUuid::WithoutBraces)),
-      m_MicStream(nullptr)
+      m_MicStream(nullptr),
+      m_HostDisplaysFetched(false)
 {
     memset(&m_LastAbrVideoStats, 0, sizeof(m_LastAbrVideoStats));
     m_ClipboardHelper = nullptr;
@@ -1971,6 +1972,15 @@ void Session::showQtOverlayMenu()
     int wx, wy, ww, wh;
     SDL_GetWindowPosition(m_Window, &wx, &wy);
     SDL_GetWindowSize(m_Window, &ww, &wh);
+
+    // The display list comes from the host over HTTP, and that request blocks for up
+    // to two seconds. It used to run during session startup, where it sat directly in
+    // the time between clicking connect and seeing a picture for no benefit - nothing
+    // needs it until this menu is on screen. Fetched once, here.
+    if (!m_HostDisplaysFetched) {
+        m_HostDisplaysFetched = true;
+        refreshHostDisplays();
+    }
 
     // Update dynamic state before showing
     m_MenuPanel->updateMicrophoneState(m_MicStream != nullptr);
@@ -3659,7 +3669,10 @@ void Session::exec()
 
     m_InputHandler->setWindow(m_Window);
 
-    QSvgRenderer svgIconRenderer(QString(":/res/moonlight.svg"));
+    // The window icon for the streaming window. This still pointed at the upstream
+    // asset, which no longer exists in the resources - so every session opened with
+    // a blank icon and a "Cannot open file" in the log.
+    QSvgRenderer svgIconRenderer(QString(":/res/umbra.svg"));
     QImage svgImage(ICON_SIZE, ICON_SIZE, QImage::Format_RGBA8888);
     svgImage.fill(0);
 
@@ -3818,16 +3831,18 @@ void Session::exec()
     m_MenuPanel = new OverlayMenuPanel();
     m_MenuButton = nullptr;
     m_Toast = new OverlayToast();
+    // Name the machine in the menu's header band. With several sessions open at once
+    // it is otherwise guesswork which window is acting on which host.
+    m_MenuPanel->setSessionInfo(m_Computer != nullptr ? m_Computer->name : QString(),
+                                QStringLiteral("%1x%2@%3")
+                                    .arg(m_StreamConfig.width)
+                                    .arg(m_StreamConfig.height)
+                                    .arg(m_StreamConfig.fps));
+
     // Nothing to offer on a single-screen client, and a child window covering
     // screen 2 shouldn't offer to spawn siblings of its own.
     m_MenuPanel->setHasMultipleScreens(QGuiApplication::screens().count() > 1 &&
                                        m_Preferences->clientScreenIndex < 0);
-
-    // Deliberately here and not up with the other host-side setup: this hands the
-    // list to the panel, and until a moment ago the panel did not exist yet - so the
-    // Display submenu was being told about displays by way of a null pointer and never
-    // appeared at all.
-    refreshHostDisplays();
 
     m_MenuPanel->setActionCallback([this](OverlayMenuPanel::MenuAction action) {
         dispatchQtMenuAction(action);

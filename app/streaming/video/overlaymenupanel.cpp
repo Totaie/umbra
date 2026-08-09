@@ -18,6 +18,9 @@ OverlayMenuPanel::OverlayMenuPanel(QWindow* parent)
       m_FileMappingState(FileMappingState::Unknown),
       m_CurrentHostDisplay(0),
       m_HasMultipleScreens(false),
+      m_BitrateKbps(0),
+      m_MicrophoneOn(false),
+      m_GamepadMouseOn(false),
       m_FileMappingDetail(tr("Checking")),
       m_ParentX(0), m_ParentY(0), m_ParentW(0), m_ParentH(0),
       m_ContentOffset(0),
@@ -37,13 +40,15 @@ OverlayMenuPanel::OverlayMenuPanel(QWindow* parent)
     // Square, like everything else in Umbra. This arrived from upstream wearing a
     // Windows 11 context menu - rounded, grey, a soft gradient shadow - in an app whose
     // whole visual language is hard corners, a solid offset shadow and one teal accent.
-    m_ItemHeight   = 40;
+    m_ItemHeight   = 38;
     m_Padding      = 6;
-    m_MenuWidth    = 300;
+    m_MenuWidth    = 310;
     m_BorderRadius = 0;
     m_ShadowMargin = 10;
     m_TitleHeight  = 36;
-    m_IconAreaWidth = 26;
+    m_IconAreaWidth = 0;   // no icon column; the sections carry the grouping now
+    m_HeaderHeight = 30;
+    m_BandHeight   = 38;
 
     // Load ModeSeven.ttf (same font as performance stats overlay)
     int fontId = QFontDatabase::addApplicationFont(QStringLiteral(":/data/ModeSeven.ttf"));
@@ -62,9 +67,12 @@ OverlayMenuPanel::OverlayMenuPanel(QWindow* parent)
     m_DetailFont.setPointSize(8);
     m_DetailFont.setWeight(QFont::Normal);
 
+    // Section headers and the band across the top. Wide-tracked uppercase, the same
+    // micro-label treatment the settings rows and card captions use.
     m_TitleFont = QFont(m_LabelFont);
     m_TitleFont.setPointSize(8);
     m_TitleFont.setWeight(QFont::DemiBold);
+    m_TitleFont.setLetterSpacing(QFont::AbsoluteSpacing, 1.6);
 
     // Icon font: platform-specific
 #ifdef Q_OS_WIN
@@ -144,101 +152,134 @@ void OverlayMenuPanel::buildMenuLevels()
 {
     m_MenuLevels.clear();
 
-    // === Level 0: Top-level categories ===
+    auto header = [](const QString& text) {
+        return MenuItem {text, QString(), MenuItemType::Header,
+                         MenuAction::MenuActionMax, 0, false, false, false};
+    };
+
+    // === Level 0: everything worth reaching without navigating ===
     MenuLevel top;
     top.title = QStringLiteral("Umbra");
-    top.items.push_back({tr("Quick Actions"), QString(),  MenuItemType::SubMenu,
-                         MenuAction::MenuActionMax, 1, true, false, false});
-    top.items.push_back({tr("Bitrate"),       QString(),  MenuItemType::SubMenu,
-                         MenuAction::MenuActionMax, 2, true, false, false});
-    top.items.push_back({tr("Host Files"),    m_FileMappingDetail, MenuItemType::Action,
+
+    // --- Display ---
+    // Only worth the section when there is a choice to make, or somewhere to put a
+    // second window.
+    if (m_HostDisplays.size() > 1 || m_HasMultipleScreens) {
+        top.items.push_back(header(tr("Display")));
+
+        const int selectable = qMin(m_HostDisplays.size(),
+                                    (int)MenuAction::SwitchDisplay7 - (int)MenuAction::SwitchDisplay0 + 1);
+        for (int i = 0; i < selectable; i++) {
+            top.items.push_back({m_HostDisplays.at(i),
+                                 i == m_CurrentHostDisplay ? QStringLiteral("\u2713") : QString(),
+                                 MenuItemType::Action,
+                                 (MenuAction)((int)MenuAction::SwitchDisplay0 + i),
+                                 0, true, false, false});
+        }
+
+        if (m_HostDisplays.size() > 1) {
+            top.items.push_back({tr("Next Display"), QStringLiteral("Ctrl+Shift+D"),
+                                 MenuItemType::Action, MenuAction::SwitchDisplayNext,
+                                 0, true, false, false});
+        }
+
+        if (m_HasMultipleScreens) {
+            top.items.push_back({tr("Stream to All Screens"), QString(),
+                                 MenuItemType::Action, MenuAction::StreamAllScreens,
+                                 0, true, false, false});
+        }
+    }
+
+    // --- Session ---
+    top.items.push_back(header(tr("Session")));
+    top.items.push_back({tr("Fullscreen"), QStringLiteral("Ctrl+Alt+Shift+X"),
+                         MenuItemType::Action, MenuAction::ToggleFullScreen,
+                         0, true, false, false});
+    top.items.push_back({tr("Microphone"), QString(), MenuItemType::Toggle,
+                         MenuAction::ToggleMicrophone, 0, true, m_MicrophoneOn, false});
+    if (m_HasGamepads) {
+        top.items.push_back({tr("Gamepad Mouse"), QString(), MenuItemType::Toggle,
+                             MenuAction::ToggleGamepadMouse, 0, true, m_GamepadMouseOn, false});
+    }
+    top.items.push_back({tr("Performance Stats"), QStringLiteral("Ctrl+Alt+Shift+S"),
+                         MenuItemType::Action, MenuAction::ToggleStatsOverlay,
+                         0, true, false, false});
+    top.items.push_back({tr("Host Files"), m_FileMappingDetail, MenuItemType::Action,
                          MenuAction::ShowHostFiles, 0, true,
                          m_FileMappingState == FileMappingState::Available ||
-                         m_FileMappingState == FileMappingState::Open, true});   // separator
-    if (m_HasMultipleScreens) {
-        top.items.push_back({tr("Stream to All Screens"), QString(), MenuItemType::Action,
-                             MenuAction::StreamAllScreens, 0, true, false, false});
-    }
-    // Only worth a submenu when there is more than one display to choose between.
-    if (m_HostDisplays.size() > 1) {
-        top.items.push_back({tr("Display"),
-                             m_CurrentHostDisplay >= 0 && m_CurrentHostDisplay < m_HostDisplays.size()
-                                 ? m_HostDisplays.at(m_CurrentHostDisplay) : QString(),
-                             MenuItemType::SubMenu,
-                             MenuAction::MenuActionMax, 3, true, false, false});
-    }
-    top.items.push_back({tr("Toggle Fullscreen"), QString(), MenuItemType::Action,
-                         MenuAction::ToggleFullScreen, 0, true, false, false});
-    top.items.push_back({tr("Microphone"),    QString(),  MenuItemType::Toggle,
-                         MenuAction::ToggleMicrophone, 0, true, false, !m_HasGamepads}); // separator if no gamepad item follows
-    // Only show Gamepad Mouse toggle when a gamepad is actually connected
-    if (m_HasGamepads) {
-        top.items.push_back({tr("Gamepad Mouse"), QString(),  MenuItemType::Toggle,
-                             MenuAction::ToggleGamepadMouse, 0, true, false, true}); // separator
-    }
-    top.items.push_back({tr("Disconnect"),    QString(),  MenuItemType::Action,
-                         MenuAction::Quit, 0, true, false, false});
+                         m_FileMappingState == FileMappingState::Open, false});
+
+    // --- Everything else ---
+    top.items.push_back(header(tr("More")));
+    top.items.push_back({tr("Bitrate"), bitrateLabel(), MenuItemType::SubMenu,
+                         MenuAction::MenuActionMax, 2, true, false, false});
+    top.items.push_back({tr("Other Shortcuts"), QString(), MenuItemType::SubMenu,
+                         MenuAction::MenuActionMax, 1, true, false, false});
+    top.items.push_back({tr("Disconnect"), QStringLiteral("Ctrl+Alt+Shift+Q"),
+                         MenuItemType::Action, MenuAction::Quit, 0, true, false, false});
     m_MenuLevels.push_back(top);
 
-    // === Level 1: Quick Actions (keyboard shortcuts) ===
+    // === Level 1: the shortcuts you reach for rarely ===
     MenuLevel shortcuts;
-    shortcuts.title = tr("Quick Actions");
-    shortcuts.items.push_back({tr("Quit Umbra"),      "Ctrl+Alt+Shift+E", MenuItemType::Action,
-                               MenuAction::QuitAndExit,           0, true, false, true});
-    shortcuts.items.push_back({tr("Performance Stats"),   "Ctrl+Alt+Shift+S", MenuItemType::Action,
-                               MenuAction::ToggleStatsOverlay,    0, true, false, true});
-    shortcuts.items.push_back({tr("Mouse Mode"),          "Ctrl+Alt+Shift+M", MenuItemType::Action,
-                               MenuAction::ToggleMouseMode,       0, true, false, false});
-    shortcuts.items.push_back({tr("Show/Hide Cursor"),    "Ctrl+Alt+Shift+C", MenuItemType::Action,
-                               MenuAction::ToggleCursorHide,      0, true, false, false});
-    shortcuts.items.push_back({tr("Minimize"),            "Ctrl+Alt+Shift+D", MenuItemType::Action,
-                               MenuAction::ToggleMinimize,        0, true, false, true});
-    shortcuts.items.push_back({tr("Ungrab Mouse"),        "Ctrl+Alt+Shift+Z", MenuItemType::Action,
-                               MenuAction::UngrabInput,           0, true, false, false});
-    shortcuts.items.push_back({tr("Paste Clipboard"),     "Ctrl+Alt+Shift+V", MenuItemType::Action,
-                               MenuAction::PasteText,             0, true, false, false});
-    shortcuts.items.push_back({tr("Pointer Region Lock"), "Ctrl+Alt+Shift+L", MenuItemType::Action,
-                               MenuAction::TogglePointerRegionLock, 0, true, false, false});
+    shortcuts.title = tr("Other Shortcuts");
+    shortcuts.items.push_back({tr("Mouse Mode"), QStringLiteral("Ctrl+Alt+Shift+M"),
+                               MenuItemType::Action, MenuAction::ToggleMouseMode, 0, true, false, false});
+    shortcuts.items.push_back({tr("Show/Hide Cursor"), QStringLiteral("Ctrl+Alt+Shift+C"),
+                               MenuItemType::Action, MenuAction::ToggleCursorHide, 0, true, false, false});
+    shortcuts.items.push_back({tr("Pointer Region Lock"), QStringLiteral("Ctrl+Alt+Shift+L"),
+                               MenuItemType::Action, MenuAction::TogglePointerRegionLock, 0, true, false, false});
+    shortcuts.items.push_back({tr("Ungrab Mouse"), QStringLiteral("Ctrl+Alt+Shift+Z"),
+                               MenuItemType::Action, MenuAction::UngrabInput, 0, true, false, false});
+    shortcuts.items.push_back({tr("Paste Clipboard"), QStringLiteral("Ctrl+Alt+Shift+V"),
+                               MenuItemType::Action, MenuAction::PasteText, 0, true, false, false});
+    shortcuts.items.push_back({tr("Minimize"), QStringLiteral("Ctrl+Alt+Shift+D"),
+                               MenuItemType::Action, MenuAction::ToggleMinimize, 0, true, false, false});
+    shortcuts.items.push_back({tr("Quit Umbra"), QStringLiteral("Ctrl+Alt+Shift+E"),
+                               MenuItemType::Action, MenuAction::QuitAndExit, 0, true, false, false});
     m_MenuLevels.push_back(shortcuts);
 
     // === Level 2: Bitrate presets ===
     MenuLevel bitrate;
     bitrate.title = tr("Bitrate");
-    bitrate.items.push_back({tr("1 Mbps"),    QString(), MenuItemType::Action,
-                             MenuAction::SetBitrate1000,   0, true, false, false});
-    bitrate.items.push_back({tr("2 Mbps"),    QString(), MenuItemType::Action,
-                             MenuAction::SetBitrate2000,   0, true, false, false});
-    bitrate.items.push_back({tr("5 Mbps"),    QString(), MenuItemType::Action,
-                             MenuAction::SetBitrate5000,   0, true, false, false});
-    bitrate.items.push_back({tr("10 Mbps"),   QString(), MenuItemType::Action,
-                             MenuAction::SetBitrate10000,  0, true, false, false});
-    bitrate.items.push_back({tr("20 Mbps"),   QString(), MenuItemType::Action,
-                             MenuAction::SetBitrate20000,  0, true, false, false});
-    bitrate.items.push_back({tr("30 Mbps"),   QString(), MenuItemType::Action,
-                             MenuAction::SetBitrate30000,  0, true, false, false});
-    bitrate.items.push_back({tr("50 Mbps"),   QString(), MenuItemType::Action,
-                             MenuAction::SetBitrate50000,  0, true, false, false});
-    bitrate.items.push_back({tr("100 Mbps"),  QString(), MenuItemType::Action,
-                             MenuAction::SetBitrate100000, 0, true, false, false});
-    m_MenuLevels.push_back(bitrate);
-
-    // === Level 3: Host displays ===
-    // Always built, even with nothing to put in it, because the levels are indexed
-    // by position and the Display entry above targets 3.
-    MenuLevel displays;
-    displays.title = tr("Display");
-    displays.items.push_back({tr("Next Display"), QStringLiteral("Ctrl+Shift+D"),
-                              MenuItemType::Action, MenuAction::SwitchDisplayNext,
-                              0, true, false, true});
-    const int selectable = qMin(m_HostDisplays.size(),
-                                (int)MenuAction::SwitchDisplay7 - (int)MenuAction::SwitchDisplay0 + 1);
-    for (int i = 0; i < selectable; i++) {
-        displays.items.push_back({m_HostDisplays.at(i), i == m_CurrentHostDisplay ? QStringLiteral("\u2713") : QString(),
-                                  MenuItemType::Action,
-                                  (MenuAction)((int)MenuAction::SwitchDisplay0 + i),
-                                  0, true, false, false});
+    static const int kPresets[] = {1000, 2000, 5000, 10000, 20000, 30000, 50000, 100000};
+    for (int i = 0; i < 8; i++) {
+        bitrate.items.push_back({kPresets[i] >= 1000 ? tr("%1 Mbps").arg(kPresets[i] / 1000)
+                                                     : tr("%1 Kbps").arg(kPresets[i]),
+                                 m_BitrateKbps == kPresets[i] ? QStringLiteral("\u2713") : QString(),
+                                 MenuItemType::Action,
+                                 (MenuAction)((int)MenuAction::SetBitrate1000 + i),
+                                 0, true, false, false});
     }
-    m_MenuLevels.push_back(displays);
+    m_MenuLevels.push_back(bitrate);
+}
+
+QString OverlayMenuPanel::bitrateLabel() const
+{
+    if (m_BitrateKbps <= 0) {
+        return QString();
+    }
+    return m_BitrateKbps >= 1000 ? tr("%1 Mbps").arg(m_BitrateKbps / 1000)
+                                 : tr("%1 Kbps").arg(m_BitrateKbps);
+}
+
+int OverlayMenuPanel::itemHeight(const MenuItem& item) const
+{
+    return item.type == MenuItemType::Header ? m_HeaderHeight : m_ItemHeight;
+}
+
+int OverlayMenuPanel::levelHeight(const MenuLevel& level) const
+{
+    int total = 0;
+    for (const auto& item : level.items) {
+        total += itemHeight(item);
+    }
+    return total;
+}
+
+void OverlayMenuPanel::setSessionInfo(const QString& hostName, const QString& streamMode)
+{
+    m_HostName = hostName;
+    m_StreamMode = streamMode;
 }
 
 void OverlayMenuPanel::setHasMultipleScreens(bool has)
@@ -266,66 +307,37 @@ void OverlayMenuPanel::setHostDisplays(const QStringList& names, int current)
 
 void OverlayMenuPanel::updateMicrophoneState(bool enabled)
 {
-    if (m_MenuLevels.empty()) return;
-    for (auto& item : m_MenuLevels[0].items) {
-        if (item.action == MenuAction::ToggleMicrophone) {
-            item.toggleState = enabled;
-            forceRepaint();
-            break;
-        }
+    if (m_MicrophoneOn == enabled) {
+        return;
     }
+
+    m_MicrophoneOn = enabled;
+    buildMenuLevels();
+    forceRepaint();
 }
 
 void OverlayMenuPanel::updateGamepadMouseState(bool enabled)
 {
-    if (m_MenuLevels.empty()) return;
-    for (auto& item : m_MenuLevels[0].items) {
-        if (item.action == MenuAction::ToggleGamepadMouse) {
-            item.toggleState = enabled;
-            forceRepaint();
-            break;
-        }
+    if (m_GamepadMouseOn == enabled) {
+        return;
     }
+
+    m_GamepadMouseOn = enabled;
+    buildMenuLevels();
+    forceRepaint();
 }
 
 void OverlayMenuPanel::updateBitrateState(int bitrateKbps)
 {
-    if (m_MenuLevels.empty()) return;
-
-    // Show current bitrate as detail text on the Bitrate category (level 0)
-    for (auto& item : m_MenuLevels[0].items) {
-        if (item.type == MenuItemType::SubMenu && item.targetLevel == 2) {
-            if (bitrateKbps >= 1000) {
-                item.detail = QString("%1 Mbps").arg(bitrateKbps / 1000);
-            } else {
-                item.detail = QString("%1 kbps").arg(bitrateKbps);
-            }
-            break;
-        }
+    if (m_BitrateKbps == bitrateKbps) {
+        return;
     }
 
-    // Mark the active bitrate preset in level 2
-    if ((int)m_MenuLevels.size() > 2) {
-        auto actionToKbps = [](MenuAction a) -> int {
-            switch (a) {
-            case MenuAction::SetBitrate1000:   return 1000;
-            case MenuAction::SetBitrate2000:   return 2000;
-            case MenuAction::SetBitrate5000:   return 5000;
-            case MenuAction::SetBitrate10000:  return 10000;
-            case MenuAction::SetBitrate20000:  return 20000;
-            case MenuAction::SetBitrate30000:  return 30000;
-            case MenuAction::SetBitrate50000:  return 50000;
-            case MenuAction::SetBitrate100000: return 100000;
-            default: return -1;
-            }
-        };
-        for (auto& item : m_MenuLevels[2].items) {
-            if (item.type == MenuItemType::Action) {
-                int kbps = actionToKbps(item.action);
-                item.detail = (kbps == bitrateKbps) ? QString::fromUtf8("\342\234\223") : QString();
-            }
-        }
-    }
+    // Rebuild rather than reach in and edit the rows: the label appears in two places
+    // (the Bitrate row's detail and the tick in the presets), and keeping those in step
+    // by hand is how they drift.
+    m_BitrateKbps = bitrateKbps;
+    buildMenuLevels();
 }
 
 void OverlayMenuPanel::updateFileMappingState(FileMappingState state, const QString& detail)
@@ -426,9 +438,8 @@ void OverlayMenuPanel::repositionWindow()
     int qpH = qRound(m_ParentH / dpr);
 #endif
 
-    int itemCount  = (int)m_MenuLevels[m_CurrentLevel].items.size();
-    int titleH     = (m_CurrentLevel > 0) ? m_TitleHeight : 0;
-    int menuHeight = titleH + itemCount * m_ItemHeight + m_Padding * 2;
+    int bandH      = (m_CurrentLevel > 0) ? m_TitleHeight : m_BandHeight;
+    int menuHeight = bandH + levelHeight(m_MenuLevels[m_CurrentLevel]) + m_Padding * 2;
 
     // Content top-left, hung under the point the menu was opened from
 #ifdef Q_OS_MACOS
@@ -541,18 +552,28 @@ int OverlayMenuPanel::itemAtPos(const QPoint& pos) const
     int ly = pos.y() - m_ShadowMargin;
     if (lx < 0 || lx >= m_MenuWidth || ly < 0) return -1;
 
-    int titleH = (m_CurrentLevel > 0) ? m_TitleHeight : 0;
-
-    // Title bar area — used as back button on sub-levels
-    if (m_CurrentLevel > 0 && ly < titleH) {
-        return -2;
+    // The band across the top names the session on level 0 and goes back on sub-levels
+    int bandH = (m_CurrentLevel > 0) ? m_TitleHeight : m_BandHeight;
+    if (ly < bandH) {
+        return m_CurrentLevel > 0 ? -2 : -1;
     }
-    int localY = ly - titleH - m_Padding;
+
+    int localY = ly - bandH - m_Padding;
     if (localY < 0) return -1;
-    int idx = localY / m_ItemHeight;
+
+    // Walk, because section headers are shorter than the rest
     const auto& items = m_MenuLevels[m_CurrentLevel].items;
-    if (idx < 0 || idx >= (int)items.size()) return -1;
-    return idx;
+    int y = 0;
+    for (int i = 0; i < (int)items.size(); i++) {
+        int h = itemHeight(items[i]);
+        if (localY < y + h) {
+            // Headers are labels, not targets
+            return items[i].type == MenuItemType::Header ? -1 : i;
+        }
+        y += h;
+    }
+
+    return -1;
 }
 
 // ---------------------------------------------------------------------------
@@ -561,6 +582,18 @@ int OverlayMenuPanel::itemAtPos(const QPoint& pos) const
 
 void OverlayMenuPanel::paintEvent(QPaintEvent*)
 {
+    // Theme.qml, so this matches every other surface in the app rather than the
+    // Windows 11 context menu it arrived as.
+    const QColor kSurface   (0x17, 0x1A, 0x20);
+    const QColor kSurface2  (0x1F, 0x23, 0x2B);
+    const QColor kLine      (0x2B, 0x30, 0x38);
+    const QColor kLineStrong(0x3C, 0x43, 0x4E);
+    const QColor kText      (0xEE, 0xF0, 0xEC);
+    const QColor kTextDim   (0x8B, 0x8F, 0x86);
+    const QColor kTextFaint (0x5C, 0x61, 0x69);
+    const QColor kAccent    (0x39, 0xC5, 0xBB);
+    const QColor kDanger    (0xFF, 0x87, 0x6F);
+
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
     p.setRenderHint(QPainter::TextAntialiasing);
@@ -568,53 +601,66 @@ void OverlayMenuPanel::paintEvent(QPaintEvent*)
     int w = width();
     int h = height();
     int sm = m_ShadowMargin;
-    int cw = w - 2 * sm;   // content width
-    int ch = h - 2 * sm;   // content height
+    int cw = w - 2 * sm;
+    int ch = h - 2 * sm;
 
-    // Clear to transparent
     p.setCompositionMode(QPainter::CompositionMode_Source);
     p.fillRect(0, 0, w, h, Qt::transparent);
     p.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
-    // === Drop shadow: zero blur, pure offset ===
-    // Theme.qml's shadowOffset/shadowColor, the same 6px 6px #0000008c the cards use.
+    // Zero blur, pure offset - Theme.shadowOffset / Theme.shadowColor
     p.fillRect(QRectF(sm + 6, sm + 6, cw, ch), QColor(0, 0, 0, 140));
 
-    // Move to content area
     p.save();
     p.translate(sm, sm);
 
-    // === Umbra surface ===
-    QPainterPath bgPath;
-    bgPath.addRect(QRectF(0, 0, cw, ch));
-    p.fillPath(bgPath, QColor(0x17, 0x1A, 0x20, 250));   // Theme.surface
-
-    p.setPen(QPen(QColor(0x3C, 0x43, 0x4E), 1.0));       // Theme.lineStrong
+    p.fillRect(QRectF(0, 0, cw, ch), kSurface);
+    p.setPen(QPen(kLineStrong, 1.0));
     p.drawRect(QRectF(0.5, 0.5, cw - 1, ch - 1));
+    p.setClipRect(QRectF(0, 0, cw, ch));
 
-    // Clip content
-    p.setClipPath(bgPath);
-
-    // --- Title bar (only on sub-levels, serves as back button) ---
     const auto& level = m_MenuLevels[m_CurrentLevel];
-    int textPad = (m_CurrentLevel == 0) ? 16 : 8;
-    int titleH = (m_CurrentLevel > 0) ? m_TitleHeight : 0;
+    const int textPad = 14;
+
+    // --- Band across the top --------------------------------------------------
+    // Level 0 names the session; deeper levels are the way back.
+    int bandH = (m_CurrentLevel > 0) ? m_TitleHeight : m_BandHeight;
 
     if (m_CurrentLevel > 0) {
-        p.setFont(m_TitleFont);
-        bool titleHovered = (m_HoveredIndex == -2);
-        if (titleHovered) {
-            p.fillRect(QRectF(1, 1, cw - 2, m_TitleHeight - 2),
-                       QColor(0x1F, 0x23, 0x2B));        // Theme.surface2
+        bool hovered = (m_HoveredIndex == -2);
+        if (hovered) {
+            p.fillRect(QRectF(1, 1, cw - 2, bandH - 2), kSurface2);
         }
-        // A wide-tracked label, like the micro labels everywhere else in the app.
-        p.setPen(titleHovered ? QColor(0xEE, 0xF0, 0xEC) : QColor(0x8B, 0x8F, 0x86));
-        QRect titleRect(textPad, 0, cw - 2 * textPad, m_TitleHeight);
-        p.drawText(titleRect, Qt::AlignLeft | Qt::AlignVCenter,
-                   QString::fromUtf8("\xe2\x97\x82 ") + level.title);
+        p.setFont(m_TitleFont);
+        p.setPen(hovered ? kText : kTextDim);
+        p.drawText(QRect(textPad, 0, cw - 2 * textPad, bandH),
+                   Qt::AlignLeft | Qt::AlignVCenter,
+                   QString::fromUtf8("\xe2\x97\x82  ") + level.title.toUpper());
+    }
+    else {
+        p.setFont(m_TitleFont);
+        p.setPen(kTextDim);
+        p.drawText(QRect(textPad, 0, cw - 2 * textPad, bandH),
+                   Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral("UMBRA"));
+
+        // Which machine, and at what, on the right of the same line
+        QString right = m_HostName;
+        if (!m_StreamMode.isEmpty()) {
+            right += right.isEmpty() ? m_StreamMode
+                                     : QString::fromUtf8("  \xc2\xb7  ") + m_StreamMode;
+        }
+        if (!right.isEmpty()) {
+            p.setFont(m_DetailFont);
+            p.setPen(kTextFaint);
+            p.drawText(QRect(textPad, 0, cw - 2 * textPad, bandH),
+                       Qt::AlignRight | Qt::AlignVCenter, right);
+        }
     }
 
-    // Apply content offset for level navigation animation
+    p.setPen(QPen(kLine, 1.0));
+    p.drawLine(0, bandH, cw, bandH);
+
+    // Slide offset used while moving between levels
     if (m_ContentSlideAnim->state() != QAbstractAnimation::Running) {
         m_ContentOffset = 0;
     }
@@ -624,191 +670,102 @@ void OverlayMenuPanel::paintEvent(QPaintEvent*)
     }
 
     const auto& items = level.items;
-    int contentTop = titleH + m_Padding;
-
-    // Icon mapping for menu items
-    // Windows: Segoe MDL2 Assets code points
-    // Other platforms: Material Icons code points (bundled font)
-    auto iconForItem = [](const MenuItem& item) -> QChar {
-#ifdef Q_OS_WIN
-        // Segoe MDL2 Assets code points
-        if (item.type == MenuItemType::SubMenu) {
-            if (item.targetLevel == 1) return QChar(0xE713); // Settings gear
-            if (item.targetLevel == 2) return QChar(0xE7F4); // DataSense (data/speed)
-        }
-        switch (item.action) {
-        case MenuAction::ToggleFullScreen:  return QChar(0xE740); // FullScreen
-        case MenuAction::ShowHostFiles:     return QChar(0xE8B7); // Folder
-        case MenuAction::ToggleMicrophone:  return QChar(0xE720); // Microphone
-        case MenuAction::ToggleGamepadMouse:  return QChar(0xE7FC); // Gamepad
-        case MenuAction::Quit:              return QChar(0xE711); // Close/X
-        case MenuAction::QuitAndExit:       return QChar(0xE711); // Close/X
-        case MenuAction::ToggleStatsOverlay:return QChar(0xE7F4); // DataSense
-        case MenuAction::ToggleMouseMode:   return QChar(0xE962); // Handwriting/pointer
-        case MenuAction::ToggleCursorHide:  return QChar(0xE76C); // PointerHand
-        case MenuAction::ToggleMinimize:    return QChar(0xE921); // Minimize
-        case MenuAction::UngrabInput:       return QChar(0xE785); // Mouse back
-        case MenuAction::PasteText:         return QChar(0xE77F); // Paste
-        case MenuAction::TogglePointerRegionLock: return QChar(0xE72E); // Lock
-        default: return QChar();
-        }
-#else
-        // Material Icons code points
-        if (item.type == MenuItemType::SubMenu) {
-            if (item.targetLevel == 1) return QChar(0xE8B8); // settings
-            if (item.targetLevel == 2) return QChar(0xE1B2); // speed (bitrate)
-        }
-        switch (item.action) {
-        case MenuAction::ToggleFullScreen:  return QChar(0xE5D0); // fullscreen
-        case MenuAction::ShowHostFiles:     return QChar(0xE2C7); // folder
-        case MenuAction::ToggleMicrophone:  return QChar(0xE029); // mic
-        case MenuAction::ToggleGamepadMouse:  return QChar(0xE30F); // games (gamepad)
-        case MenuAction::Quit:              return QChar(0xE5CD); // close
-        case MenuAction::QuitAndExit:       return QChar(0xE5CD); // close
-        case MenuAction::ToggleStatsOverlay:return QChar(0xE1B2); // speed
-        case MenuAction::ToggleMouseMode:   return QChar(0xE323); // mouse (Material)
-        case MenuAction::ToggleCursorHide:  return QChar(0xE31A); // near_me (cursor arrow)
-        case MenuAction::ToggleMinimize:    return QChar(0xE15B); // remove (minimize bar)
-        case MenuAction::UngrabInput:       return QChar(0xE5C4); // arrow_back
-        case MenuAction::PasteText:         return QChar(0xE14F); // content_paste
-        case MenuAction::TogglePointerRegionLock: return QChar(0xE897); // lock
-        default: return QChar();
-        }
-#endif
-    };
-
-    // Icon column: only on top-level menu
-    bool hasIcons = (m_CurrentLevel == 0);
-    int iconW = hasIcons ? m_IconAreaWidth : 0;
-    int labelX = textPad + iconW;
+    int itemY = bandH + m_Padding;
 
     for (int i = 0; i < (int)items.size(); i++) {
-        int itemY = contentTop + i * m_ItemHeight;
         const auto& item = items[i];
+        const int rowH = itemHeight(item);
 
-        // Hover highlight — Win11 style: subtle rounded rect
-        if (i == m_HoveredIndex && item.enabled) {
-            QPainterPath hlPath;
-            hlPath.addRoundedRect(QRectF(4, itemY + 1, cw - 8, m_ItemHeight - 2), 4, 4);
-            p.fillPath(hlPath, QColor(255, 255, 255, 20));
+        // --- Section header ---
+        if (item.type == MenuItemType::Header) {
+            p.setFont(m_TitleFont);
+            p.setPen(kTextFaint);
+            p.drawText(QRect(textPad, itemY, cw - 2 * textPad, rowH),
+                       Qt::AlignLeft | Qt::AlignBottom, item.label.toUpper());
+            itemY += rowH;
+            continue;
         }
 
-        // Icon (drawn in left area if this level has icons)
-        if (hasIcons) {
-            QChar icon = iconForItem(item);
-            if (!icon.isNull()) {
-                p.setFont(m_IconFont);
-                p.setPen(item.enabled ? QColor(255, 255, 255, 180) : QColor(255, 255, 255, 60));
-                QRect iconRect(textPad, itemY, m_IconAreaWidth, m_ItemHeight);
-                p.drawText(iconRect, Qt::AlignCenter, QString(icon));
-            }
+        bool hovered = (i == m_HoveredIndex);
+        bool isDanger = (item.action == MenuAction::Quit ||
+                         item.action == MenuAction::QuitAndExit);
+
+        if (hovered) {
+            p.fillRect(QRectF(1, itemY, cw - 2, rowH), kSurface2);
+
+            // A bar down the left edge, the way the cards mark themselves
+            p.fillRect(QRectF(1, itemY, 3, rowH), isDanger ? kDanger : kAccent);
         }
 
-        // --- SubMenu item ---
-        if (item.type == MenuItemType::SubMenu) {
-            p.setFont(m_LabelFont);
-            p.setPen(item.enabled ? QColor(255, 255, 255, 230) : QColor(255, 255, 255, 80));
-            QRect lr(labelX, itemY, cw - labelX - 36, m_ItemHeight);
-            p.drawText(lr, Qt::AlignLeft | Qt::AlignVCenter, item.label);
+        QColor labelColor = isDanger ? kDanger : (item.enabled ? kText : kTextFaint);
+        if (!item.enabled) {
+            labelColor = kTextFaint;
+        }
 
-            // Detail text (e.g., "20 Mbps")
+        // Room on the right for whatever the row carries
+        int rightReserve = 0;
+        if (item.type == MenuItemType::Toggle) {
+            rightReserve = 40;
+        }
+        else if (item.type == MenuItemType::SubMenu) {
+            rightReserve = 14;
+        }
+
+        p.setFont(m_LabelFont);
+        p.setPen(labelColor);
+        QRect labelRect(textPad, itemY, cw - textPad * 2 - rightReserve, rowH);
+
+        // The detail column shares the row, so measure the label and let the detail
+        // have what's left. Long shortcut strings otherwise overprint the label.
+        int labelW = p.fontMetrics().horizontalAdvance(item.label);
+        p.drawText(labelRect, Qt::AlignLeft | Qt::AlignVCenter, item.label);
+
+        // --- Right-hand column ---
+        if (item.type == MenuItemType::Toggle) {
+            // Square, like every other control here
+            const int trackW = 26, trackH = 14;
+            int trackX = cw - textPad - trackW;
+            int trackY = itemY + (rowH - trackH) / 2;
+
+            p.setPen(QPen(item.toggleState ? kAccent : kLineStrong, 1.0));
+            p.setBrush(Qt::NoBrush);
+            p.drawRect(QRectF(trackX + 0.5, trackY + 0.5, trackW - 1, trackH - 1));
+
+            p.setPen(Qt::NoPen);
+            p.setBrush(item.toggleState ? kAccent : kTextFaint);
+            int knob = 10;
+            int knobX = item.toggleState ? trackX + trackW - knob - 2 : trackX + 2;
+            p.drawRect(QRect(knobX, trackY + (trackH - knob) / 2, knob, knob));
+            p.setBrush(Qt::NoBrush);
+        }
+        else if (item.type == MenuItemType::SubMenu) {
             if (!item.detail.isEmpty()) {
                 p.setFont(m_DetailFont);
-                p.setPen(QColor(255, 255, 255, 100));
-                QRect dr(cw / 2, itemY, cw / 2 - textPad - 20, m_ItemHeight);
-                p.drawText(dr, Qt::AlignRight | Qt::AlignVCenter, item.detail);
+                p.setPen(kTextDim);
+                p.drawText(QRect(textPad + labelW + 12, itemY,
+                                 cw - textPad * 2 - labelW - 12 - 14, rowH),
+                           Qt::AlignRight | Qt::AlignVCenter, item.detail);
             }
-
-            // Chevron ›
             p.setFont(m_LabelFont);
-            p.setPen(QColor(255, 255, 255, 100));
-            QRect ar(cw - textPad - 10, itemY, 10, m_ItemHeight);
-            p.drawText(ar, Qt::AlignCenter, QString::fromUtf8("\xe2\x80\xba"));
+            p.setPen(kTextFaint);
+            p.drawText(QRect(cw - textPad - 10, itemY, 10, rowH),
+                       Qt::AlignCenter, QString::fromUtf8("\xe2\x80\xba"));
         }
-        // --- Toggle item ---
-        else if (item.type == MenuItemType::Toggle) {
-            p.setFont(m_LabelFont);
-            p.setPen(item.enabled ? QColor(255, 255, 255, 230) : QColor(255, 255, 255, 80));
-            QRect lr(labelX, itemY, cw - labelX - 52, m_ItemHeight);
-            p.drawText(lr, Qt::AlignLeft | Qt::AlignVCenter, item.label);
-
-            // Win11-style toggle switch
-            int trackW = 40, trackH = 20;
-            int trackX = cw - textPad - trackW;
-            int trackY = itemY + (m_ItemHeight - trackH) / 2;
-
-            QPainterPath trackPath;
-            trackPath.addRoundedRect(QRectF(trackX, trackY, trackW, trackH),
-                                     trackH / 2, trackH / 2);
-
-            int knobR = 6;
-            if (item.toggleState) {
-                // On: accent fill (Win11 system accent blue)
-                p.fillPath(trackPath, QColor(110, 192, 232));
-                p.setPen(QPen(QColor(110, 192, 232), 1));
-                p.drawPath(trackPath);
-                p.setBrush(Qt::white);
-                p.setPen(Qt::NoPen);
-                p.drawEllipse(QPoint(trackX + trackW - trackH / 2,
-                                     trackY + trackH / 2), knobR, knobR);
-            } else {
-                // Off: transparent with white border
-                p.fillPath(trackPath, QColor(255, 255, 255, 0));
-                p.setPen(QPen(QColor(255, 255, 255, 120), 1.5));
-                p.drawPath(trackPath);
-                p.setBrush(QColor(255, 255, 255, 160));
-                p.setPen(Qt::NoPen);
-                p.drawEllipse(QPoint(trackX + trackH / 2,
-                                     trackY + trackH / 2), knobR - 1, knobR - 1);
-            }
-        }
-        // --- Action item ---
-        else if (item.type == MenuItemType::Action) {
-            p.setFont(m_LabelFont);
-            p.setPen(item.enabled ? QColor(255, 255, 255, 230) : QColor(255, 255, 255, 80));
-
-            bool hasLongDetail = !item.detail.isEmpty() && item.detail.length() > 3;
-            bool hasShortDetail = !item.detail.isEmpty() && item.detail.length() <= 3;
-
-            if (hasLongDetail) {
-                int topH = qRound(m_ItemHeight * 0.58);
-                QRect lb(labelX, itemY, cw - labelX - textPad, topH);
-                p.drawText(lb, Qt::AlignLeft | Qt::AlignBottom, item.label);
-
-                p.setFont(m_DetailFont);
-                p.setPen(QColor(255, 255, 255, 90));
-                QRect sr(labelX, itemY + topH, cw - labelX - textPad, m_ItemHeight - topH);
-                p.drawText(sr, Qt::AlignLeft | Qt::AlignTop, item.detail);
-            } else {
-                QRect lr(labelX, itemY, cw - labelX - textPad, m_ItemHeight);
-                p.drawText(lr, Qt::AlignLeft | Qt::AlignVCenter, item.label);
-
-                if (hasShortDetail) {
-                    // Checkmark — Win11 accent color
-                    p.setPen(QColor(110, 192, 232));
-                    QRect cr(cw - textPad - 20, itemY, 20, m_ItemHeight);
-                    p.drawText(cr, Qt::AlignRight | Qt::AlignVCenter, item.detail);
-                }
-            }
-        }
-        // --- Back item (fallback, normally handled by title bar) ---
-        else if (item.type == MenuItemType::Back) {
-            p.setFont(m_DetailFont);
-            p.setPen(QColor(255, 255, 255, 120));
-            QRect lr(labelX, itemY, cw - labelX - textPad, m_ItemHeight);
-            p.drawText(lr, Qt::AlignLeft | Qt::AlignVCenter, item.label);
+        else if (!item.detail.isEmpty()) {
+            // A tick marks the live choice; anything else is a shortcut or a status
+            bool isCheck = (item.detail == QString::fromUtf8("\xe2\x9c\x93"));
+            p.setFont(isCheck ? m_LabelFont : m_DetailFont);
+            p.setPen(isCheck ? kAccent : kTextFaint);
+            p.drawText(QRect(textPad + labelW + 12, itemY,
+                             cw - textPad * 2 - labelW - 12, rowH),
+                       Qt::AlignRight | Qt::AlignVCenter, item.detail);
         }
 
-        // Group separator — only where explicitly flagged
-        if (item.separatorAfter && i < (int)items.size() - 1) {
-            p.setPen(QPen(QColor(255, 255, 255, 18), 1));
-            int sepY = itemY + m_ItemHeight - 1;
-            p.drawLine(labelX, sepY, cw - textPad, sepY);
-        }
+        itemY += rowH;
     }
 
     p.restore();  // content offset
-    p.restore();  // shadow margin translate
+    p.restore();  // shadow margin
 }
 
 // ---------------------------------------------------------------------------
@@ -853,6 +810,9 @@ void OverlayMenuPanel::mousePressEvent(QMouseEvent* event)
     const auto& item = items[idx];
 
     switch (item.type) {
+    case MenuItemType::Header:
+        // Not selectable; gamepad navigation skips these anyway
+        break;
     case MenuItemType::Back:
         navigateToLevel(0);
         break;

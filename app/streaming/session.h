@@ -379,6 +379,7 @@ private:
     bool m_FileMappingToastPending;
     std::shared_ptr<FileMappingUx::ProbeState> m_FileMappingProbeState;
     std::shared_ptr<FileMappingUx::MountState> m_FileMappingMountState;
+    bool m_HostDisplaysFetched;
     QString m_FileMappingMountPath;
     QString m_FileMappingSessionId;
     class ClipboardHelperClient* m_ClipboardHelper; // Bidirectional clipboard sync helper process; nullptr when stream not active

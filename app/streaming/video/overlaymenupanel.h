@@ -86,6 +86,7 @@ public:
         SubMenu,    // navigate to sub-level
         Toggle,     // dispatch action, toggle visual state, keep menu open
         Back,       // navigate back to top level
+        Header,     // section label; not hoverable, not clickable, shorter row
     };
 
     using ActionCallback = std::function<void(MenuAction)>;
@@ -119,6 +120,10 @@ public:
     // Whether this client has somewhere to put a second display. Hides the all
     // screens entry when it doesn't.
     void setHasMultipleScreens(bool has);
+
+    // Named in the header band, so it's obvious which machine the menu is acting on
+    // when several are open at once.
+    void setSessionInfo(const QString& hostName, const QString& streamMode);
     void setHasGamepads(bool has) {
         if (m_HasGamepads != has) {
             m_HasGamepads = has;
@@ -156,6 +161,13 @@ private:
     };
 
     void buildMenuLevels();
+
+    // Rows are not all the same height any more - section headers are shorter.
+    int itemHeight(const MenuItem& item) const;
+    int levelHeight(const MenuLevel& level) const;
+
+    // "20 Mbps", for the Bitrate row's detail column
+    QString bitrateLabel() const;
     void navigateToLevel(int level);
     void repositionWindow();
     void showInternal();     // shared show logic after geometry is set
@@ -172,6 +184,16 @@ private:
     QStringList m_HostDisplays;
     int m_CurrentHostDisplay;
     bool m_HasMultipleScreens;
+    QString m_HostName;
+    QString m_StreamMode;
+    int m_BitrateKbps;
+
+    // Toggle positions live here rather than in the rows. buildMenuLevels() throws the
+    // rows away and remakes them, so anything stored only in a row is lost the next
+    // time anything else changes - which is how the microphone toggle used to reset
+    // itself whenever the bitrate was read.
+    bool m_MicrophoneOn;
+    bool m_GamepadMouseOn;
 
     ActionCallback m_ActionCallback;
     CloseCallback  m_CloseCallback;
@@ -187,6 +209,8 @@ private:
     int m_ShadowMargin;
     int m_TitleHeight;
     int m_IconAreaWidth;
+    int m_HeaderHeight;
+    int m_BandHeight;
 
     // Fonts
     QFont m_LabelFont;

@@ -35,7 +35,81 @@ CenteredGridView {
     // stays hidden meanwhile: clicking a PC is supposed to put you on its desktop, and
     // a list of Desktop and Steam Big Picture flashing up on the way there is the app
     // picker we said we had skipped. Resolved in onActivated below.
-    property bool resolvingDirectLaunch: !showGames && !showHiddenGames
+    //
+    // A plain property, not a binding: it was `!showGames && !showHiddenGames`, which
+    // re-evaluated the instant onActivated set showGames = true during an auto-launch
+    // and flashed the grid visible - the exact thing it exists to prevent. It latches
+    // now, cleared only when we've decided there is genuinely a list to choose from.
+    property bool resolvingDirectLaunch: true
+
+    // Whether the decision has been made at all. getDirectLaunchAppIndex() can only
+    // answer once the app list has arrived, and asking too early answers "nothing to
+    // launch" - which shows the grid and never launches anything.
+    property bool directLaunchResolved: false
+
+    // Set when this view existed only to start the desktop. On the way back from the
+    // stream it takes itself off the stack, so you land on the PC list rather than on
+    // the app grid you were never shown on the way in.
+    property bool autoLaunched: false
+
+    function resolveDirectLaunch() {
+        if (directLaunchResolved) {
+            return
+        }
+
+        // Deliberately browsing the app list, so there is nothing to resolve.
+        if (showGames || showHiddenGames) {
+            directLaunchResolved = true
+            loadDisplays()
+            resolvingDirectLaunch = false
+            return
+        }
+
+        // The list isn't in yet. onCountChanged calls back when it is.
+        if (count === 0) {
+            return
+        }
+
+        var directLaunchAppIndex = model.getDirectLaunchAppIndex()
+        directLaunchResolved = true
+
+        if (directLaunchAppIndex >= 0) {
+            currentIndex = directLaunchAppIndex
+
+            // currentItem is null until the view has laid the delegate out. Retry on
+            // the next tick rather than throwing a TypeError, which would be swallowed
+            // and look exactly like a click that did nothing.
+            if (currentItem) {
+                currentItem.launchOrResumeSelectedApp(false)
+            }
+            else {
+                Qt.callLater(function() {
+                    if (currentItem) {
+                        currentItem.launchOrResumeSelectedApp(false)
+                    }
+                })
+            }
+
+            // Stops us looping when the stream ends
+            showGames = true
+            autoLaunched = true
+
+            // Stay hidden - the segue is about to cover us anyway
+            return
+        }
+
+        // A real list to choose from. Only now is the display picker worth fetching:
+        // getDisplayList() blocks on an HTTP request, and it sat on the connect path
+        // for every session even though nothing on the way to a desktop reads it.
+        loadDisplays()
+        resolvingDirectLaunch = false
+    }
+
+    onCountChanged: {
+        if (activated) {
+            resolveDirectLaunch()
+        }
+    }
 
     id: appGrid
 
@@ -361,9 +435,6 @@ CenteredGridView {
         appModel.computerLost.connect(computerLost)
         activated = true
 
-        // 从服务端加载显示器列表
-        loadDisplays()
-
         // Self-heal the running-game indicator in case our cached state
         // drifted from NvComputer's actual currentGameId while we were
         // on another page (typically during a streaming session).
@@ -375,22 +446,21 @@ CenteredGridView {
             currentIndex = 0
         }
 
-        if (!showGames && !showHiddenGames) {
-            // Check if there's a direct launch app
-            var directLaunchAppIndex = model.getDirectLaunchAppIndex();
-            if (directLaunchAppIndex >= 0) {
-                // Start the direct launch app if nothing else is running
-                currentIndex = directLaunchAppIndex
-                currentItem.launchOrResumeSelectedApp(false)
-
-                // Set showGames so we will not loop when the stream ends
-                showGames = true
-            }
-            else {
-                // Nothing to launch into, so this really is a list to choose from
-                resolvingDirectLaunch = false
-            }
+        // Back from the stream we started on the way in. This view was never meant to
+        // be looked at, so take it off the stack instead of revealing the app grid.
+        // Deferred because popping the stack from inside its own activation handler
+        // re-enters StackView while it is still settling.
+        if (autoLaunched) {
+            autoLaunched = false
+            Qt.callLater(function() {
+                if (stackView.currentItem === appGrid) {
+                    stackView.pop()
+                }
+            })
+            return
         }
+
+        resolveDirectLaunch()
     }
 
     StackView.onDeactivating: {

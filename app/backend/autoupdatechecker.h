@@ -31,7 +31,10 @@ signals:
     void onPortableUpdateFailed(QString message);
 
     // Only emitted for checkNow().
-    void onUpToDate();
+    // Carries the newest release tag we found, not the version installed here. If the
+    // two ever disagree the message says so, instead of reporting a local string that
+    // looks stale and can't be told apart from a bad query.
+    void onUpToDate(QString latestVersion);
     void onCheckFailed(QString message);
 
 private slots:
