@@ -150,7 +150,15 @@ void AutoUpdateChecker::downloadAndRunSetup(const QString& url, const QString& e
 
     emit onPortableUpdateStatusChanged(tr("Downloading update..."));
 
-    m_SetupReply = m_Nam->get(request);
+    // Never m_Nam: it is null by now, and even when it isn't, its finished signal goes
+    // to the release-list parser.
+    if (m_DownloadNam == nullptr) {
+        m_DownloadNam = new QNetworkAccessManager(this);
+        m_DownloadNam->setStrictTransportSecurityEnabled(true);
+        m_DownloadNam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+    }
+
+    m_SetupReply = m_DownloadNam->get(request);
     connect(m_SetupReply, &QNetworkReply::readyRead, this, [this]() {
         if (m_SetupFile != nullptr) {
             m_SetupFile->write(m_SetupReply->readAll());
@@ -228,8 +236,6 @@ void AutoUpdateChecker::finishSetupDownload()
         return;
     }
 
-    emit onPortableUpdateStatusChanged(tr("Starting the installer..."));
-
     // Detached on purpose: the installer closes this process as part of its own work,
     // so it must outlive us. It elevates itself; nothing here needs administrator
     // rights, which is what makes this work over a remote session.
@@ -238,6 +244,10 @@ void AutoUpdateChecker::finishSetupDownload()
                                     .arg(QDir::toNativeSeparators(m_SetupPath)));
         return;
     }
+
+    // Said last, because the installer takes over from here: it asks for administrator
+    // rights and then closes this copy of Umbra to replace it.
+    emit onPortableUpdateStatusChanged(tr("The installer is starting. Umbra will close to finish updating."));
 }
 
 void AutoUpdateChecker::checkNow()
@@ -266,9 +276,16 @@ void AutoUpdateChecker::checkNow()
 
 void AutoUpdateChecker::start()
 {
+    // The reply handler drops the manager after every check so the bearer plugin stops
+    // polling. Rebuild rather than return: this used to be a bare Q_ASSERT, which
+    // compiles out in release, so a second automatic check did nothing at all and left
+    // the previous result on screen looking like a stale version number.
     if (!m_Nam) {
-        Q_ASSERT(m_Nam);
-        return;
+        m_Nam = new QNetworkAccessManager(this);
+        m_Nam->setStrictTransportSecurityEnabled(true);
+        m_Nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+        connect(m_Nam, &QNetworkAccessManager::finished,
+                this, &AutoUpdateChecker::handleUpdateCheckRequestFinished);
     }
 
 #if defined(Q_OS_WIN32) || defined(Q_OS_DARWIN) || defined(STEAM_LINK) || defined(APP_IMAGE)

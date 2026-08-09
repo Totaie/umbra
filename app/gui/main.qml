@@ -580,9 +580,16 @@ ApplicationWindow {
                         portableUpdateDialog.text = qsTr("Preparing update...")
                         portableUpdateDialog.open()
                         AutoUpdateChecker.installUpdate(browserUrl)
+                        return
                     }
-                    else if (SystemProperties.hasBrowser) {
-                        Qt.openUrlExternally(browserUrl);
+
+                    // Falling back to a browser used to be guarded on hasBrowser, and
+                    // when that was false the button did nothing whatsoever - no page,
+                    // no message, no clue. Try regardless, and say so if it fails.
+                    if (!Qt.openUrlExternally(browserUrl)) {
+                        portableUpdateErrorDialog.text =
+                            qsTr("Umbra couldn't install this update itself, and couldn't open a browser either. Download it from %1").arg(browserUrl)
+                        portableUpdateErrorDialog.open()
                     }
                 }
 

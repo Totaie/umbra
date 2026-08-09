@@ -69,7 +69,12 @@ private:
     QString m_UpdateDownloadUrl;
     QString m_UpdateAssetDigest;
 
-    // In-flight installer download
+    // In-flight installer download.
+    //
+    // Deliberately its own manager. m_Nam is torn down by the reply handler after every
+    // check and its finished signal is wired to the JSON parser - sharing it means
+    // either a null dereference or the installer being parsed as a release list.
+    QNetworkAccessManager* m_DownloadNam = nullptr;
     QNetworkReply* m_SetupReply = nullptr;
     QFile* m_SetupFile = nullptr;
     QString m_SetupPath;
