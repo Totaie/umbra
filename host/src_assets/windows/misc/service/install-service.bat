@@ -9,8 +9,16 @@ set "SERVICE_BIN=%ROOT_DIR%\tools\sunshinesvc.exe"
 set "SERVICE_CONFIG_DIR=%LOCALAPPDATA%\SudoMaker\Apollo"
 set "SERVICE_CONFIG_FILE=%SERVICE_CONFIG_DIR%\service_start_type.txt"
 
-rem Set service to demand start. It will be changed to auto later if the user selected that option.
-set SERVICE_START_TYPE=demand
+rem Start with Windows, before anyone logs in.
+rem
+rem This was demand, which meant the service only ran because the installer started it
+rem and never came back after a reboot - so the machine was unreachable until somebody
+rem walked over and signed in, which is the one thing a remote desktop has to work
+rem without. The service runs as LocalSystem and launches the host into the console
+rem session, so it is up and answering at the login screen.
+rem
+rem A start type the user chose themselves is still honoured; see the saved value below.
+set SERVICE_START_TYPE=auto
 
 rem Remove the legacy SunshineSvc service
 net stop sunshinesvc
