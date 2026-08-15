@@ -144,11 +144,15 @@ private:
                 emit computerStateChanged(m_Computer);
             }
 
-            // Wait a bit to poll again, but do it in 100 ms chunks
-            // so we can be interrupted reasonably quickly.
-            // FIXME: QWaitCondition would be better.
-            for (int i = 0; i < 30 && !isInterruptionRequested(); i++) {
-                QThread::msleep(100);
+            // Poll again five seconds after the last one finished, in 100 ms chunks so
+            // an interruption is noticed quickly. Measured from the end of the poll
+            // rather than the start: a host that has gone away takes the request
+            // timeout to fail, and pacing from the start would queue them up back to
+            // back against a machine that is already struggling to answer.
+            constexpr int k_PollIntervalMs = 5000;
+            constexpr int k_PollChunkMs = 100;
+            for (int i = 0; i < k_PollIntervalMs / k_PollChunkMs && !isInterruptionRequested(); i++) {
+                QThread::msleep(k_PollChunkMs);
             }
         }
     }
