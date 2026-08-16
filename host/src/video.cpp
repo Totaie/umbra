@@ -429,10 +429,16 @@ namespace video {
       probe_adapter_identity_t adapter_identity;
     };
 
+    // How long a probe taken against an unidentified adapter stays usable. Only
+    // consulted when the adapter identity didn't resolve; a resolved identity keys the
+    // cache properly and doesn't expire.
+    constexpr auto UNRESOLVED_PROBE_CACHE_LIFETIME = std::chrono::minutes(2);
+
     struct EncoderProbeCacheState {
       std::mutex mutex;
       std::optional<probe_cache_key_t> cache_key;
       std::optional<probe_cache_key_t> attempted_cache_key;
+      std::chrono::steady_clock::time_point probed_at {};
       bool valid = false;
       bool hdr_supported = false;
       bool hevc_passed = false;
@@ -758,8 +764,19 @@ namespace video {
       auto &state = encoder_probe_cache_state();
       std::lock_guard<std::mutex> lock(state.mutex);
 
+      // An unresolved adapter identity used to fail here outright, which meant the
+      // default configuration - adapter selection on automatic - could never get a
+      // cache hit at all, and re-probed every encoder before every advertisement.
+      // The key still describes the configuration and still says the adapter was
+      // unresolved, so it can be trusted for a while; it just shouldn't be trusted
+      // forever, because we genuinely don't know which GPU produced it.
+      const bool key_usable =
+        key.adapter_identity_resolved ||
+        (state.probed_at != std::chrono::steady_clock::time_point {} &&
+         std::chrono::steady_clock::now() - state.probed_at < UNRESOLVED_PROBE_CACHE_LIFETIME);
+
       // Check if we have a valid cached success
-      if (key.adapter_identity_resolved &&
+      if (key_usable &&
           state.valid &&
           state.cache_key &&
           *state.cache_key == key &&
@@ -792,21 +809,22 @@ namespace video {
       std::lock_guard<std::mutex> lock(state.mutex);
       if (success) {
         if (!key.adapter_identity_resolved) {
-          state.valid = false;
-          state.cache_key.reset();
-          state.hdr_supported = false;
-          state.hevc_passed = false;
-          state.hevc_hdr_supported = false;
-          state.av1_passed = false;
-          state.av1_hdr_supported = false;
-          state.advertised_capabilities = {};
-          BOOST_LOG(warning)
-            << "Encoder probe succeeded but its effective adapter identity is unresolved; "
-               "refusing to cache positive capabilities (identity='"
-            << key.adapter_identity << "', source="
-            << key.adapter_identity_source << ").";
-          return;
+          // Kept, but only briefly - see UNRESOLVED_PROBE_CACHE_LIFETIME.
+          //
+          // This used to discard the result and log a warning. Adapter selection is on
+          // automatic by default and the identity never resolves in that case, so
+          // nothing was ever cached and a full encoder probe ran before every single
+          // advertisement - a few seconds of work on every serverinfo poll, forever,
+          // and one of them landing inside every launch. Not knowing which GPU answered
+          // is a reason to distrust the result eventually, not immediately.
+          BOOST_LOG(debug)
+            << "Caching encoder probe against an unresolved adapter identity for "
+            << std::chrono::duration_cast<std::chrono::seconds>(UNRESOLVED_PROBE_CACHE_LIFETIME).count()
+            << "s (identity='" << key.adapter_identity
+            << "', source=" << key.adapter_identity_source << ").";
         }
+
+        state.probed_at = std::chrono::steady_clock::now();
         state.cache_key = key;
         state.valid = true;
         state.hdr_supported = hdr_supported;
