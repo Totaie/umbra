@@ -13,6 +13,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <vector>
 
 // lib includes
 #include <boost/core/noncopyable.hpp>
@@ -272,7 +273,30 @@ namespace platf {
 
     constexpr caps_t pen_touch = 0x01;  // Pen and touch events
     constexpr caps_t controller_touch = 0x02;  // Controller touch events
+    constexpr caps_t cursor_shape = 0x40;  // Host can send cursor shapes for the client to draw
   };  // namespace platform_caps
+
+  /**
+   * @brief A mouse cursor for the client to draw itself.
+   *
+   * Raised by the display capture whenever Windows hands it a new pointer shape or the
+   * pointer appears or disappears. `pixels` is BGRA8888, `width * height * 4` bytes, and
+   * is empty on a visibility-only update.
+   *
+   * The client caps cursors at 256x256; anything larger is dropped rather than scaled,
+   * because a scaled hotspot lands in the wrong place and a pointer that clicks
+   * somewhere other than its own tip is worse than no pointer at all.
+   */
+  struct cursor_shape_t {
+    std::uint32_t shape_id = 0;
+    std::uint16_t width = 0;
+    std::uint16_t height = 0;
+    std::int16_t hotspot_x = 0;
+    std::int16_t hotspot_y = 0;
+    bool visible = false;
+    bool has_shape = false;
+    std::vector<std::uint8_t> pixels;
+  };
 
   struct gamepad_state_t {
     std::uint32_t buttonFlags;

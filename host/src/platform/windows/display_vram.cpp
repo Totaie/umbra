@@ -38,6 +38,7 @@ extern "C" {
 #include "src/nvenc/nvenc_d3d11_native.h"
 #include "src/nvenc/nvenc_d3d11_on_cuda.h"
 #include "src/nvenc/nvenc_utils.h"
+#include "src/globals.h"
 #include "src/video.h"
 #include "utf_utils.h"
 
@@ -362,6 +363,131 @@ namespace platf::dxgi {
     }
 
     return cursor_img;
+  }
+
+  /**
+   * @brief Flatten a DXGI pointer shape into one BGRA image a client can draw.
+   *
+   * Unlike the alpha/XOR pair used for GPU compositing, this has to stand on its own:
+   * there is no desktop behind it to XOR against, so "inverse of screen" pixels are
+   * rendered black. That is what the I-beam and the resize arrows are largely made of,
+   * and dropping them leaves the text cursor almost invisible.
+   *
+   * Returns an empty buffer for shapes we can't represent, in which case the caller
+   * should leave the client with whatever cursor it already had.
+   */
+  platf::cursor_shape_t make_client_cursor_shape(
+    const util::buffer_t<std::uint8_t> &img_data,
+    const DXGI_OUTDUPL_POINTER_SHAPE_INFO &shape_info
+  ) {
+    constexpr std::uint32_t black = 0xFF000000;
+    constexpr std::uint32_t white = 0xFFFFFFFF;
+    constexpr std::uint32_t transparent = 0;
+
+    // The client rejects anything bigger rather than scaling, because a scaled hotspot
+    // lands in the wrong place.
+    constexpr std::uint32_t max_dimension = 256;
+
+    platf::cursor_shape_t cursor;
+    cursor.width = (std::uint16_t) shape_info.Width;
+    cursor.hotspot_x = (std::int16_t) shape_info.HotSpot.x;
+    cursor.hotspot_y = (std::int16_t) shape_info.HotSpot.y;
+
+    switch (shape_info.Type) {
+      case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_COLOR:
+      case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MASKED_COLOR:
+        {
+          cursor.height = (std::uint16_t) shape_info.Height;
+          if (cursor.width == 0 || cursor.height == 0 ||
+              cursor.width > max_dimension || cursor.height > max_dimension) {
+            return {};
+          }
+
+          const std::size_t expected = (std::size_t) cursor.width * cursor.height * 4;
+          if (img_data.size() < expected) {
+            return {};
+          }
+
+          cursor.pixels.assign(std::begin(img_data), std::begin(img_data) + expected);
+
+          if (shape_info.Type == DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MASKED_COLOR) {
+            // In a masked colour cursor the alpha byte is a mask selector, not opacity:
+            // 0x00 means "draw this pixel opaque", 0xFF means "XOR against the screen".
+            // Opaque wins, inverted becomes black, and nothing is left half transparent.
+            auto pixels = (std::uint32_t *) cursor.pixels.data();
+            for (std::size_t i = 0; i < cursor.pixels.size() / 4; i++) {
+              const auto alpha = (std::uint8_t) ((pixels[i] >> 24) & 0xFF);
+              if (alpha == 0x00) {
+                pixels[i] |= 0xFF000000;
+              } else {
+                pixels[i] = black;
+              }
+            }
+          }
+
+          break;
+        }
+
+      case DXGI_OUTDUPL_POINTER_SHAPE_TYPE_MONOCHROME:
+        {
+          // Two stacked 1bpp masks: AND on top, XOR below.
+          const std::uint32_t height = shape_info.Height / 2;
+          cursor.height = (std::uint16_t) height;
+          if (cursor.width == 0 || height == 0 ||
+              cursor.width > max_dimension || height > max_dimension) {
+            return {};
+          }
+
+          const std::size_t mask_bytes = (std::size_t) shape_info.Pitch * height;
+          if (img_data.size() < mask_bytes * 2) {
+            return {};
+          }
+
+          cursor.pixels.assign((std::size_t) cursor.width * height * 4, 0);
+          auto pixels = (std::uint32_t *) cursor.pixels.data();
+
+          for (std::uint32_t y = 0; y < height; y++) {
+            const auto and_row = std::begin(img_data) + (std::size_t) y * shape_info.Pitch;
+            const auto xor_row = and_row + mask_bytes;
+
+            for (std::uint32_t x = 0; x < cursor.width; x++) {
+              const auto bit = (std::uint8_t) (0x80 >> (x % 8));
+              const bool and_bit = (and_row[x / 8] & bit) != 0;
+              const bool xor_bit = (xor_row[x / 8] & bit) != 0;
+
+              std::uint32_t value;
+              if (!and_bit && !xor_bit) {
+                value = black;
+              } else if (!and_bit && xor_bit) {
+                value = white;
+              } else if (and_bit && !xor_bit) {
+                value = transparent;
+              } else {
+                // "Inverse of screen" - see the note above.
+                value = black;
+              }
+
+              pixels[(std::size_t) y * cursor.width + x] = value;
+            }
+          }
+
+          break;
+        }
+
+      default:
+        return {};
+    }
+
+    // A hotspot outside the image is rejected by the client, and would mean clicks
+    // landing somewhere other than the pointer's tip anyway.
+    if (cursor.hotspot_x < 0 || cursor.hotspot_x >= (std::int16_t) cursor.width ||
+        cursor.hotspot_y < 0 || cursor.hotspot_y >= (std::int16_t) cursor.height) {
+      cursor.hotspot_x = 0;
+      cursor.hotspot_y = 0;
+    }
+
+    cursor.has_shape = true;
+    return cursor;
   }
 
   util::buffer_t<std::uint8_t> make_cursor_alpha_image(const util::buffer_t<std::uint8_t> &img_data, DXGI_OUTDUPL_POINTER_SHAPE_INFO shape_info) {
@@ -2480,6 +2606,18 @@ namespace platf::dxgi {
       auto alpha_cursor_img = make_cursor_alpha_image(img_data, shape_info);
       auto xor_cursor_img = make_cursor_xor_image(img_data, shape_info);
 
+      // Hand the same shape to any client drawing the pointer itself. Raised before the
+      // textures are moved from, because set_cursor_texture consumes the images.
+      {
+        auto client_cursor = make_client_cursor_shape(img_data, shape_info);
+        if (client_cursor.has_shape) {
+          client_cursor.shape_id = ++client_cursor_shape_id;
+          client_cursor.visible = cursor_alpha.visible || cursor_xor.visible;
+          last_client_cursor = client_cursor;
+          mail::man->event<platf::cursor_shape_t>(mail::cursor_shape)->raise(std::move(client_cursor));
+        }
+      }
+
       if (!set_cursor_texture(device.get(), cursor_alpha, std::move(alpha_cursor_img), shape_info) ||
           !set_cursor_texture(device.get(), cursor_xor, std::move(xor_cursor_img), shape_info)) {
         return capture_e::error;
@@ -2490,6 +2628,18 @@ namespace platf::dxgi {
       cursor_alpha.set_pos(frame_info.PointerPosition.Position.x, frame_info.PointerPosition.Position.y, width, height, display_rotation, frame_info.PointerPosition.Visible);
 
       cursor_xor.set_pos(frame_info.PointerPosition.Position.x, frame_info.PointerPosition.Position.y, width, height, display_rotation, frame_info.PointerPosition.Visible);
+
+      // Only when it actually changed. The pointer position updates constantly and a
+      // client drawing its own cursor doesn't care where the host thinks it is - it
+      // knows, it put it there - but it does need to know when to stop drawing one.
+      const bool now_visible = frame_info.PointerPosition.Visible;
+      if (now_visible != last_client_cursor_visible) {
+        last_client_cursor_visible = now_visible;
+
+        platf::cursor_shape_t visibility = last_client_cursor;
+        visibility.visible = now_visible;
+        mail::man->event<platf::cursor_shape_t>(mail::cursor_shape)->raise(std::move(visibility));
+      }
     }
 
     const bool blend_mouse_cursor_flag = (cursor_alpha.visible || cursor_xor.visible) && cursor_visible;

@@ -1851,6 +1851,13 @@ namespace platf {
       BOOST_LOG(warning) << "Touch input requires Windows 10 1809 or later"sv;
     }
 
+    // We can hand the pointer's shape to the client and let it draw the cursor itself.
+    // DXGI gives us the shape whenever it changes and the capture already converts it
+    // to BGRA to blend it; sending it instead means the pointer moves at the client's
+    // frame rate rather than the stream's, and changes shape over a text field or a
+    // window edge - neither of which a cursor painted into the video can do.
+    caps |= platform_caps::cursor_shape;
+
     return caps;
   }
 }  // namespace platf

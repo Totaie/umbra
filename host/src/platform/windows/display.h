@@ -411,6 +411,13 @@ namespace platf::dxgi {
     gpu_cursor_t cursor_alpha;
     gpu_cursor_t cursor_xor;
 
+    // The same pointer, flattened into one image for clients that draw it themselves.
+    // Kept so a visibility change can be sent without waiting for the shape to change,
+    // and so a client switching into local cursor mode mid-session gets one immediately.
+    platf::cursor_shape_t last_client_cursor;
+    std::uint32_t client_cursor_shape_id = 0;
+    bool last_client_cursor_visible = false;
+
     texture2d_t old_surface_delayed_destruction;
     std::chrono::steady_clock::time_point old_surface_timestamp;
     std::variant<std::monostate, texture2d_t, std::shared_ptr<platf::img_t>> last_frame_variant;

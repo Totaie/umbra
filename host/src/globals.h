@@ -56,6 +56,7 @@ namespace mail {
   MAIL(gamepad_feedback);
   MAIL(hdr);
   MAIL(dynamic_bitrate);  // Runtime encoder bitrate change (kbps), posted from the HTTP /bitrate handler
+  MAIL(cursor_shape);  // platf::cursor_shape_t, raised by capture for clients drawing the pointer themselves
 #undef MAIL
 
 }  // namespace mail

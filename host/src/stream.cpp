@@ -83,6 +83,7 @@ extern "C" {
 #define IDX_SET_CLIPBOARD 16
 #define IDX_FILE_TRANSFER_NONCE_REQUEST 17
 #define IDX_SET_ADAPTIVE_TRIGGERS 18
+#define IDX_CURSOR 19
 
 static const short packetTypes[] = {
   0x0305,  // Start A
@@ -104,6 +105,7 @@ static const short packetTypes[] = {
   0x3001,  // Set Clipboard (Apollo protocol extension)
   0x3002,  // File transfer nonce request (Apollo protocol extension)
   0x5503,  // Set Adaptive triggers (Sunshine protocol extension)
+  0x5509,  // Local cursor mode/update (Sunshine protocol extension)
 };
 
 namespace asio = boost::asio;
@@ -619,6 +621,17 @@ namespace stream {
 
       platf::feedback_queue_t feedback_queue;
       safe::mail_raw_t::event_t<video::hdr_info_t> hdr_queue;
+
+      // Set from the client's 0x5509 request. While this is true the client draws the
+      // pointer itself and we stop painting it into the video, so the pointer follows
+      // the hand rather than the frame rate.
+      std::atomic<bool> local_cursor {false};
+
+      // Serial of the last cursor this session was sent. Zero means "nothing yet", and
+      // is also what a mode change resets it to, so switching into local cursor mode
+      // resends the current shape rather than leaving the client with nothing to draw
+      // until the pointer next changes.
+      std::atomic<std::uint32_t> cursor_serial_sent {0};
     } control;
 
     std::uint32_t launch_session_id;
@@ -1391,9 +1404,190 @@ namespace stream {
     return 0;
   }
 
+  // Cursor updates are chunked; this is how many pixel bytes ride in each one. The
+  // control stream is reliable and ordered, so the client can reassemble by offset, but
+  // a 256x256 cursor is 256 KiB and does not belong in a single message.
+  constexpr std::size_t CURSOR_CHUNK_BYTES = 1024;
+
+  // Fixed by the client's parser - see CURSOR_WIRE_HEADER_SIZE in CursorStream.c.
+  constexpr std::size_t CURSOR_WIRE_HEADER_SIZE = 28;
+  constexpr std::uint8_t CURSOR_STREAM_PROTOCOL_VERSION = 1;
+  constexpr std::uint8_t CURSOR_FLAG_SHAPE = 0x01;
+  constexpr std::uint8_t CURSOR_FLAG_VISIBLE = 0x02;
+
+  // The client refuses anything larger rather than scaling it, because a scaled hotspot
+  // lands in the wrong place and a pointer that clicks somewhere other than its own tip
+  // is worse than no pointer at all.
+  constexpr std::uint16_t CURSOR_MAX_DIMENSION = 256;
+
+  void write_le16(std::uint8_t *out, std::uint16_t value) {
+    out[0] = (std::uint8_t) (value & 0xFF);
+    out[1] = (std::uint8_t) ((value >> 8) & 0xFF);
+  }
+
+  void write_le32(std::uint8_t *out, std::uint32_t value) {
+    out[0] = (std::uint8_t) (value & 0xFF);
+    out[1] = (std::uint8_t) ((value >> 8) & 0xFF);
+    out[2] = (std::uint8_t) ((value >> 16) & 0xFF);
+    out[3] = (std::uint8_t) ((value >> 24) & 0xFF);
+  }
+
+  /**
+   * @brief Send one cursor packet: the 28-byte header, plus a chunk of pixels if any.
+   */
+  int send_cursor_packet(
+    session_t *session,
+    std::uint8_t flags,
+    std::uint32_t shape_id,
+    std::uint16_t width,
+    std::uint16_t height,
+    std::int16_t hotspot_x,
+    std::int16_t hotspot_y,
+    std::uint32_t total_size,
+    std::uint32_t offset,
+    const std::uint8_t *chunk,
+    std::uint16_t chunk_size
+  ) {
+    if (!session->control.peer) {
+      return -1;
+    }
+
+    std::array<std::uint8_t, sizeof(control_header_v2) + CURSOR_WIRE_HEADER_SIZE + CURSOR_CHUNK_BYTES> plaintext {};
+
+    auto header = (control_header_v2 *) plaintext.data();
+    header->type = packetTypes[IDX_CURSOR];
+    header->payloadLength = (std::uint16_t) (CURSOR_WIRE_HEADER_SIZE + chunk_size);
+
+    auto body = plaintext.data() + sizeof(control_header_v2);
+    body[0] = CURSOR_STREAM_PROTOCOL_VERSION;
+    body[1] = flags;
+    write_le16(body + 2, (std::uint16_t) CURSOR_WIRE_HEADER_SIZE);
+    write_le32(body + 4, shape_id);
+    write_le16(body + 8, width);
+    write_le16(body + 10, height);
+    write_le16(body + 12, (std::uint16_t) hotspot_x);
+    write_le16(body + 14, (std::uint16_t) hotspot_y);
+    write_le32(body + 16, total_size);
+    write_le32(body + 20, offset);
+    write_le16(body + 24, chunk_size);
+
+    if (chunk_size > 0 && chunk != nullptr) {
+      std::copy_n(chunk, chunk_size, body + CURSOR_WIRE_HEADER_SIZE);
+    }
+
+    const std::size_t plaintext_size = sizeof(control_header_v2) + CURSOR_WIRE_HEADER_SIZE + chunk_size;
+
+    std::array<std::uint8_t, sizeof(control_encrypted_t) + crypto::cipher::round_to_pkcs7_padded(plaintext.size()) + crypto::cipher::tag_size>
+      encrypted_payload;
+
+    auto payload = encode_control(
+      session,
+      std::string_view {(const char *) plaintext.data(), plaintext_size},
+      encrypted_payload
+    );
+
+    if (session->broadcast_ref->control_server.send(payload, session->control.peer)) {
+      TUPLE_2D(port, addr, platf::from_sockaddr_ex((sockaddr *) &session->control.peer->address.address));
+      BOOST_LOG(warning) << "Couldn't send cursor update to ["sv << addr << ':' << port << ']';
+      return -1;
+    }
+
+    return 0;
+  }
+
+  /**
+   * @brief Hand a cursor to one session, as visibility alone or as a full shape.
+   */
+  int send_cursor_shape(session_t *session, const platf::cursor_shape_t &cursor) {
+    const std::uint8_t visible_flag = cursor.visible ? CURSOR_FLAG_VISIBLE : 0;
+
+    // Nothing to draw, or nothing we're allowed to draw. Either way the client only
+    // needs to know whether to show what it already has.
+    if (!cursor.has_shape || cursor.pixels.empty()) {
+      return send_cursor_packet(session, visible_flag, cursor.shape_id, 0, 0, 0, 0, 0, 0, nullptr, 0);
+    }
+
+    const std::uint32_t total_size = (std::uint32_t) cursor.pixels.size();
+
+    for (std::uint32_t offset = 0; offset < total_size;) {
+      const std::uint16_t chunk_size =
+        (std::uint16_t) std::min<std::uint32_t>(CURSOR_CHUNK_BYTES, total_size - offset);
+
+      if (send_cursor_packet(
+            session,
+            (std::uint8_t) (CURSOR_FLAG_SHAPE | visible_flag),
+            cursor.shape_id,
+            cursor.width,
+            cursor.height,
+            cursor.hotspot_x,
+            cursor.hotspot_y,
+            total_size,
+            offset,
+            cursor.pixels.data() + offset,
+            chunk_size
+          ) != 0) {
+        return -1;
+      }
+
+      offset += chunk_size;
+    }
+
+    return 0;
+  }
+
+  // The most recent cursor from the capture, and a serial that ticks with it.
+  //
+  // Read once per broadcast pass and handed to every session that hasn't had it yet -
+  // rather than each session subscribing to the event, which would have them competing
+  // to pop the same queue. The serial is what lets a client that arrives late, or that
+  // only just asked to draw the cursor itself, be treated as simply behind.
+  std::mutex last_cursor_mutex;
+  platf::cursor_shape_t last_cursor;
+  std::uint32_t last_cursor_serial = 0;
+
   void controlBroadcastThread(control_server_t *server) {
+    auto cursor_events = mail::man->event<platf::cursor_shape_t>(mail::cursor_shape);
+
     server->map(packetTypes[IDX_PERIODIC_PING], [](session_t *session, const std::string_view &payload) {
       BOOST_LOG(verbose) << "type [IDX_PERIODIC_PING]"sv;
+    });
+
+    // The client asking to draw the pointer itself. Payload is {version, mode, 0, 0};
+    // mode 0 leaves the cursor painted into the video, mode 1 hands it over.
+    server->map(packetTypes[IDX_CURSOR], [](session_t *session, const std::string_view &payload) {
+      if (payload.size() < 2) {
+        BOOST_LOG(warning) << "Ignoring malformed cursor mode request"sv;
+        return;
+      }
+
+      const auto version = (std::uint8_t) payload[0];
+      if (version != CURSOR_STREAM_PROTOCOL_VERSION) {
+        BOOST_LOG(warning) << "Ignoring cursor mode request with unknown protocol version "sv << (int) version;
+        return;
+      }
+
+      const bool local = ((std::uint8_t) payload[1]) == 1;
+      const bool was_local = session->control.local_cursor.exchange(local, std::memory_order_relaxed);
+
+      if (local != was_local) {
+        // Ask for the current shape to be resent, so switching modes doesn't leave the
+        // client with nothing to draw until the pointer next changes.
+        session->control.cursor_serial_sent.store(0, std::memory_order_relaxed);
+
+        // Leaving local mode always restores the painted cursor. Entering it does not
+        // remove the painted cursor here - that happens once a shape has actually been
+        // sent, in the broadcast loop below.
+        //
+        // Not every capture backend can produce a shape: Windows.Graphics.Capture
+        // doesn't hand us one, and suppressing the painted cursor there would leave the
+        // viewer with no pointer at all, which is worse than the one they have. Waiting
+        // for a real shape means those backends simply keep the cursor in the video.
+        if (!local) {
+          display_cursor = true;
+        }
+
+        BOOST_LOG(info) << "Client is now drawing the cursor "sv << (local ? "itself"sv : "from the video"sv);
+      }
     });
 
     server->map(packetTypes[IDX_START_A], [&](session_t *session, const std::string_view &payload) {
@@ -1700,6 +1894,26 @@ namespace stream {
       const bool process_running = proc::proc.running() != 0;
       bool has_session_awaiting_peer = false;
 
+      // One reader for the capture's cursor updates. Sessions are served from this copy
+      // further down rather than subscribing individually: safe::mail hands the same
+      // queue to everyone asking for an id, so they would compete to pop it and only
+      // one client would ever see a given shape. Outside the sessions lock because it
+      // touches neither the sessions nor the server.
+      while (cursor_events->peek()) {
+        auto cursor = cursor_events->pop(0ms);
+        if (!cursor) {
+          break;
+        }
+
+        std::lock_guard<std::mutex> lock(last_cursor_mutex);
+        last_cursor = std::move(*cursor);
+        last_cursor_serial++;
+        if (last_cursor_serial == 0) {
+          // Zero means "nothing sent yet" to a session, so skip it on wrap.
+          last_cursor_serial = 1;
+        }
+      }
+
       {
         auto lg = server->_sessions.lock();
 
@@ -1781,6 +1995,32 @@ namespace stream {
               auto hdr_info = hdr_queue->pop();
 
               send_hdr_mode(session, std::move(hdr_info));
+            }
+
+            if (session->control.peer && session->control.local_cursor.load(std::memory_order_relaxed)) {
+              platf::cursor_shape_t cursor;
+              std::uint32_t serial;
+              {
+                std::lock_guard<std::mutex> lock(last_cursor_mutex);
+                serial = last_cursor_serial;
+                if (serial != session->control.cursor_serial_sent.load(std::memory_order_relaxed)) {
+                  cursor = last_cursor;
+                }
+              }
+
+              if (serial != 0 && serial != session->control.cursor_serial_sent.load(std::memory_order_relaxed)) {
+                if (send_cursor_shape(session, cursor) == 0) {
+                  session->control.cursor_serial_sent.store(serial, std::memory_order_relaxed);
+
+                  // Only now stop painting it into the frame. The client has something
+                  // of its own to draw, so this is the point where two cursors would
+                  // otherwise appear - and on a backend that never produces a shape we
+                  // never get here, and the painted one stays.
+                  if (cursor.has_shape) {
+                    display_cursor = false;
+                  }
+                }
+              }
             }
           }
 
