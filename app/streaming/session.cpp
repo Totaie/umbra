@@ -4365,9 +4365,14 @@ void Session::exec()
         {
             presence.runCallbacks();
 
-            // When Qt overlay menu is visible, consume all button events
-            // to prevent SDL from re-capturing the mouse
+            // A click on the stream while the menu is open closes it, the way clicking
+            // away from any other menu does. The click is still swallowed rather than
+            // passed to the host: the first click after opening a menu is how you
+            // dismiss it, not how you press whatever happens to be underneath.
             if (m_MenuPanel && m_MenuPanel->isMenuVisible()) {
+                if (event.button.state == SDL_PRESSED) {
+                    hideQtOverlayMenu();
+                }
                 break;
             }
 
@@ -4533,6 +4538,18 @@ DispatchDeferredCleanup:
 
     // Raise any keys that are still down
     m_InputHandler->raiseAllKeys();
+
+    // Give the host its cursor back.
+    //
+    // display_cursor is a process-wide flag on the host that outlives the session, so
+    // leaving it off means the next client to connect - or the same one after a
+    // reconnect - gets a stream with no pointer in it at all, drawn by nobody. The
+    // person sitting at that machine still sees their own cursor either way; this is
+    // about what ends up in the capture. Sent while the input channel is still up,
+    // which is why it is here and not after the handler is destroyed.
+    if (m_Preferences->clientSideCursor && m_Preferences->absoluteMouseMode) {
+        m_InputHandler->showHostCursor();
+    }
 
     // Destroy the input handler now. This must be destroyed
     // before allowwing the UI to continue execution or it could
