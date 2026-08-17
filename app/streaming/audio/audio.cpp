@@ -180,6 +180,31 @@ void Session::arDecodeAndPlaySample(char* sampleData, int sampleLength)
         }
     }
 
+    // Audio that stops arriving is invisible from here - this function is only called
+    // when something arrives - so measure the gap on the way back in. A stream that
+    // resumes leaves a line saying how long it was gone; one that never resumes leaves
+    // the timestamp of the last thing it played.
+    {
+        const Uint32 nowTicks = SDL_GetTicks();
+        const Uint32 lastTicks = s_ActiveSession->m_LastAudioSampleTicks;
+
+        if (lastTicks != 0) {
+            const Uint32 gapMs = nowTicks - lastTicks;
+
+            // A frame is 5 ms, so anything past a second is a real interruption rather
+            // than jitter.
+            if (gapMs >= 1000) {
+                SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                            "Audio resumed after a %u ms gap - the host stopped sending or "
+                            "the network dropped it; playback was still running",
+                            gapMs);
+            }
+        }
+
+        s_ActiveSession->m_LastAudioSampleTicks = nowTicks;
+        s_ActiveSession->m_AudioGapReported = false;
+    }
+
     s_ActiveSession->m_AudioSampleCount++;
 
     // If audio is muted, don't decode or play the audio
@@ -223,8 +248,12 @@ void Session::arDecodeAndPlaySample(char* sampleData, int sampleLength)
         }
 
         if (!s_ActiveSession->m_AudioRenderer->submitAudio(desiredBufferSize)) {
+            // Worth saying loudly: this is the client's own playback failing, not the
+            // stream, and it is the half that recovers by itself. Audio that never
+            // comes back without a reconnect is the other half.
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                        "Reinitializing audio renderer after failure");
+                        "Audio playback failed after %d samples; restarting the renderer",
+                        s_ActiveSession->m_AudioSampleCount);
 
             opus_multistream_decoder_destroy(s_ActiveSession->m_OpusDecoder);
             s_ActiveSession->m_OpusDecoder = nullptr;

@@ -106,6 +106,12 @@ void SdlInputHandler::setLocalCursorVisible(bool visible)
 {
     m_MouseCursorCapturedVisibilityState = visible ? SDL_ENABLE : SDL_DISABLE;
 
+    // Tell the host which way we want it. This used to only set the flag, so the
+    // connection kept whatever mode the handler was constructed with and the setting
+    // appeared to do nothing until the overlay menu's cursor toggle was used - that
+    // being the only caller that synchronised.
+    synchronizeLocalCursorMode();
+
     // In relative mode the cursor is captured and must stay hidden. Setting the state
     // is still worthwhile so it applies if the user toggles to absolute mode.
     if (!SDL_GetRelativeMouseMode()) {

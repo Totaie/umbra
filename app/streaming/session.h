@@ -361,6 +361,12 @@ private:
     int m_AudioSampleCount;
     Uint32 m_DropAudioEndTime;
 
+    // When a sample last arrived, and whether we've already complained about the
+    // current silence. Audio going quiet until a reconnect is the sort of thing that
+    // leaves no trace at all otherwise: the audio path only runs when a packet arrives.
+    Uint32 m_LastAudioSampleTicks;
+    bool m_AudioGapReported;
+
     Overlay::OverlayManager m_OverlayManager;
     bool m_WasCapturedBeforeMenu;  // 菜单打开前鼠标是否处于捕获状态
     bool m_DeferCaptureRestore;    // 延迟恢复鼠标捕获（全屏切换等）

@@ -360,7 +360,17 @@ int SdlInputHandler::getCapturedCursorVisibilityState() const
         return SDL_DISABLE;
     }
 
-    if (getLocalCursorMode() == LI_CURSOR_MODE_LOCAL &&
+    // Following the host's "cursor is hidden" is right for a game that hides its own
+    // pointer. It is wrong for a desktop, and it fails at the worst possible moment:
+    // Windows switches to the secure desktop for a UAC prompt, capture reports no
+    // cursor, we hide ours - and the host's is already suppressed because we are the
+    // one drawing it. No pointer at all, on the one dialog that has to be clicked.
+    //
+    // In absolute mode the pointer on screen is the user's own and there is always one,
+    // so only relative mode - where the pointer belongs to whatever is running on the
+    // host - takes the host at its word.
+    if (!m_AbsoluteMouseMode &&
+        getLocalCursorMode() == LI_CURSOR_MODE_LOCAL &&
         (LiGetHostFeatureFlags() & LI_FF_CURSOR_SHAPE) != 0) {
         return m_RemoteCursorVisible ? SDL_ENABLE : SDL_DISABLE;
     }

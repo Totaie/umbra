@@ -928,6 +928,8 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_OpusDecoder(nullptr),
       m_AudioRenderer(nullptr),
       m_AudioSampleCount(0),
+      m_LastAudioSampleTicks(0),
+      m_AudioGapReported(false),
       m_DropAudioEndTime(0),
       m_MenuPanel(nullptr),
       m_DeferCaptureRestore(false),
@@ -3847,6 +3849,17 @@ void Session::exec()
         SDL_GetWindowSize(m_Window, &ww, &wh);
         SDL_WarpMouseInWindow(m_Window, ww / 2, wh / 2);
     }
+
+    // Whatever the preference says, said once, now that the connection can carry it.
+    // The host answers by either sending cursor shapes or ignoring us, and the log line
+    // below is how to tell which happened.
+    m_InputHandler->setLocalCursorVisible(m_Preferences->clientSideCursor &&
+                                          m_Preferences->absoluteMouseMode);
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Cursor: drawn %s (host cursor shapes %s)",
+                m_InputHandler->getLocalCursorMode() == LI_CURSOR_MODE_LOCAL ? "by this client" : "into the video",
+                (LiGetHostFeatureFlags() & LI_FF_CURSOR_SHAPE) ? "supported" : "unsupported");
 
     if (m_Preferences->clientSideCursor && m_Preferences->absoluteMouseMode) {
         // Stop the host compositing its cursor into the video and draw ours instead.
