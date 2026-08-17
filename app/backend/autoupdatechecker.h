@@ -25,6 +25,14 @@ public:
     Q_INVOKABLE bool supportsInAppUpdate() const;
     Q_INVOKABLE void installUpdate(QString url);
 
+    // Fetch and run an installer this class did not find itself - Umbra Host's.
+    //
+    // Always the run-the-installer path, never the portable in-place swap: that one
+    // replaces Umbra's own files, which is emphatically not what a host package
+    // should do. Reuses the same download for the same reason it exists - the digest
+    // is required and the host it came from is checked after every redirect.
+    Q_INVOKABLE void installHostPackage(QString url, QString sha256);
+
 signals:
     void onUpdateAvailable(QString newVersion, QString url);
     void onPortableUpdateStatusChanged(QString message);
@@ -79,4 +87,10 @@ private:
     QFile* m_SetupFile = nullptr;
     QString m_SetupPath;
     QString m_SetupExpectedDigest;
+
+    // Whether the download in flight is Umbra Host's installer rather than Umbra's.
+    // Only affects what the user is told at the end: the host's installer restarts a
+    // service, Umbra's closes this program, and saying the wrong one is how a normal
+    // update starts looking like a crash.
+    bool m_SetupIsHostPackage = false;
 };

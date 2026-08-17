@@ -691,10 +691,24 @@ Column {
                           : qsTr("Umbra Host %1 is available.").arg(newVersion) + "
 
 " +
-                            qsTr("The download page will open. Installing needs administrator permission, so do it at this PC rather than over a stream.")
+                            (HostManager.canInstallHostUpdate()
+                             ? qsTr("Umbra will download and run the installer. It needs administrator permission, so do this at this PC rather than over a stream.")
+                             : qsTr("This release didn't publish an installer Umbra can verify, so the download page will open instead."))
 
                     onAccepted: {
-                        if (!streaming && releaseUrl) {
+                        if (streaming) {
+                            return
+                        }
+
+                        // Downloading and running it here rather than handing over a
+                        // link: a release page is a detour that ends in the same
+                        // installer, and this is the only path that checks the
+                        // package against the checksum GitHub published for it.
+                        if (HostManager.canInstallHostUpdate()) {
+                            AutoUpdateChecker.installHostPackage(HostManager.hostUpdateAssetUrl(),
+                                                                 HostManager.hostUpdateAssetDigest())
+                        }
+                        else if (releaseUrl) {
                             Qt.openUrlExternally(releaseUrl)
                         }
                     }

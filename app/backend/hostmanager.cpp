@@ -312,6 +312,37 @@ void HostManager::handleHostReleasesReply(QNetworkReply* reply)
     QVersionNumber best;
     QString bestTag;
     QString bestUrl;
+    QString bestAssetUrl;
+    QString bestAssetDigest;
+
+    // Pick the installer out of a release's assets. Anything we can't name and
+    // checksum is left alone - downloadAndRunSetup refuses it anyway, and it is
+    // better to send the user to the release page than to hand them a dialog that
+    // fails halfway through.
+    auto findInstaller = [](const QJsonObject& release, QString& urlOut, QString& digestOut) {
+        urlOut.clear();
+        digestOut.clear();
+
+        const QJsonArray assets = release["assets"].toArray();
+        for (const QJsonValue& assetValue : assets) {
+            const QJsonObject asset = assetValue.toObject();
+            const QString name = asset["name"].toString();
+
+            if (!name.startsWith(QStringLiteral("UmbraHostSetup-"), Qt::CaseInsensitive) ||
+                    !name.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
+                continue;
+            }
+
+            QString digest = asset["digest"].toString();
+            if (digest.startsWith(QStringLiteral("sha256:"), Qt::CaseInsensitive)) {
+                digest.remove(0, 7);
+            }
+
+            urlOut = asset["browser_download_url"].toString();
+            digestOut = digest;
+            return;
+        }
+    };
 
     const QJsonArray releases = doc.array();
     for (const QJsonValue& value : releases) {
@@ -339,6 +370,7 @@ void HostManager::handleHostReleasesReply(QNetworkReply* reply)
             best = candidate;
             bestTag = tag;
             bestUrl = release["html_url"].toString();
+            findInstaller(release, bestAssetUrl, bestAssetDigest);
         }
     }
 
@@ -356,9 +388,13 @@ void HostManager::handleHostReleasesReply(QNetworkReply* reply)
     }
 
     if (current < best) {
+        m_HostUpdateAssetUrl = bestAssetUrl;
+        m_HostUpdateAssetDigest = bestAssetDigest;
         emit hostUpdateAvailable(best.toString(), bestUrl);
     }
     else {
+        m_HostUpdateAssetUrl.clear();
+        m_HostUpdateAssetDigest.clear();
         emit hostUpToDate(installed, best.toString());
     }
 }

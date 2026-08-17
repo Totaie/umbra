@@ -540,6 +540,13 @@ ApplicationWindow {
             NavigableToolButton {
                 property string browserUrl: ""
 
+                // The two updates are tracked apart because they install differently and
+                // can appear on their own. A machine that only runs the host still needs
+                // this button, and until now it only ever watched Umbra's own version.
+                property bool clientUpdatePending: false
+                property string hostVersion: ""
+                property string hostReleaseUrl: ""
+
                 id: updateButton
 
                 iconSource: "qrc:/res/fluent/tb-update.svg"
@@ -553,6 +560,13 @@ ApplicationWindow {
                 visible: false
 
                 onClicked: {
+                    // Umbra first when both are waiting. The installer restarts us, and
+                    // the host check runs again on the way back up.
+                    if (!clientUpdatePending && hostVersion) {
+                        updateButton.installHostUpdate()
+                        return
+                    }
+
                     if (AutoUpdateChecker.supportsInAppUpdate()) {
                         portableUpdateDialog.text = qsTr("Preparing update...")
                         portableUpdateDialog.open()
@@ -572,9 +586,60 @@ ApplicationWindow {
 
                 function updateAvailable(version, url)
                 {
-                    ToolTip.text = qsTr("Update available for Umbra: Version %1").arg(version)
+                    updateButton.clientUpdatePending = true
                     updateButton.browserUrl = url
                     updateButton.visible = true
+                    updateButton.refreshToolTip()
+                }
+
+                function hostUpdateAvailable(version, url)
+                {
+                    updateButton.hostVersion = version
+                    updateButton.hostReleaseUrl = url
+                    updateButton.visible = true
+                    updateButton.refreshToolTip()
+                }
+
+                function refreshToolTip()
+                {
+                    if (clientUpdatePending && hostVersion) {
+                        ToolTip.text = qsTr("Updates available for Umbra and Umbra Host %1").arg(hostVersion)
+                    }
+                    else if (clientUpdatePending) {
+                        ToolTip.text = qsTr("Update available for Umbra")
+                    }
+                    else {
+                        ToolTip.text = qsTr("Update available for Umbra Host: Version %1").arg(hostVersion)
+                    }
+                }
+
+                function installHostUpdate()
+                {
+                    // Running the host installer stops the service, which ends any
+                    // session it is serving - and it elevates, so Windows draws a UAC
+                    // prompt on the secure desktop, which the host does not capture.
+                    // Someone doing this over a stream would lose the picture with the
+                    // prompt still waiting. So this refuses rather than warns.
+                    if (HostManager.isHostStreaming()) {
+                        portableUpdateErrorDialog.text =
+                            qsTr("Umbra Host %1 is available, but this PC is streaming right now. Installing it would end the session, and the permission prompt appears on this PC's own screen. End the session first.").arg(hostVersion)
+                        portableUpdateErrorDialog.open()
+                        return
+                    }
+
+                    if (!HostManager.canInstallHostUpdate()) {
+                        if (!Qt.openUrlExternally(hostReleaseUrl)) {
+                            portableUpdateErrorDialog.text =
+                                qsTr("This Umbra Host release didn't publish an installer Umbra can verify. Download it from %1").arg(hostReleaseUrl)
+                            portableUpdateErrorDialog.open()
+                        }
+                        return
+                    }
+
+                    portableUpdateDialog.text = qsTr("Preparing Umbra Host %1...").arg(hostVersion)
+                    portableUpdateDialog.open()
+                    AutoUpdateChecker.installHostPackage(HostManager.hostUpdateAssetUrl(),
+                                                         HostManager.hostUpdateAssetDigest())
                 }
 
                 function portableUpdateStatusChanged(message)
@@ -596,8 +661,15 @@ ApplicationWindow {
                     AutoUpdateChecker.onUpdateAvailable.connect(updateAvailable)
                     AutoUpdateChecker.onPortableUpdateStatusChanged.connect(portableUpdateStatusChanged)
                     AutoUpdateChecker.onPortableUpdateFailed.connect(portableUpdateFailed)
+                    HostManager.hostUpdateAvailable.connect(hostUpdateAvailable)
                     if (StreamingPreferences.autoUpdateCheck) {
                         AutoUpdateChecker.start()
+
+                        // The host is updated on its own release schedule, and most of
+                        // this project's fixes land there rather than here. Checking
+                        // only Umbra's version meant a machine whose host was months
+                        // behind was told it was up to date.
+                        HostManager.checkHostForUpdate()
                     }
                 }
 

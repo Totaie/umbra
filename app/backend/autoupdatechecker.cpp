@@ -79,10 +79,23 @@ void AutoUpdateChecker::installUpdate(QString url)
     }
 
 #if defined(Q_OS_WIN32)
+    m_SetupIsHostPackage = false;
     downloadAndRunSetup(url, expectedDigest);
 #else
     Q_UNUSED(expectedDigest);
     emit onPortableUpdateFailed(tr("In-app update is not supported for this installation."));
+#endif
+}
+
+void AutoUpdateChecker::installHostPackage(QString url, QString sha256)
+{
+#if defined(Q_OS_WIN32)
+    m_SetupIsHostPackage = true;
+    downloadAndRunSetup(url, sha256);
+#else
+    Q_UNUSED(url);
+    Q_UNUSED(sha256);
+    emit onPortableUpdateFailed(tr("Umbra Host is only available on Windows."));
 #endif
 }
 
@@ -246,8 +259,13 @@ void AutoUpdateChecker::finishSetupDownload()
     }
 
     // Said last, because the installer takes over from here: it asks for administrator
-    // rights and then closes this copy of Umbra to replace it.
-    emit onPortableUpdateStatusChanged(tr("The installer is starting. Umbra will close to finish updating."));
+    // rights, and then either closes this copy of Umbra to replace it or restarts the
+    // host service, depending on which package this was.
+    emit onPortableUpdateStatusChanged(
+        m_SetupIsHostPackage
+            ? tr("The Umbra Host installer is starting. It will ask for administrator permission, "
+                 "then restart the host. Umbra itself stays open.")
+            : tr("The installer is starting. Umbra will close to finish updating."));
 }
 
 void AutoUpdateChecker::checkNow()

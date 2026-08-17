@@ -55,6 +55,24 @@ public:
     // problem to nag about.
     Q_INVOKABLE void checkHostForUpdate();
 
+    // The installer from the newest host release, and the checksum GitHub published
+    // for it. Both empty unless a check has found an update we can actually install:
+    // a release that shipped no verifiable package is one to fetch by hand.
+    Q_INVOKABLE QString hostUpdateAssetUrl() const
+    {
+        return m_HostUpdateAssetUrl;
+    }
+
+    Q_INVOKABLE QString hostUpdateAssetDigest() const
+    {
+        return m_HostUpdateAssetDigest;
+    }
+
+    Q_INVOKABLE bool canInstallHostUpdate() const
+    {
+        return !m_HostUpdateAssetUrl.isEmpty() && !m_HostUpdateAssetDigest.isEmpty();
+    }
+
     // True while the host is serving a stream. Installing over it would stop the
     // service and drop the session, so updates wait.
     Q_INVOKABLE bool isHostStreaming();
@@ -88,6 +106,10 @@ private:
     void setBusy(bool busy);
 
     void handleHostReleasesReply(QNetworkReply* reply);
+
+    // Set by the last successful check that found something newer.
+    QString m_HostUpdateAssetUrl;
+    QString m_HostUpdateAssetDigest;
 
     QString m_CachedExecutable;
     QNetworkAccessManager* m_Nam = nullptr;
