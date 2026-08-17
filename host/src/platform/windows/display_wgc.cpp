@@ -7,7 +7,10 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <limits>
+#include <mutex>
+#include <vector>
 #include <winsock2.h>
 #include <dxgi1_2.h>
 #include <optional>
@@ -17,6 +20,7 @@
 #include "src/config.h"
 #include "ipc/ipc_session.h"
 #include "ipc/misc_utils.h"
+#include "src/globals.h"
 #include "src/logging.h"
 #include "src/platform/windows/display.h"
 #include "src/platform/windows/display_vram.h"
@@ -83,6 +87,202 @@ namespace platf::dxgi {
 
     bool is_wgc_constant_mode() {
       return config::video.capture == "wgcc";
+    }
+
+    // The pointer shape, for clients drawing the cursor themselves.
+    //
+    // Desktop Duplication hands the shape over with the frame, so the DXGI backend gets
+    // this for free. WGC does not - it burns the pointer into the image and tells us
+    // nothing about it - so on Windows 11 23H2 and later, where WGC is the default, a
+    // client that hid the host's cursor was left drawing a plain arrow over everything,
+    // with no I-beam over text and no resize arrows on a window edge. Ask Windows
+    // directly instead. GetCursorInfo is a cheap call and the handle it returns is
+    // stable per shape, so the expensive conversion only runs when the pointer changes.
+    constexpr int CURSOR_MAX_DIMENSION = 256;
+
+    /**
+     * @brief Read a GDI bitmap as top-down 32bpp BGRA.
+     *
+     * A monochrome bitmap comes back as 0x00000000 for a clear bit and 0x00FFFFFF for
+     * a set one, which is what the AND/XOR handling below relies on.
+     */
+    bool read_bitmap_bgra(HDC dc, HBITMAP bitmap, int width, int height, std::vector<std::uint8_t> &out) {
+      BITMAPINFO info {};
+      info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+      info.bmiHeader.biWidth = width;
+      info.bmiHeader.biHeight = -height;  // Negative means top-down, matching the wire format
+      info.bmiHeader.biPlanes = 1;
+      info.bmiHeader.biBitCount = 32;
+      info.bmiHeader.biCompression = BI_RGB;
+
+      out.assign((std::size_t) width * height * 4, 0);
+      return GetDIBits(dc, bitmap, 0, (UINT) height, out.data(), &info, DIB_RGB_COLORS) == height;
+    }
+
+    /**
+     * @brief Convert an HCURSOR into the BGRA shape the client expects.
+     * @return A shape with has_shape set, or an empty one for anything unrepresentable.
+     */
+    platf::cursor_shape_t cursor_shape_from_handle(HCURSOR handle) {
+      constexpr std::uint32_t black = 0xFF000000;
+      constexpr std::uint32_t white = 0xFFFFFFFF;
+      constexpr std::uint32_t transparent = 0;
+
+      ICONINFO icon_info {};
+      if (!GetIconInfo(handle, &icon_info)) {
+        return {};
+      }
+
+      auto bitmaps = util::fail_guard([&]() {
+        if (icon_info.hbmMask) {
+          DeleteObject(icon_info.hbmMask);
+        }
+        if (icon_info.hbmColor) {
+          DeleteObject(icon_info.hbmColor);
+        }
+      });
+
+      if (!icon_info.hbmMask) {
+        return {};
+      }
+
+      BITMAP mask_bm {};
+      if (GetObject(icon_info.hbmMask, sizeof(mask_bm), &mask_bm) == 0) {
+        return {};
+      }
+
+      // A colour cursor keeps its transparency in the colour bitmap's alpha and the mask
+      // is the same height. A monochrome one has no colour bitmap and stacks the AND mask
+      // above the XOR mask in a single bitmap of twice the height.
+      const bool monochrome = icon_info.hbmColor == nullptr;
+
+      BITMAP color_bm {};
+      if (!monochrome && GetObject(icon_info.hbmColor, sizeof(color_bm), &color_bm) == 0) {
+        return {};
+      }
+
+      const int width = monochrome ? mask_bm.bmWidth : color_bm.bmWidth;
+      const int height = monochrome ? mask_bm.bmHeight / 2 : color_bm.bmHeight;
+
+      if (width <= 0 || height <= 0 || width > CURSOR_MAX_DIMENSION || height > CURSOR_MAX_DIMENSION) {
+        return {};
+      }
+
+      HDC dc = GetDC(nullptr);
+      if (dc == nullptr) {
+        return {};
+      }
+      auto release_dc = util::fail_guard([&]() {
+        ReleaseDC(nullptr, dc);
+      });
+
+      platf::cursor_shape_t cursor;
+      cursor.width = (std::uint16_t) width;
+      cursor.height = (std::uint16_t) height;
+      cursor.hotspot_x = (std::int16_t) icon_info.xHotspot;
+      cursor.hotspot_y = (std::int16_t) icon_info.yHotspot;
+
+      std::vector<std::uint8_t> mask;
+      if (!read_bitmap_bgra(dc, icon_info.hbmMask, width, monochrome ? height * 2 : height, mask)) {
+        return {};
+      }
+      auto mask_px = (const std::uint32_t *) mask.data();
+
+      if (monochrome) {
+        cursor.pixels.assign((std::size_t) width * height * 4, 0);
+        auto pixels = (std::uint32_t *) cursor.pixels.data();
+
+        for (int i = 0; i < width * height; i++) {
+          const bool and_bit = (mask_px[i] & 0x00FFFFFF) != 0;
+          const bool xor_bit = (mask_px[(std::size_t) width * height + i] & 0x00FFFFFF) != 0;
+
+          if (!and_bit) {
+            pixels[i] = xor_bit ? white : black;
+          } else {
+            // "Inverse of what's behind it" has no meaning to a client compositing the
+            // pointer over its own copy of the frame, so it becomes black - the same
+            // choice the Desktop Duplication path makes.
+            pixels[i] = xor_bit ? black : transparent;
+          }
+        }
+      } else {
+        if (!read_bitmap_bgra(dc, icon_info.hbmColor, width, height, cursor.pixels)) {
+          return {};
+        }
+
+        auto pixels = (std::uint32_t *) cursor.pixels.data();
+
+        // Cursors built from a 24bpp image come back with the alpha channel all zero,
+        // which would draw nothing at all. Those still carry a real AND mask, so use it.
+        const bool has_alpha = std::any_of(pixels, pixels + (std::size_t) width * height, [](std::uint32_t px) {
+          return (px & 0xFF000000) != 0;
+        });
+
+        if (!has_alpha) {
+          for (int i = 0; i < width * height; i++) {
+            const bool and_bit = (mask_px[i] & 0x00FFFFFF) != 0;
+            pixels[i] = and_bit ? transparent : (pixels[i] | 0xFF000000);
+          }
+        }
+      }
+
+      cursor.has_shape = true;
+      return cursor;
+    }
+
+    /**
+     * @brief Publish the current pointer shape if it changed since the last call.
+     *
+     * Cheap enough to call once per captured frame. State is shared across displays on
+     * purpose: there is one pointer, and a multi-display session should not have each
+     * capture thread reporting it separately.
+     */
+    void poll_win32_cursor_shape() {
+      static std::mutex mutex;
+      static HCURSOR last_handle = nullptr;
+      static bool last_visible = false;
+      static bool ever_polled = false;
+      static std::uint32_t shape_id = 0;
+      static platf::cursor_shape_t last_shape;
+
+      auto lg = std::lock_guard(mutex);
+
+      CURSORINFO info {};
+      info.cbSize = sizeof(info);
+      if (!GetCursorInfo(&info)) {
+        // Usually means this thread is looking at a desktop that isn't the input one -
+        // a UAC prompt, or the lock screen. Follow it and try again on the next frame.
+        syncThreadDesktop();
+        return;
+      }
+
+      const bool visible = (info.flags & CURSOR_SHOWING) != 0 && info.hCursor != nullptr;
+
+      if (ever_polled && info.hCursor == last_handle && visible == last_visible) {
+        return;
+      }
+
+      const bool handle_changed = !ever_polled || info.hCursor != last_handle;
+      ever_polled = true;
+      last_handle = info.hCursor;
+      last_visible = visible;
+
+      if (handle_changed && info.hCursor != nullptr) {
+        auto shape = cursor_shape_from_handle(info.hCursor);
+        if (shape.has_shape) {
+          shape.shape_id = ++shape_id;
+          shape.visible = visible;
+          last_shape = shape;
+          mail::man->event<platf::cursor_shape_t>(mail::cursor_shape)->raise(std::move(shape));
+          return;
+        }
+      }
+
+      // Visibility changed, or the new shape was one we can't represent. Either way the
+      // client only needs to be told whether to keep drawing what it already has.
+      platf::cursor_shape_t visibility = last_shape;
+      visibility.visible = visible;
+      mail::man->event<platf::cursor_shape_t>(mail::cursor_shape)->raise(std::move(visibility));
     }
 
     std::shared_ptr<platf::game_activity::refresh_target_t> make_wgc_activity_admission_target(
@@ -266,6 +466,16 @@ namespace platf::dxgi {
       BOOST_LOG(warning) << "WGC IPC helper failed to initialize; requesting capture reinit.";
       return capture_e::reinit;
     }
+
+    // Desktop Duplication hands the pointer over separately and lets us decide whether
+    // to blend it in; WGC has already composited it by the time the frame reaches us.
+    // So this is the only place display_cursor can be honoured on this backend - and
+    // it not being honoured here is why hiding the host's cursor did nothing on
+    // Windows 11 23H2 and later, where WGC is the default.
+    _ipc_session->set_cursor_capture(cursor_visible);
+
+    // Nothing else on this backend tells a client what the pointer looks like.
+    poll_win32_cursor_shape();
 
     timeout = effective_wgc_timeout(timeout, _config.framerate);
 
@@ -528,6 +738,13 @@ namespace platf::dxgi {
       BOOST_LOG(warning) << "WGC IPC helper failed to initialize; requesting capture reinit.";
       return capture_e::reinit;
     }
+
+    // See the VRAM path above: WGC composites the pointer in the helper, so this is
+    // where display_cursor has to be applied.
+    _ipc_session->set_cursor_capture(cursor_visible);
+
+    // Nothing else on this backend tells a client what the pointer looks like.
+    poll_win32_cursor_shape();
 
     winrt::com_ptr<ID3D11Texture2D> gpu_tex;
     uint64_t frame_qpc = 0;

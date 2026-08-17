@@ -139,6 +139,16 @@ static std::atomic<int32_t> g_activity_admission_fps {120};
 static std::atomic<uint32_t> g_activity_admission_generation {0};
 
 /**
+ * @brief Whether captured frames should include the mouse pointer.
+ *
+ * WGC draws the pointer into the frame for us, which is the opposite of what
+ * Desktop Duplication does, so the main process cannot take it back out again.
+ * It tells us instead, and the capture session applies it.
+ */
+static std::atomic<bool> g_capture_cursor {true};
+static std::atomic<bool> g_capture_cursor_pending {false};
+
+/**
  * @brief Flag indicating whether configuration data has been received from main process.
  */
 static bool g_config_received = false;
@@ -2005,6 +2015,39 @@ public:
     }
   }
 
+  /**
+   * @brief Applies a pointer-compositing change requested by the main process.
+   *
+   * Called from the message loop rather than the frame callback: this touches the
+   * WinRT session object, and the loop's thread is the one that owns the apartment
+   * it was created on.
+   */
+  void apply_pending_cursor_capture() {
+    if (!_capture_session || !g_capture_cursor_pending.exchange(false, std::memory_order_acq_rel)) {
+      return;
+    }
+
+    const bool capture_cursor = g_capture_cursor.load(std::memory_order_acquire);
+
+    // IsCursorCaptureEnabled arrived in Windows 10 2004. WGC is only ever chosen by
+    // default on 23H2 and later, so this should always be there - but an explicit
+    // "capture=wgc" on an older build shouldn't take the helper down with it.
+    auto session2 = _capture_session.try_as<winrt::Windows::Graphics::Capture::IGraphicsCaptureSession2>();
+    if (!session2) {
+      BOOST_LOG(warning) << "IGraphicsCaptureSession2 not available; the mouse pointer will stay in the capture";
+      return;
+    }
+
+    try {
+      session2.IsCursorCaptureEnabled(capture_cursor);
+      BOOST_LOG(info) << "Mouse pointer " << (capture_cursor ? "restored to" : "removed from") << " the capture";
+    } catch (const winrt::hresult_error &ex) {
+      BOOST_LOG(warning) << "IsCursorCaptureEnabled(" << capture_cursor << ") failed: " << ex.code() << " - " << winrt::to_string(ex.message());
+    } catch (...) {
+      BOOST_LOG(warning) << "IsCursorCaptureEnabled(" << capture_cursor << ") threw an unknown exception";
+    }
+  }
+
 private:
   void check_and_adjust_frame_buffer() {
     auto now = std::chrono::steady_clock::now();
@@ -2128,7 +2171,24 @@ std::string get_temp_log_path() {
  *
  */
 void handle_ipc_message(std::span<const uint8_t> message) {
+  // Runtime updates all carry a magic in their first four bytes and are dispatched on
+  // it rather than on their length, so several of them can be the same size.
+  static_assert(sizeof(platf::dxgi::activity_admission_data_t) == sizeof(platf::dxgi::cursor_capture_data_t));
+
   if (message.size() == sizeof(platf::dxgi::activity_admission_data_t)) {
+    uint32_t magic = 0;
+    memcpy(&magic, message.data(), sizeof(magic));
+
+    if (magic == platf::dxgi::WGC_CURSOR_CAPTURE_MESSAGE_MAGIC) {
+      platf::dxgi::cursor_capture_data_t update {};
+      memcpy(&update, message.data(), sizeof(update));
+
+      g_capture_cursor.store(update.capture_cursor != 0, std::memory_order_release);
+      g_capture_cursor_pending.store(true, std::memory_order_release);
+      BOOST_LOG(info) << "Capture will " << (update.capture_cursor ? "include" : "omit") << " the mouse pointer";
+      return;
+    }
+
     platf::dxgi::activity_admission_data_t update {};
     memcpy(&update, message.data(), sizeof(update));
     if (update.magic != platf::dxgi::WGC_ACTIVITY_ADMISSION_MESSAGE_MAGIC || update.admission_fps <= 0) {
@@ -2463,6 +2523,7 @@ int main(int argc, char *argv[]) {
     }
 
     poll_pending_secure_desktop_transition();
+    wgc_capture_manager.apply_pending_cursor_capture();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));  // Reduced from 5ms for lower IPC jitter
   }

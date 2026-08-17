@@ -96,12 +96,26 @@ namespace platf::dxgi {
   };
 
   constexpr uint32_t WGC_ACTIVITY_ADMISSION_MESSAGE_MAGIC = 0x57474341;  // "WGCA"
+  constexpr uint32_t WGC_CURSOR_CAPTURE_MESSAGE_MAGIC = 0x57474343;  // "WGCC"
 
   // Runtime-only update. This intentionally contains no display state: switching
   // activity policy must not recreate WGC resources or change the monitor mode.
   struct activity_admission_data_t {
     uint32_t magic;
     int32_t admission_fps;
+  };
+
+  // Whether the helper should draw the mouse pointer into the frames it captures.
+  //
+  // Unlike Desktop Duplication, WGC composites the pointer itself, so Sunshine's
+  // display_cursor flag can't be applied on this side of the pipe - the frame has
+  // already been drawn by the time it arrives. The helper has to be told.
+  //
+  // Same size as activity_admission_data_t on purpose: the receiver dispatches on
+  // the magic, so runtime updates can share one message length.
+  struct cursor_capture_data_t {
+    uint32_t magic;
+    uint32_t capture_cursor;
   };
 
   /**

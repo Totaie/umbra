@@ -2082,7 +2082,17 @@ namespace stream {
 
     auto &io = ctx.io_context;
 
-    udp::endpoint peer;
+    // One endpoint per socket, not one shared between them.
+    //
+    // async_receive_from fills its endpoint argument when the *operation* completes,
+    // which for two outstanding reads on one io_context means both can be written
+    // before either handler runs. Sharing one endpoint therefore hands a handler
+    // whichever datagram landed last - and since video traffic is continuous while
+    // the audio ping arrives once, it was almost always video that won. The audio
+    // handler then reported the client's video port, recv_ping stored it, and the
+    // session streamed its audio at the video socket: video fine, no sound at all,
+    // and intermittent enough to look like a network problem.
+    udp::endpoint peer[2];
 
     std::array<char, 2048> buf[2];
     std::function<void(const boost::system::error_code, size_t)> recv_func[2];
@@ -2115,12 +2125,14 @@ namespace stream {
 
     auto recv_func_init = [&](udp::socket &sock, int buf_elem, std::map<av_session_id_t, message_queue_t> &peer_to_session) {
       recv_func[buf_elem] = [&, buf_elem](const boost::system::error_code &ec, size_t bytes) {
+        auto &sender = peer[buf_elem];
+
         auto fg = util::fail_guard([&]() {
-          sock.async_receive_from(asio::buffer(buf[buf_elem]), peer, 0, recv_func[buf_elem]);
+          sock.async_receive_from(asio::buffer(buf[buf_elem]), sender, 0, recv_func[buf_elem]);
         });
 
         auto type_str = buf_elem ? "AUDIO"sv : "VIDEO"sv;
-        BOOST_LOG(verbose) << "Recv: "sv << peer.address().to_string() << ':' << peer.port() << " :: " << type_str;
+        BOOST_LOG(verbose) << "Recv: "sv << sender.address().to_string() << ':' << sender.port() << " :: " << type_str;
 
         populate_peer_to_session();
 
@@ -2138,9 +2150,9 @@ namespace stream {
 
         if (bytes == 4) {
           // For legacy PING packets, find the matching session by address.
-          auto it = peer_to_session.find(peer.address());
+          auto it = peer_to_session.find(sender.address());
           if (it != std::end(peer_to_session)) {
-            it->second->raise(peer, std::string {buf[buf_elem].data(), bytes});
+            it->second->raise(sender, std::string {buf[buf_elem].data(), bytes});
           }
         } else if (bytes >= sizeof(SS_PING)) {
           auto ping = (PSS_PING) buf[buf_elem].data();
@@ -2148,7 +2160,7 @@ namespace stream {
           // For new PING packets that include a client identifier, search by payload.
           auto it = peer_to_session.find(std::string {ping->payload, sizeof(ping->payload)});
           if (it != std::end(peer_to_session)) {
-            it->second->raise(peer, std::string {buf[buf_elem].data(), bytes});
+            it->second->raise(sender, std::string {buf[buf_elem].data(), bytes});
           }
         }
       };
@@ -2157,8 +2169,8 @@ namespace stream {
     recv_func_init(video_sock, 0, peer_to_video_session);
     recv_func_init(audio_sock, 1, peer_to_audio_session);
 
-    video_sock.async_receive_from(asio::buffer(buf[0]), peer, 0, recv_func[0]);
-    audio_sock.async_receive_from(asio::buffer(buf[1]), peer, 0, recv_func[1]);
+    video_sock.async_receive_from(asio::buffer(buf[0]), peer[0], 0, recv_func[0]);
+    audio_sock.async_receive_from(asio::buffer(buf[1]), peer[1], 0, recv_func[1]);
 
     while (!broadcast_shutdown_event->peek()) {
       io.run();
@@ -2877,6 +2889,8 @@ namespace stream {
       return;
     }
 
+    BOOST_LOG(info) << "Video will be sent to "sv << session->video.peer.address() << ':' << session->video.peer.port();
+
     // Enable local prioritization and QoS tagging on video traffic if requested by the client
     auto address = session->video.peer.address();
     session->video.qos = platf::enable_socket_qos(ref->video_sock.native_handle(), address, session->video.peer.port(), platf::qos_data_type_e::video, session->config.videoQosType != 0);
@@ -2927,6 +2941,11 @@ namespace stream {
     if (error < 0) {
       return;
     }
+
+    // Said out loud because getting it wrong is silent: the session runs, video is
+    // fine, and audio goes to a port nothing is listening on. If this port ever
+    // matches the video one below, the two sockets have been crossed.
+    BOOST_LOG(info) << "Audio will be sent to "sv << session->audio.peer.address() << ':' << session->audio.peer.port();
 
     // Enable local prioritization and QoS tagging on audio traffic if requested by the client
     auto address = session->audio.peer.address();

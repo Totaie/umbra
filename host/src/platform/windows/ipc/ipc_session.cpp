@@ -482,6 +482,15 @@ namespace platf::dxgi {
     if (_activity_admission_fps.load(std::memory_order_relaxed) != config_data.activity_admission_fps) {
       (void) set_activity_admission_fps(_activity_admission_fps.load(std::memory_order_relaxed));
     }
+
+    // A fresh helper composites the pointer until told otherwise, so anything the
+    // session had already asked for has to be said again. Without this a helper
+    // restart - a display change, a secure desktop round trip - silently puts the
+    // host's pointer back into the frame mid-session.
+    _capture_cursor_sent.store(true, std::memory_order_relaxed);
+    if (!_capture_cursor.load(std::memory_order_relaxed)) {
+      (void) set_cursor_capture(false);
+    }
   }
 
   bool ipc_session_t::set_activity_admission_fps(const int fps) {
@@ -501,6 +510,31 @@ namespace platf::dxgi {
       .admission_fps = fps,
     };
     _pipe->send(std::span<const uint8_t>(reinterpret_cast<const uint8_t *>(&update), sizeof(update)));
+    return true;
+  }
+
+  bool ipc_session_t::set_cursor_capture(const bool capture_cursor) {
+    _capture_cursor.store(capture_cursor, std::memory_order_relaxed);
+
+    if (!_pipe || !_initialized) {
+      // Remembered above; sent when the helper comes up.
+      return true;
+    }
+    if (_capture_cursor_sent.load(std::memory_order_relaxed) == capture_cursor) {
+      return true;
+    }
+    if (!_pipe->is_connected()) {
+      return false;
+    }
+
+    const cursor_capture_data_t update {
+      .magic = WGC_CURSOR_CAPTURE_MESSAGE_MAGIC,
+      .capture_cursor = capture_cursor ? 1u : 0u,
+    };
+    _pipe->send(std::span<const uint8_t>(reinterpret_cast<const uint8_t *>(&update), sizeof(update)));
+    _capture_cursor_sent.store(capture_cursor, std::memory_order_relaxed);
+
+    BOOST_LOG(info) << "WGC capture will " << (capture_cursor ? "include" : "omit") << " the mouse pointer";
     return true;
   }
 
