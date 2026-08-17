@@ -3,6 +3,8 @@
  * @brief Definitions for audio capture and encoding.
  */
 // standard includes
+#include <algorithm>
+#include <chrono>
 #include <thread>
 
 // lib includes
@@ -196,7 +198,12 @@ namespace audio {
       ref->restore_sink = ref->sink.host != *sink;
       if (ref->restore_sink) {
         if (control->set_sink(*sink)) {
-          return;
+          // Not worth losing the session's audio over. Whatever sink is currently
+          // default can still be captured, and it is very likely the one the user is
+          // listening to anyway - this only failed to move it somewhere else.
+          BOOST_LOG(warning) << "Couldn't switch the audio sink to ["sv << *sink
+                             << "]; capturing the current default instead"sv;
+          ref->restore_sink = false;
         }
       }
     }
@@ -204,9 +211,29 @@ namespace audio {
     auto frame_size = config.packetDuration * stream.sampleRate / 1000;
     bool host_audio = config.flags[config_t::HOST_AUDIO];
     bool continuous_audio = config.flags[config_t::CONTINUOUS_AUDIO];
-    auto mic = control->microphone(stream.mapping, stream.channelCount, stream.sampleRate, frame_size, continuous_audio, host_audio);
+    auto open_microphone = [&]() {
+      return control->microphone(stream.mapping, stream.channelCount, stream.sampleRate, frame_size, continuous_audio, host_audio);
+    };
+
+    auto mic = open_microphone();
     if (!mic) {
-      return;
+      // Keep trying rather than handing back a session with no sound in it. Session
+      // start is when the device is most likely to be unavailable - the display is
+      // being reconfigured at the same moment - and one failed attempt used to mean
+      // silence until the user reconnected, which is the only thing that restarts this
+      // thread. Bounded by shutdown, the same as the reinit path below.
+      BOOST_LOG(warning) << "Couldn't open audio capture; waiting for the device"sv;
+
+      do {
+        mic = open_microphone();
+      } while (!mic && !shutdown_event->view(2s));
+
+      if (!mic) {
+        // Shutting down rather than still failing
+        return;
+      }
+
+      BOOST_LOG(info) << "Audio capture opened after waiting for the device"sv;
     }
 
     // Audio is initialized, so we don't want to print the failure message
@@ -235,6 +262,13 @@ namespace audio {
 
     int samples_per_frame = frame_size * stream.channelCount;
 
+    // Reset by any successful sample. Only used to decide when repeated failures have
+    // stopped looking transient and a pause is warranted.
+    int consecutive_capture_errors = 0;
+
+    BOOST_LOG(info) << "Audio capture running: "sv << stream.channelCount << " channels at "sv
+                    << stream.sampleRate << " Hz"sv;
+
     while (!shutdown_event->peek()) {
       std::vector<float> sample_buffer;
       sample_buffer.resize(samples_per_frame);
@@ -242,19 +276,49 @@ namespace audio {
       auto status = mic->sample(sample_buffer);
       switch (status) {
         case platf::capture_e::ok:
+          consecutive_capture_errors = 0;
           break;
         case platf::capture_e::timeout:
           continue;
         case platf::capture_e::reinit:
-          if (config::audio.auto_capture) {
-            BOOST_LOG(info) << "Reinitializing audio capture"sv;
+        case platf::capture_e::error:
+          {
+            // error used to return, which ended the audio thread and left the session
+            // silent until it was reconnected. Only AUDCLNT_E_DEVICE_INVALIDATED comes
+            // back as reinit; the audio service restarting, a failed wait, a resource
+            // invalidation all arrive here - and all of them are things the machine
+            // recovers from on its own within seconds.
+            const bool recoverable_device_change = status == platf::capture_e::reinit;
+
+            if (recoverable_device_change) {
+              consecutive_capture_errors = 0;
+              BOOST_LOG(info) << "Reinitializing audio capture"sv;
+            } else {
+              consecutive_capture_errors++;
+              BOOST_LOG(warning) << "Audio capture failed ("sv << consecutive_capture_errors
+                                 << " in a row); reopening the device"sv;
+            }
+
+            // A device that opens and then fails on every sample would otherwise spin
+            // here at full speed. Back off once that starts looking like what's
+            // happening, while still recovering immediately from a one-off.
+            if (consecutive_capture_errors > 3 &&
+                shutdown_event->view(std::chrono::seconds(std::min(consecutive_capture_errors, 5)))) {
+              return;
+            }
+
             mic.reset();
             do {
-              mic = control->microphone(stream.mapping, stream.channelCount, stream.sampleRate, frame_size, continuous_audio, host_audio);
+              mic = open_microphone();
               if (!mic) {
                 BOOST_LOG(warning) << "Couldn't re-initialize audio input"sv;
               }
             } while (!mic && !shutdown_event->view(5s));
+
+            if (!mic) {
+              // Shutting down
+              return;
+            }
           }
 
           continue;
