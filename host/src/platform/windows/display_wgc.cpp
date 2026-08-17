@@ -243,26 +243,49 @@ namespace platf::dxgi {
       static bool last_visible = false;
       static bool ever_polled = false;
       static std::uint32_t shape_id = 0;
+      static std::uint32_t seen_refresh_epoch = 0;
       static platf::cursor_shape_t last_shape;
+      static std::chrono::steady_clock::time_point last_poll {};
+      static std::chrono::steady_clock::time_point last_desktop_sync {};
 
       auto lg = std::lock_guard(mutex);
+
+      const auto now = std::chrono::steady_clock::now();
+      const auto epoch = cursor_shape_refresh_epoch.load(std::memory_order_acquire);
+      const bool refresh_requested = epoch != seen_refresh_epoch;
+
+      // The pointer changing 30 times a second is already far more than anyone can
+      // see, and this runs on the capture thread - at 144Hz the GDI work below was
+      // competing with the encoder for it.
+      if (!refresh_requested && now - last_poll < std::chrono::milliseconds(32)) {
+        return;
+      }
+      last_poll = now;
 
       CURSORINFO info {};
       info.cbSize = sizeof(info);
       if (!GetCursorInfo(&info)) {
         // Usually means this thread is looking at a desktop that isn't the input one -
-        // a UAC prompt, or the lock screen. Follow it and try again on the next frame.
-        syncThreadDesktop();
+        // a UAC prompt, a lock screen, or a display switch tearing capture down and
+        // bringing it back. Follow it, but not on every frame: syncThreadDesktop opens
+        // and closes a desktop handle and logs on failure, and doing that at frame rate
+        // through a display switch is enough to stall the switch itself.
+        if (now - last_desktop_sync >= std::chrono::seconds(1)) {
+          last_desktop_sync = now;
+          syncThreadDesktop();
+        }
         return;
       }
 
       const bool visible = (info.flags & CURSOR_SHOWING) != 0 && info.hCursor != nullptr;
 
-      if (ever_polled && info.hCursor == last_handle && visible == last_visible) {
+      if (!refresh_requested && ever_polled &&
+          info.hCursor == last_handle && visible == last_visible) {
         return;
       }
 
-      const bool handle_changed = !ever_polled || info.hCursor != last_handle;
+      const bool handle_changed = refresh_requested || !ever_polled || info.hCursor != last_handle;
+      seen_refresh_epoch = epoch;
       ever_polled = true;
       last_handle = info.hCursor;
       last_visible = visible;

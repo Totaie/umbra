@@ -228,6 +228,7 @@ namespace platf::audio {
   using collection_t = util::safe_ptr<IMMDeviceCollection, Release<IMMDeviceCollection>>;
   using audio_client_t = util::safe_ptr<IAudioClient, Release<IAudioClient>>;
   using audio_capture_t = util::safe_ptr<IAudioCaptureClient, Release<IAudioCaptureClient>>;
+  using audio_render_t = util::safe_ptr<IAudioRenderClient, Release<IAudioRenderClient>>;
   using wave_format_t = util::safe_ptr<WAVEFORMATEX, co_task_free<WAVEFORMATEX>>;
   using wstring_t = util::safe_ptr<WCHAR, co_task_free<WCHAR>>;
   using handle_t = util::safe_ptr_v2<void, BOOL, CloseHandle>;
@@ -343,6 +344,75 @@ namespace platf::audio {
     BOOST_LOG(info) << "Audio capture format is "sv << logging::bracket(waveformat_to_pretty_string(capture_waveformat));
 
     return audio_client;
+  }
+
+  /**
+   * @brief Open a render stream that plays nothing, to keep the endpoint awake.
+   *
+   * Loopback capture only produces data while the audio engine is running, and the
+   * engine stops when the last thing playing on the device stops. The capture client
+   * is then never signalled again - not when playback resumes either, because there
+   * is nothing left to restart the engine's clock. From the outside this is a stream
+   * whose sound works, is paused for a while, and never comes back; and a session
+   * that connects to an already-quiet machine that has no sound from the start.
+   *
+   * Holding an active render stream of silence keeps the engine running for as long
+   * as we are capturing. It is inaudible and mixes to nothing, so it changes what the
+   * host hears not at all - it only stops Windows deciding nobody is listening.
+   */
+  audio_client_t make_keepalive_client(device_t &device, audio_render_t &render_out, std::uint32_t &frames_out) {
+    audio_client_t keepalive;
+    auto status = device->Activate(IID_IAudioClient, CLSCTX_ALL, nullptr, (void **) &keepalive);
+    if (FAILED(status)) {
+      BOOST_LOG(warning) << "Couldn't open a keep-alive render stream [0x"sv << util::hex(status).to_string_view() << ']';
+      return nullptr;
+    }
+
+    // Whatever the mixer is already using. This stream carries no audio, so the only
+    // thing that matters about its format is that the device accepts it.
+    wave_format_t mixer_waveformat;
+    status = keepalive->GetMixFormat(&mixer_waveformat);
+    if (FAILED(status)) {
+      BOOST_LOG(warning) << "Couldn't get the mix format for the keep-alive stream [0x"sv << util::hex(status).to_string_view() << ']';
+      return nullptr;
+    }
+
+    // 200ms, refilled from the capture loop. Long enough that a late top-up can't
+    // underrun and let the engine idle after all, short enough to stay cheap.
+    constexpr REFERENCE_TIME keepalive_buffer_duration = 200 * 10000;
+
+    status = keepalive->Initialize(
+      AUDCLNT_SHAREMODE_SHARED,
+      0,
+      keepalive_buffer_duration,
+      0,
+      mixer_waveformat.get(),
+      nullptr
+    );
+    if (FAILED(status)) {
+      BOOST_LOG(warning) << "Couldn't initialize the keep-alive render stream [0x"sv << util::hex(status).to_string_view() << ']';
+      return nullptr;
+    }
+
+    status = keepalive->GetBufferSize(&frames_out);
+    if (FAILED(status)) {
+      BOOST_LOG(warning) << "Couldn't size the keep-alive render buffer [0x"sv << util::hex(status).to_string_view() << ']';
+      return nullptr;
+    }
+
+    status = keepalive->GetService(IID_IAudioRenderClient, (void **) &render_out);
+    if (FAILED(status)) {
+      BOOST_LOG(warning) << "Couldn't get the keep-alive render client [0x"sv << util::hex(status).to_string_view() << ']';
+      return nullptr;
+    }
+
+    status = keepalive->Start();
+    if (FAILED(status)) {
+      BOOST_LOG(warning) << "Couldn't start the keep-alive render stream [0x"sv << util::hex(status).to_string_view() << ']';
+      return nullptr;
+    }
+
+    return keepalive;
   }
 
   device_t default_device(device_enum_t &device_enum, ERole role = eConsole) {
@@ -680,12 +750,26 @@ namespace platf::audio {
         return -1;
       }
 
+      // Best effort. Without it the stream still works whenever something happens to
+      // be playing, which is exactly what made this so hard to pin down.
+      keepalive_client = make_keepalive_client(device, keepalive_render, keepalive_frames);
+      if (keepalive_client) {
+        feed_keepalive_silence();
+        BOOST_LOG(info) << "Holding the audio endpoint open so capture keeps running while the host is quiet"sv;
+      } else {
+        BOOST_LOG(warning) << "No keep-alive render stream; audio will stop if nothing plays on the host for a while"sv;
+      }
+
       return 0;
     }
 
     ~mic_wasapi_t() override {
       if (device_enum) {
         device_enum->UnregisterEndpointNotificationCallback(&endpt_notification);
+      }
+
+      if (keepalive_client) {
+        keepalive_client->Stop();
       }
 
       if (audio_client) {
@@ -698,8 +782,38 @@ namespace platf::audio {
     }
 
   private:
+    /**
+     * @brief Top the keep-alive stream back up with silence.
+     *
+     * Called on every pass of the capture loop, including the timeout passes - those
+     * are precisely the ones where nothing is playing and the engine is at risk of
+     * stopping, which is when this matters.
+     */
+    void feed_keepalive_silence() {
+      if (!keepalive_client || !keepalive_render) {
+        return;
+      }
+
+      std::uint32_t padding {};
+      if (FAILED(keepalive_client->GetCurrentPadding(&padding)) || padding >= keepalive_frames) {
+        return;
+      }
+
+      const std::uint32_t available = keepalive_frames - padding;
+
+      BYTE *buffer {};
+      if (FAILED(keepalive_render->GetBuffer(available, &buffer))) {
+        return;
+      }
+
+      // The flag is what makes it silence; the buffer contents are ignored.
+      keepalive_render->ReleaseBuffer(available, AUDCLNT_BUFFERFLAGS_SILENT);
+    }
+
     capture_e _fill_buffer() {
       HRESULT status;
+
+      feed_keepalive_silence();
 
       // Total number of samples
       struct sample_aligned_t {
@@ -799,6 +913,13 @@ namespace platf::audio {
     device_t device;
     audio_client_t audio_client;
     audio_capture_t audio_capture;
+
+    // A render stream of pure silence, held open for as long as we are capturing so
+    // the audio engine never stops and loopback keeps delivering. See
+    // make_keepalive_client().
+    audio_client_t keepalive_client;
+    audio_render_t keepalive_render;
+    std::uint32_t keepalive_frames = 0;
 
     audio_notification_t endpt_notification;
     std::optional<std::function<void()>> default_endpt_changed_cb;

@@ -4,6 +4,10 @@
  */
 #pragma once
 
+// standard includes
+#include <atomic>
+#include <cstdint>
+
 // local includes
 #include "entry_handler.h"
 #include "thread_pool.h"
@@ -17,6 +21,15 @@ extern thread_pool_util::ThreadPool task_pool;
  * @brief A boolean flag to indicate whether the cursor should be displayed.
  */
 extern bool display_cursor;
+
+/**
+ * @brief Bumped whenever a client starts drawing the pointer itself.
+ *
+ * Capture backends that only publish a shape when the pointer *changes* have
+ * nothing to say to a client that has just connected - the pointer has been the
+ * same arrow for minutes. This tells them to publish the current one anyway.
+ */
+extern std::atomic<std::uint32_t> cursor_shape_refresh_epoch;
 
 #ifdef _WIN32
   // Declare global singleton used for NVIDIA control panel modifications

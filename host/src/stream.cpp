@@ -1586,6 +1586,13 @@ namespace stream {
         // pointer and re-triggered this.
         display_cursor = !local;
 
+        // Resetting the serial above only helps if capture has ever published a
+        // shape. On a backend that reports the pointer only when it changes, a
+        // client that connects to an idle desktop waits for the first hover before
+        // it has anything but a default arrow to draw - which is why toggling the
+        // shortcut appeared to be what "turned shapes on". Ask for the current one.
+        cursor_shape_refresh_epoch.fetch_add(1, std::memory_order_release);
+
         BOOST_LOG(info) << "Client is now drawing the cursor "sv << (local ? "itself"sv : "from the video"sv);
       }
     });

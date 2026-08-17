@@ -274,6 +274,10 @@ namespace audio {
     // stopped looking transient and a pause is warranted.
     int consecutive_capture_errors = 0;
 
+    // When capture last had nothing to give us, and whether that has been said out loud.
+    std::optional<std::chrono::steady_clock::time_point> quiet_since;
+    bool quiet_warned = false;
+
     BOOST_LOG(info) << "Audio capture running: "sv << stream.channelCount << " channels at "sv
                     << stream.sampleRate << " Hz"sv;
 
@@ -285,8 +289,32 @@ namespace audio {
       switch (status) {
         case platf::capture_e::ok:
           consecutive_capture_errors = 0;
+          if (quiet_since) {
+            const auto quiet_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    std::chrono::steady_clock::now() - *quiet_since
+            )
+                                    .count();
+            if (quiet_ms >= 1000) {
+              BOOST_LOG(info) << "Audio capture resumed after "sv << quiet_ms << " ms with nothing to capture"sv;
+            }
+            quiet_since.reset();
+          }
           break;
         case platf::capture_e::timeout:
+          // Nothing is playing on the host, so the audio engine has nothing to hand
+          // us. Normal in itself - but if it never ends, that is the engine having
+          // stopped rather than the host merely being quiet, and it is the difference
+          // between "no sound because nothing is playing" and "no sound, ever again".
+          if (!quiet_since) {
+            quiet_since = std::chrono::steady_clock::now();
+            quiet_warned = false;
+          } else if (!quiet_warned &&
+                     std::chrono::steady_clock::now() - *quiet_since >= std::chrono::seconds(30)) {
+            quiet_warned = true;
+            BOOST_LOG(warning) << "Nothing has reached audio capture for 30 seconds. If sound is "sv
+                               << "playing on this machine, the audio engine has stopped and the "sv
+                               << "keep-alive stream is not holding it open."sv;
+          }
           continue;
         case platf::capture_e::reinit:
         case platf::capture_e::error:
