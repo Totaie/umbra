@@ -2396,6 +2396,16 @@ QString Session::getHostName() const
     return m_Computer != nullptr ? m_Computer->name : QString();
 }
 
+QString Session::getHostVersion() const
+{
+    if (m_Computer == nullptr) {
+        return QString();
+    }
+
+    QReadLocker lock(&m_Computer->lock);
+    return m_Computer->hostVersion;
+}
+
 QString Session::getHostAddress() const
 {
     if (m_Computer == nullptr) {
@@ -3877,6 +3887,12 @@ void Session::exec()
         // left it hidden - the flag behind it outlives the session on the host.
         m_InputHandler->showHostCursor();
     }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Connected to %s running Umbra Host %s",
+                qPrintable(m_Computer->name),
+                m_Computer->hostVersion.isEmpty() ? "(not Umbra Host, or too old to say)"
+                                                  : qPrintable(m_Computer->hostVersion));
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "Cursor: %s, drawn %s (host cursor shapes %s)",

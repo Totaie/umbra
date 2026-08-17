@@ -83,6 +83,9 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
         QString pairnameInfo = pairname.isEmpty() ? tr("Unknown") : pairname;
         
         return tr("Name: %1").arg(computer->name) + '\n' +
+               tr("Umbra Host: %1").arg(computer->hostVersion.isEmpty()
+                                            ? tr("not reported")
+                                            : computer->hostVersion) + '\n' +
                tr("Status: %1").arg(state) + '\n' +
                tr("Active Address: %1").arg(computer->activeAddress.toString()) + '\n' +
                tr("UUID: %1").arg(computer->uuid) + '\n' +

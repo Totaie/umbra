@@ -141,6 +141,12 @@ NvComputer::NvComputer(NvHTTP& http, QString serverInfo)
     }
 
     this->uuid = NvHTTP::getXmlString(serverInfo, "uniqueid");
+
+    // Which host software is really answering. appversion is the GameStream
+    // compatibility number and reads 7.1.431 on Sunshine, Apollo and Umbra Host alike,
+    // so it can't tell them apart - or tell one build of ours from another. Empty for
+    // anything that isn't Umbra Host, which is how it stays useful.
+    this->hostVersion = NvHTTP::getXmlString(serverInfo, "UmbraHostVersion");
     QString newMacString = NvHTTP::getXmlString(serverInfo, "mac");
     if (newMacString != "00:00:00:00:00:00") {
         QStringList macOctets = newMacString.split(':');

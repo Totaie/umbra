@@ -125,9 +125,14 @@ public:
     // the life of the session - the computer is chosen before one is constructed.
     Q_PROPERTY(QString hostName READ getHostName CONSTANT);
     Q_PROPERTY(QString hostAddress READ getHostAddress CONSTANT);
+    Q_PROPERTY(QString hostVersion READ getHostVersion CONSTANT);
 
     QString getHostName() const;
     QString getHostAddress() const;
+
+    // Umbra Host's own version, empty when the host didn't report one. Shown while
+    // connecting so which build is on the other end is never a question.
+    QString getHostVersion() const;
 
     static
     void getDecoderInfo(SDL_Window* window,

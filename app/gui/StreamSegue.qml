@@ -427,8 +427,14 @@ Item {
                         Text {
                             width: parent.width
                             text: {
-                                var addr = session && session.hostAddress ? session.hostAddress : ""
-                                return addr !== "" ? addr + "  ·  " + appName : appName
+                                var parts = []
+                                if (session && session.hostAddress) parts.push(session.hostAddress)
+                                parts.push(appName)
+                                // Which host build is answering. Every host reports the same
+                                // GameStream version, so without this there is nothing on
+                                // screen that distinguishes one from another.
+                                if (session && session.hostVersion) parts.push("Host " + session.hostVersion)
+                                return parts.join("  ·  ")
                             }
                             color: Theme.textDim
                             font.family: Theme.fontMono

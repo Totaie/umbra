@@ -125,6 +125,10 @@ public:
     NvAddress manualAddress;
     QByteArray macAddress;
     QString name;
+
+    // Umbra Host's own version, as opposed to the GameStream compatibility version
+    // every host reports identically. Empty when the host isn't Umbra Host.
+    QString hostVersion;
     bool hasCustomName;
     QString uuid;
     QSslCertificate serverCert;
