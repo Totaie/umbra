@@ -3850,27 +3850,39 @@ void Session::exec()
         SDL_WarpMouseInWindow(m_Window, ww / 2, wh / 2);
     }
 
-    // Whatever the preference says, said once, now that the connection can carry it.
-    // The host answers by either sending cursor shapes or ignoring us, and the log line
-    // below is how to tell which happened.
-    m_InputHandler->setLocalCursorVisible(m_Preferences->clientSideCursor &&
-                                          m_Preferences->absoluteMouseMode);
+    // One preference decides this, and it decides both halves of it.
+    //
+    // Hiding the host's pointer needs absolute mouse mode to be any use: in relative
+    // mode the client's pointer is captured and hidden, so suppressing the host's too
+    // would leave nothing on screen at all.
+    const bool drawCursorLocally = m_Preferences->hideHostCursor &&
+                                   m_Preferences->absoluteMouseMode;
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "Cursor: drawn %s (host cursor shapes %s)",
-                m_InputHandler->getLocalCursorMode() == LI_CURSOR_MODE_LOCAL ? "by this client" : "into the video",
-                (LiGetHostFeatureFlags() & LI_FF_CURSOR_SHAPE) ? "supported" : "unsupported");
+    // Ask the host for shapes rather than a pointer painted into the frame. Sent even
+    // when the answer is no - the host either understands and stops compositing, or
+    // ignores it, and the line below records which.
+    m_InputHandler->setLocalCursorVisible(drawCursorLocally);
 
-    if (m_Preferences->clientSideCursor && m_Preferences->absoluteMouseMode) {
-        // Stop the host compositing its cursor into the video and draw ours instead.
-        // The host's cursor only moves once per encoded frame, which is what makes the
-        // pointer feel laggy; a local cursor has no round trip at all.
+    if (drawCursorLocally) {
+        // The shortcut that stops the host compositing its pointer. Belt and braces
+        // alongside the cursor mode above: a host too old for the cursor channel still
+        // understands this, and it is what keeps two pointers off the screen.
         //
         // Deliberately before input capture is activated below, because
         // setCaptureActive() is what actually applies the cursor visibility state.
         m_InputHandler->hideHostCursor();
-        m_InputHandler->setLocalCursorVisible(true);
     }
+    else {
+        // The user wants the host's own pointer, so make sure a previous session hasn't
+        // left it hidden - the flag behind it outlives the session on the host.
+        m_InputHandler->showHostCursor();
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Cursor: %s, drawn %s (host cursor shapes %s)",
+                m_Preferences->hideHostCursor ? "host pointer hidden" : "host pointer shown",
+                m_InputHandler->getLocalCursorMode() == LI_CURSOR_MODE_LOCAL ? "by this client" : "into the video",
+                (LiGetHostFeatureFlags() & LI_FF_CURSOR_SHAPE) ? "supported" : "unsupported");
 
     // Initialize mouse state for menu
     m_WasCapturedBeforeMenu = false;
@@ -4560,9 +4572,11 @@ DispatchDeferredCleanup:
     // person sitting at that machine still sees their own cursor either way; this is
     // about what ends up in the capture. Sent while the input channel is still up,
     // which is why it is here and not after the handler is destroyed.
-    if (m_Preferences->clientSideCursor && m_Preferences->absoluteMouseMode) {
-        m_InputHandler->showHostCursor();
-    }
+    // Unconditionally, and not only when we were the ones who hid it. Asking for the
+    // pointer back is harmless when it was never taken away, whereas skipping it because
+    // the setting has been changed mid-session leaves the host with no pointer in its
+    // capture and nothing to explain why.
+    m_InputHandler->showHostCursor();
 
     // Destroy the input handler now. This must be destroyed
     // before allowwing the UI to continue execution or it could

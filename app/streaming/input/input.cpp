@@ -40,8 +40,11 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
       m_FakeMouseCaptureActive(false),
       m_KeyboardCaptureActive(false),
       m_CaptureSystemKeysMode(prefs.captureSysKeysMode),
-      m_MouseCursorCapturedVisibilityState(prefs.showLocalCursor ? SDL_ENABLE : SDL_DISABLE),
-      m_LocalCursorMode(prefs.absoluteMouseMode && prefs.showLocalCursor ?
+      // Both follow the one preference now. The session sets them again explicitly
+      // once the connection is up, but starting from the right value means the very
+      // first frames aren't drawn with the wrong cursor.
+      m_MouseCursorCapturedVisibilityState(prefs.hideHostCursor ? SDL_ENABLE : SDL_DISABLE),
+      m_LocalCursorMode(prefs.absoluteMouseMode && prefs.hideHostCursor ?
                             LI_CURSOR_MODE_LOCAL : LI_CURSOR_MODE_VIDEO),
       m_RemoteCursorVisible(true),
       m_RemoteCursor(nullptr),

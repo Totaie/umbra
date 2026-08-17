@@ -800,6 +800,25 @@ Column {
                                   qsTr("NOTE: Due to a bug in GeForce Experience, this option may not work properly if your host PC has multiple monitors.")
                 }
 
+                HardCheckBox {
+                    id: hideHostCursorCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Hide the host's mouse cursor")
+                    font.pointSize: 12
+                    enabled: StreamingPreferences.absoluteMouseMode
+                    checked: StreamingPreferences.hideHostCursor
+                    onCheckedChanged: {
+                        StreamingPreferences.hideHostCursor = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Stops the host painting its pointer into the video, so this PC draws the cursor instead. It responds immediately and changes shape over text and window edges, where a pointer in the video is always a frame behind.") + "\n\n" +
+                                  qsTr("Needs the mouse optimized for remote desktop, above - otherwise this PC's cursor is captured and hidden, and there would be no pointer at all.")
+                }
+
                 Row {
                     spacing: 5
                     width: parent.width

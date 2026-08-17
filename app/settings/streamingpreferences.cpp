@@ -66,6 +66,7 @@
 #define SER_BACKGROUNDIMAGEPATH "backgroundimagepath"
 #define SER_DIRECTCONNECTDESKTOP "directconnectdesktop"
 #define SER_STREAMALLSCREENS "streamallscreens"
+#define SER_HIDEHOSTCURSOR "hidehostcursor"
 #define SER_UMBRADEFAULTSREV "umbradefaultsrev"
 #define SER_OVERLAYBTNX "overlaybuttonfracx"
 #define SER_OVERLAYBTNY "overlaybuttonfracy"
@@ -257,6 +258,12 @@ void StreamingPreferences::reload()
     // Off by default: it opens one Umbra per screen, which is a lot to have happen to
     // someone who only meant to connect. Reachable from the in-session menu either way.
     streamAllScreens = settings.value(SER_STREAMALLSCREENS, false).toBool();
+
+    // On, because a pointer painted into the video is always a frame behind the hand
+    // moving it and can't change shape over a text field. This replaces a condition
+    // assembled from three other preferences, two of which no longer had any interface
+    // - so when it came out wrong there was nothing to look at and nothing to change.
+    hideHostCursor = settings.value(SER_HIDEHOSTCURSOR, true).toBool();
 
     // Top-right by default, out of the way of a title bar and of anything centred.
     overlayButtonFracX = qBound(0.0, settings.value(SER_OVERLAYBTNX, 1.0).toDouble(), 1.0);
@@ -515,6 +522,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_BACKGROUNDIMAGEPATH, backgroundImagePath);
     settings.setValue(SER_DIRECTCONNECTDESKTOP, directConnectDesktop);
     settings.setValue(SER_STREAMALLSCREENS, streamAllScreens);
+    settings.setValue(SER_HIDEHOSTCURSOR, hideHostCursor);
     settings.setValue(SER_UMBRADEFAULTSREV, UMBRA_DEFAULTS_REVISION);
     settings.setValue(SER_OVERLAYBTNX, overlayButtonFracX);
     settings.setValue(SER_OVERLAYBTNY, overlayButtonFracY);

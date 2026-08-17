@@ -238,6 +238,11 @@ public:
     Q_PROPERTY(bool directConnectDesktop MEMBER directConnectDesktop NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool streamAllScreens MEMBER streamAllScreens NOTIFY umbraSettingsChanged)
 
+    // Whether the host should stop drawing its own pointer into the video while we're
+    // connected, leaving this client to draw one. The single thing the session acts on;
+    // see the note in reload().
+    Q_PROPERTY(bool hideHostCursor MEMBER hideHostCursor NOTIFY umbraSettingsChanged)
+
     // Where the user dragged the in-session button to, as a fraction of the stream
     // window: 0,0 is the top-left corner, 1,1 the bottom-right. Stored this way so it
     // stays put across a different window size or a different monitor.
@@ -317,6 +322,7 @@ public:
     QString backgroundImagePath;
     bool directConnectDesktop;
     bool streamAllScreens;
+    bool hideHostCursor;
     qreal overlayButtonFracX;
     qreal overlayButtonFracY;
     // Draw the cursor locally rather than letting the host composite it into video.
