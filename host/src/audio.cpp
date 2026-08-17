@@ -138,6 +138,12 @@ namespace audio {
   void capture(safe::mail_t mail, config_t config, void *channel_data) {
     auto shutdown_event = mail->event<bool>(mail::shutdown);
     if (!config::audio.stream || config.input_only) {
+      // Said out loud, because the alternative is a session with no sound and a log
+      // that never mentions audio at all - which is exactly how this looked from the
+      // outside every time it happened.
+      BOOST_LOG(info) << "Audio is not being streamed ("sv
+                      << (config.input_only ? "input-only session"sv : "disabled in configuration"sv)
+                      << ')';
       shutdown_event->view();
       return;
     }
@@ -148,6 +154,7 @@ namespace audio {
 
     auto ref = get_audio_ctx_ref();
     if (!ref) {
+      BOOST_LOG(error) << "Couldn't acquire the audio context; this session will have no sound"sv;
       return;
     }
 
@@ -162,6 +169,7 @@ namespace audio {
 
     auto &control = ref->control;
     if (!control) {
+      BOOST_LOG(error) << "No audio control interface; this session will have no sound"sv;
       return;
     }
 

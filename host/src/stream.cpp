@@ -1574,17 +1574,17 @@ namespace stream {
         // client with nothing to draw until the pointer next changes.
         session->control.cursor_serial_sent.store(0, std::memory_order_relaxed);
 
-        // Leaving local mode always restores the painted cursor. Entering it does not
-        // remove the painted cursor here - that happens once a shape has actually been
-        // sent, in the broadcast loop below.
+        // Take effect now, not when a shape happens to arrive.
         //
-        // Not every capture backend can produce a shape: Windows.Graphics.Capture
-        // doesn't hand us one, and suppressing the painted cursor there would leave the
-        // viewer with no pointer at all, which is worse than the one they have. Waiting
-        // for a real shape means those backends simply keep the cursor in the video.
-        if (!local) {
-          display_cursor = true;
-        }
+        // This used to wait until a shape had actually been sent, to protect capture
+        // backends that can't produce one. That protection is no longer needed - the
+        // client draws a pointer of its own in absolute mouse mode whether or not the
+        // host ever sends a shape - and the wait was the bug: DXGI only hands over a
+        // shape when the cursor *changes*, and nothing has changed at the moment a
+        // client connects. So no shape was sent, the painted cursor was never removed,
+        // and the setting looked like it did nothing until something else changed the
+        // pointer and re-triggered this.
+        display_cursor = !local;
 
         BOOST_LOG(info) << "Client is now drawing the cursor "sv << (local ? "itself"sv : "from the video"sv);
       }
@@ -2012,13 +2012,6 @@ namespace stream {
                 if (send_cursor_shape(session, cursor) == 0) {
                   session->control.cursor_serial_sent.store(serial, std::memory_order_relaxed);
 
-                  // Only now stop painting it into the frame. The client has something
-                  // of its own to draw, so this is the point where two cursors would
-                  // otherwise appear - and on a backend that never produces a shape we
-                  // never get here, and the painted one stays.
-                  if (cursor.has_shape) {
-                    display_cursor = false;
-                  }
                 }
               }
             }
