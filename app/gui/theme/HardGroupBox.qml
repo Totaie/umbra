@@ -13,7 +13,7 @@ GroupBox {
     id: control
 
     property font titleFont: Qt.font({
-        family: Theme.fontSans,
+        family: Theme.fontUi,
         pointSize: Theme.fontCardTitle
     })
 

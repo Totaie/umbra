@@ -462,7 +462,7 @@ ApplicationWindow {
                 visible: toolBar.width > 700
                 text: "UMBRA"
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontCardTitle
                 font.weight: Font.ExtraBold
                 font.letterSpacing: Theme.tracking(Theme.fontCardTitle, 0.1)
@@ -487,7 +487,7 @@ ApplicationWindow {
                 id: titleRowLabel
                 text: stackView.currentItem ? stackView.currentItem.objectName : ""
                 color: Theme.accent
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontRowTitle
                 font.weight: Font.Bold
                 font.capitalization: Font.AllUppercase
@@ -972,7 +972,7 @@ ApplicationWindow {
             Text {
                 text: addPcDialog.label
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontRowTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
@@ -1029,7 +1029,7 @@ ApplicationWindow {
                         //: Procriva Cloud is a product name and must not be translated.
                         text: qsTr("Procriva Cloud rents out cloud hosts that are ready to stream.")
                         color: Theme.text
-                        font.family: Theme.fontSans
+                        font.family: Theme.fontUi
                         font.pointSize: Theme.fontBody
                         wrapMode: Text.Wrap
                     }

@@ -1,6 +1,7 @@
 singleton Theme 1.0 Theme.qml
 
 Panel 1.0 Panel.qml
+DashedRule 1.0 DashedRule.qml
 MicroLabel 1.0 MicroLabel.qml
 HardButton 1.0 HardButton.qml
 HardCheckBox 1.0 HardCheckBox.qml

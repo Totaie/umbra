@@ -4144,6 +4144,9 @@ void Session::exec()
             case SDL_CODE_FLUSH_TOUCHPAD_FRAME:
                 m_InputHandler->flushPendingTouchpadFrameEvent();
                 break;
+            case SDL_CODE_REPORT_MOUSE_POSITION:
+                m_InputHandler->reportCurrentMousePosition();
+                break;
             case SDL_CODE_CURSOR_UPDATE:
             {
                 std::shared_ptr<RemoteCursorUpdate> cursorUpdate;

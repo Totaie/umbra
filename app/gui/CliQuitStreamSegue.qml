@@ -45,7 +45,7 @@ Item {
             // 这里以前绑的是 stageText，而这个文件里从来没声明过它 —— 页面一实例化
             // 就是个 ReferenceError。兄弟文件 CliPair / CliStartStreamSegue 都没有这行。
             color: Theme.text
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: 24
             font.weight: Font.ExtraBold
             font.letterSpacing: Theme.trackingTight(24)

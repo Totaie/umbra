@@ -73,7 +73,7 @@ NavigableDialog {
             id: dialogLabel
             text: dialogText + ((helpText && (standardButtons & Dialog.Help)) ? (helpTextSeparator + helpText) : "")
             color: Theme.text
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: Theme.fontRowTitle
             lineHeight: 1.25
             wrapMode: Text.Wrap

@@ -50,16 +50,15 @@ OverlayMenuPanel::OverlayMenuPanel(QWindow* parent)
     m_HeaderHeight = 30;
     m_BandHeight   = 38;
 
-    // Load ModeSeven.ttf (same font as performance stats overlay)
-    int fontId = QFontDatabase::addApplicationFont(QStringLiteral(":/data/ModeSeven.ttf"));
-    QString modeSeven;
-    if (fontId >= 0) {
-        QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-        if (!families.isEmpty())
-            modeSeven = families.first();
-    }
-
-    m_LabelFont.setFamilies(UiFont::familyChain(modeSeven));
+    // The same face as the rest of the interface.
+    //
+    // This used to be ModeSeven, the bitmap font the performance stats overlay draws
+    // with. That reads as a teletype from a different decade sitting on top of the
+    // app, which was tolerable while the app itself was proportional and clearly a
+    // separate thing - now that everything is monospaced, matching it is what makes
+    // the menu belong to Umbra rather than to the video underneath it.
+    m_LabelFont.setFamilies(UiFont::familyChain(QStringLiteral("DM Mono")));
+    m_LabelFont.setStyleHint(QFont::Monospace);
     m_LabelFont.setPointSize(9);
     m_LabelFont.setWeight(QFont::Normal);
 

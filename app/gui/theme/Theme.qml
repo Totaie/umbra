@@ -52,13 +52,25 @@ QtObject {
 
     // ---- 字体 ----
     // 打包在 app/res/fonts/，由 main.cpp 注册；中文靠系统字体回退。
-    readonly property string fontSans: "Manrope"
+    //
+    // The whole interface is monospaced. This began as Manrope for prose with DM Mono
+    // reserved for numbers and micro-labels, which is the conventional pairing - but
+    // Umbra is a tool for operating machines, and everything in it is an address, a
+    // version, a resolution, a bitrate or a state. Setting all of it on one grid makes
+    // those line up by default instead of by hand, and the fixed advance width is what
+    // gives the app its character rather than a decoration applied on top of it.
+    //
+    // Manrope stays registered for anything that needs proportional text.
+    readonly property string fontUi: "DM Mono"
     readonly property string fontMono: "DM Mono"
+    readonly property string fontProportional: "Manrope"
 
     // QML 的 font.letterSpacing 单位是像素，不是 em，所以要按字号折算。
     // 参考站的宽字距微标签是 .18em~.24em，标题是 -.03em。
     function tracking(pointSize, em) { return pointSize * 1.333 * em }
-    function trackingWide(pointSize) { return tracking(pointSize, 0.2) }
+    // Was .2em, which is right for a proportional face and far too much for a
+    // monospaced one - the glyphs already sit on a fixed advance.
+    function trackingWide(pointSize) { return tracking(pointSize, 0.1) }
     function trackingTight(pointSize) { return tracking(pointSize, -0.03) }
     // 常用字号的预折算值，绑定里直接用，省得到处调函数
     readonly property real trackingCaption: trackingWide(fontCaption)

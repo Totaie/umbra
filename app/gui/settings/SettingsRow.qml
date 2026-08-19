@@ -81,7 +81,7 @@ FocusScope {
                 text: row.title
                 visible: text !== ""
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontRowTitle
                 font.weight: Font.DemiBold
                 wrapMode: Text.Wrap

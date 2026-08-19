@@ -196,7 +196,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: modelData.title
                     color: item.current ? Theme.text : Theme.textDim
-                    font.family: Theme.fontSans
+                    font.family: Theme.fontUi
                     font.pointSize: Theme.fontRowTitle
                     font.weight: item.current ? Font.ExtraBold : Font.Medium
                     font.capitalization: Font.AllUppercase

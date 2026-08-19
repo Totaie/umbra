@@ -232,7 +232,7 @@ CenteredGridView {
             width: parent.width
             text: StreamingPreferences.enableMdns ? qsTr("Searching") : qsTr("No Computers")
             color: Theme.text
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: 26
             font.weight: Font.ExtraBold
             font.capitalization: Font.AllUppercase
@@ -397,7 +397,7 @@ CenteredGridView {
                     width: parent.width
                     text: model.name
                     color: Theme.text
-                    font.family: Theme.fontSans
+                    font.family: Theme.fontUi
                     font.pointSize: 13
                     font.weight: Font.ExtraBold
                     font.letterSpacing: Theme.trackingTight(13)
@@ -672,7 +672,7 @@ CenteredGridView {
             Text {
                 text: renamePcDialog.label
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontRowTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
@@ -739,7 +739,7 @@ CenteredGridView {
             Text {
                 text: qsTr("Connect to %1").arg(connectTokenDialog.pcName)
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontRowTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
@@ -748,7 +748,7 @@ CenteredGridView {
             Text {
                 text: qsTr("Enter this PC's pairing token. You'll find it in the Umbra Host web interface on that PC, at https://localhost:47990 under Pair.")
                 color: Theme.textDim
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontBody
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -816,7 +816,7 @@ CenteredGridView {
             Text {
                 text: qsTr("Pairing token for %1").arg(pairingTokenDialog.pcName)
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontRowTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
@@ -825,7 +825,7 @@ CenteredGridView {
             Text {
                 text: qsTr("Generate a token in the Umbra Host web interface, then paste it here. Umbra will use it instead of a PIN, so pairing needs nothing typed on the host.")
                 color: Theme.textDim
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontBody
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -1083,7 +1083,7 @@ CenteredGridView {
             anchors.horizontalCenter: parent.horizontalCenter
             text: qsTr("Drop To Set Wallpaper")
             color: Theme.acid
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: 22
             font.weight: Font.ExtraBold
             font.capitalization: Font.AllUppercase

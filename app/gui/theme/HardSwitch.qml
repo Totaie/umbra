@@ -6,7 +6,7 @@ import "."
 Switch {
     id: control
 
-    font.family: Theme.fontSans
+    font.family: Theme.fontUi
     implicitWidth: 44
     implicitHeight: 22
     padding: 0

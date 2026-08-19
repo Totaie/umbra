@@ -37,10 +37,10 @@ OverlayToast::OverlayToast(QWindow* parent)
     // macOS 和 Linux 上根本没有，实际渲染出来是系统回退字体，三个平台长得不一样。
     // Manrope 由 main.cpp 注册进 QFontDatabase，进程内哪儿都能用；它没有中文字形，
     // 所以后面按平台补 CJK 回退（提示文案是会被翻译的）。
-    m_Font.setFamilies(UiFont::familyChain(QStringLiteral("Manrope")));
+    m_Font.setFamilies(UiFont::familyChain(QStringLiteral("DM Mono")));
     m_Font.setPointSize(11);
     m_Font.setWeight(QFont::DemiBold);
-    m_Font.setStyleHint(QFont::SansSerif);
+    m_Font.setStyleHint(QFont::Monospace);
 
     m_DismissTimer.setSingleShot(true);
     connect(&m_DismissTimer, &QTimer::timeout, this, &OverlayToast::startFadeOut);
@@ -66,7 +66,12 @@ void OverlayToast::showToast(int parentX, int parentY, int parentW, int parentH,
     // Stop any ongoing fade / dismiss
     m_DismissTimer.stop();
     m_FadeAnimation->stop();
-    setOpacity(1.0);
+
+    // Start transparent; the fade in runs once the window is on screen below.
+    // Appearing instantly on top of a picture that is itself being torn down and
+    // rebuilt - which is what switching displays does - reads as a video glitch
+    // rather than as the app acknowledging the request.
+    setOpacity(0.0);
 
     // Calculate dimensions
     QFontMetrics fm(m_Font);
@@ -104,16 +109,34 @@ void OverlayToast::showToast(int parentX, int parentY, int parentW, int parentH,
     raise();
     requestUpdate();
 
+    m_FadeAnimation->setStartValue(0.0);
+    m_FadeAnimation->setEndValue(1.0);
+    m_FadeAnimation->setDuration(120);
+    m_FadeAnimation->start();
+
     m_DismissTimer.start(durationMs);
 }
 
 void OverlayToast::startFadeOut()
 {
+    // The same animation object runs both directions, so its ends are set here
+    // rather than once in the constructor.
+    m_FadeAnimation->stop();
+    m_FadeAnimation->setStartValue(opacity());
+    m_FadeAnimation->setEndValue(0.0);
+    m_FadeAnimation->setDuration(240);
+
     m_FadeAnimation->start();
 }
 
 void OverlayToast::onFadeFinished()
 {
+    // One animation object serves both directions, so this fires at the end of the
+    // fade in too. Only the one that ended at zero means the toast is finished with.
+    if (m_FadeAnimation->endValue().toReal() > 0.0) {
+        return;
+    }
+
     hide();
     setOpacity(1.0);
 }

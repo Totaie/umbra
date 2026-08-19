@@ -1171,11 +1171,17 @@ int main(int argc, char *argv[])
         if (haveManrope) {
             // Manrope 和 DM Mono 都没有中文字形，中文交给系统字体回退。
             // Qt 会跳过列表里不存在的 family，所以这里可以无条件把候选都列上。
-            QStringList families = UiFont::familyChain(QStringLiteral("Manrope"));
+            //
+            // DM Mono leads the chain: the interface is monospaced throughout, and
+            // this is what anything that does not name a family of its own inherits -
+            // native menus, tooltips, message boxes. Setting it only in the QML theme
+            // left those few places in a proportional face, which reads as a mistake
+            // rather than as a choice. See Theme.qml.
+            QStringList families = UiFont::familyChain(QStringLiteral("DM Mono"));
             // 最后兜住原本的系统默认字体，别把上面平台分支设好的字号/字形提示丢了
             families << uiFont.family();
             uiFont.setFamilies(families);
-            uiFont.setStyleHint(QFont::SansSerif);
+            uiFont.setStyleHint(QFont::Monospace);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0) && defined(Q_OS_WIN32)
             // QML controls frequently select Manrope or DM Mono directly.

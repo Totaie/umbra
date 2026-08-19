@@ -46,7 +46,7 @@ Dialog {
             }
             text: control.title
             color: Theme.text
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: Theme.fontCardTitle
             font.weight: Font.ExtraBold
             font.capitalization: Font.AllUppercase

@@ -75,15 +75,16 @@ void SdlInputHandler::switchHostDisplay(int displayIndex)
     sendHostShortcut(VK_HOST_DISPLAY_FIRST + displayIndex);
     m_CurrentHostDisplay = displayIndex;
 
-    // Bring the pointer with us. The host tears capture down and brings it back up on
-    // the other display, and in absolute mode nothing tells it where the pointer is
-    // until the pointer moves - so without this you arrive on the new display and the
-    // mouse is still wherever it was on the old one until you jiggle it.
-    if (m_Window != nullptr && m_AbsoluteMouseMode) {
-        int ww, wh;
-        SDL_GetWindowSize(m_Window, &ww, &wh);
-        SDL_WarpMouseInWindow(m_Window, ww / 2, wh / 2);
-    }
+    // Tell the host where the pointer is, rather than moving the pointer to somewhere
+    // we know the host will agree with.
+    //
+    // This used to warp to the centre of the window, which did sync the two - by
+    // throwing away where the user had actually left the cursor, on every switch.
+    // Re-announcing the real position achieves the same thing and keeps it, and it
+    // travels correctly between monitors of different sizes because what is sent is a
+    // position within the video region plus that region's dimensions, which the host
+    // scales to whichever display it just moved to.
+    scheduleMousePositionReannounce();
 }
 
 void SdlInputHandler::setHostDisplays(int count, int current)

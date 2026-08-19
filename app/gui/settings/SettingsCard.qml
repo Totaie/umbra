@@ -67,7 +67,7 @@ Item {
                 Text {
                     text: card.title
                     color: Theme.accent
-                    font.family: Theme.fontSans
+                    font.family: Theme.fontUi
                     font.pointSize: Theme.fontCardTitle
                     font.weight: Font.ExtraBold
                     font.capitalization: Font.AllUppercase

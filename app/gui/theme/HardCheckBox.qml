@@ -7,7 +7,7 @@ import "."
 CheckBox {
     id: control
 
-    font.family: Theme.fontSans
+    font.family: Theme.fontUi
 
     indicator: Rectangle {
         implicitWidth: 18

@@ -11,6 +11,10 @@
 
 #include <atomic>
 
+// Shared with session.cpp, which owns the rest of the SDL_USEREVENT codes and
+// dispatches this one on the main thread.
+#define SDL_CODE_REPORT_MOUSE_POSITION 108
+
 #ifdef HAVE_WINDOWS_RAW_TOUCHPAD
 #include <memory>
 
@@ -216,6 +220,19 @@ public:
 
     bool isMouseInVideoRegion(int mouseX, int mouseY, int windowWidth = -1, int windowHeight = -1);
 
+    // Tell the host where the pointer already is, without moving it.
+    //
+    // In absolute mode the host only learns the position when the pointer moves, so
+    // after anything that resets its idea of the desktop - a display switch - it is
+    // working from a stale one until the user jiggles the mouse.
+    void reportCurrentMousePosition();
+
+    // Re-announce it across a display changeover. The host tears capture down and
+    // brings it back up on the other display, and a position sent before that
+    // finishes is measured against the display we just left, so this repeats for a
+    // couple of seconds rather than firing once and hoping.
+    void scheduleMousePositionReannounce();
+
     void updateKeyboardGrabState();
 
     void updatePointerRegionLock();
@@ -400,6 +417,8 @@ private:
     SDL_TouchFingerEvent m_LastTouchDownEvent;
     SDL_TouchFingerEvent m_LastTouchUpEvent;
     SDL_TimerID m_LongPressTimer;
+    SDL_TimerID m_MouseReannounceTimer;
+    int m_MouseReannouncesLeft;
     int m_StreamWidth;
     int m_StreamHeight;
     bool m_AbsoluteMouseMode;

@@ -60,7 +60,7 @@ Item {
 
             width: parent.width
             color: Theme.text
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: 24
             font.weight: Font.ExtraBold
             font.letterSpacing: Theme.trackingTight(24)

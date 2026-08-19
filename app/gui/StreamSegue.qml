@@ -417,7 +417,7 @@ Item {
                             width: parent.width
                             text: session && session.hostName ? session.hostName : appName
                             color: Theme.text
-                            font.family: Theme.fontSans
+                            font.family: Theme.fontUi
                             font.pointSize: 20
                             font.weight: Font.ExtraBold
                             font.letterSpacing: Theme.trackingTight(20)
@@ -502,11 +502,48 @@ Item {
                                                  : (isDone ? Theme.accentDim
                                                            : (isNow ? Theme.accent : Theme.lineStrong))
 
+                            // Colour carries the state change, so let it travel rather
+                            // than cut. Short enough to still feel mechanical.
+                            Behavior on color {
+                                ColorAnimation { duration: Theme.durNormal; easing.type: Theme.easing }
+                            }
+                            Behavior on border.color {
+                                ColorAnimation { duration: Theme.durNormal; easing.type: Theme.easing }
+                            }
+
                             SequentialAnimation on opacity {
                                 running: isNow
                                 loops: Animation.Infinite
                                 NumberAnimation { to: 0.35; duration: 550; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 1.0;  duration: 550; easing.type: Easing.InOutSine }
+                            }
+
+                            // One square pulse the moment this stage is done. Connecting
+                            // is a sequence of waits with nothing to look at, and a mark
+                            // that lands is what tells you it is still progressing.
+                            SequentialAnimation {
+                                id: completionPunch
+
+                                NumberAnimation {
+                                    target: tick
+                                    property: "scale"
+                                    to: 1.7
+                                    duration: 90
+                                    easing.type: Easing.OutQuad
+                                }
+                                NumberAnimation {
+                                    target: tick
+                                    property: "scale"
+                                    to: 1.0
+                                    duration: 130
+                                    easing.type: Easing.OutQuad
+                                }
+                            }
+
+                            onIsDoneChanged: {
+                                if (isDone) {
+                                    completionPunch.restart()
+                                }
                             }
                         }
 
@@ -520,10 +557,14 @@ Item {
                             color: isFail ? Theme.danger
                                           : (isNow ? Theme.text
                                                    : (isDone ? Theme.textDim : Theme.textFaint))
-                            font.family: Theme.fontSans
+                            font.family: Theme.fontUi
                             font.pointSize: 12
                             font.weight: (isNow || isFail) ? Font.DemiBold : Font.Normal
                             elide: Text.ElideRight
+
+                            Behavior on color {
+                                ColorAnimation { duration: Theme.durNormal; easing.type: Theme.easing }
+                            }
                         }
 
                         Text {
@@ -537,11 +578,11 @@ Item {
                             font.pointSize: Theme.fontCaption
                         }
 
-                        Rectangle {
+                        // A fold between steps rather than a boundary between things,
+                        // which is what a solid hairline reads as.
+                        DashedRule {
                             anchors.bottom: parent.bottom
                             width: parent.width
-                            height: 1
-                            color: Theme.line
                             visible: index < 3
                         }
                     }
@@ -589,7 +630,7 @@ Item {
 
                         width: parent.width
                         color: Theme.text
-                        font.family: Theme.fontSans
+                        font.family: Theme.fontUi
                         font.pointSize: 12
                         font.weight: Font.ExtraBold
                         wrapMode: Text.Wrap
@@ -600,7 +641,7 @@ Item {
 
                         width: parent.width
                         color: Theme.textDim
-                        font.family: Theme.fontSans
+                        font.family: Theme.fontUi
                         font.pointSize: Theme.fontBody
                         wrapMode: Text.Wrap
                         visible: text !== ""

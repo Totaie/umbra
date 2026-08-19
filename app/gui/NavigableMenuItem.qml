@@ -46,7 +46,7 @@ MenuItem {
         Text {
             text: menuItem.text
             color: menuItem.active ? menuItem.hoverTextColor : menuItem.textColor
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: Theme.fontRowTitle
             horizontalAlignment: Text.AlignLeft
             verticalAlignment: Text.AlignVCenter

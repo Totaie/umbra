@@ -174,7 +174,7 @@ CenteredGridView {
             id: chipLabel
             text: chip.text
             color: chip.selected ? Theme.ink : Theme.textDim
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: Theme.fontBody
             font.bold: chip.selected
             horizontalAlignment: Text.AlignHCenter
@@ -585,7 +585,7 @@ CenteredGridView {
                     id: appNameText
                     text: model.name
                     color: Theme.text
-                    font.family: Theme.fontSans
+                    font.family: Theme.fontUi
                     font.pointSize: 20
                     font.weight: Font.ExtraBold
                     font.letterSpacing: Theme.trackingTight(20)
@@ -636,7 +636,7 @@ CenteredGridView {
                         width: parent.width
                         text: model.name
                         color: Theme.text
-                        font.family: Theme.fontSans
+                        font.family: Theme.fontUi
                         font.pointSize: Theme.fontRowTitle
                         font.weight: Font.DemiBold
                         font.letterSpacing: Theme.trackingTight(Theme.fontRowTitle)
@@ -920,7 +920,7 @@ CenteredGridView {
             width: parent.width
             text: qsTr("No Apps")
             color: Theme.text
-            font.family: Theme.fontSans
+            font.family: Theme.fontUi
             font.pointSize: 26
             font.weight: Font.ExtraBold
             font.capitalization: Font.AllUppercase

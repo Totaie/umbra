@@ -360,3 +360,78 @@ void SdlInputHandler::updatePointerRegionLock()
 #endif
     }
 }
+
+void SdlInputHandler::reportCurrentMousePosition()
+{
+    if (!m_AbsoluteMouseMode || m_Window == nullptr) {
+        return;
+    }
+
+    int x, y;
+    SDL_GetMouseState(&x, &y);
+
+    int windowWidth, windowHeight;
+    SDL_GetWindowSize(m_Window, &windowWidth, &windowHeight);
+
+    // The same mapping handleMouseMotionEvent() uses, for the same reason: the host
+    // is told a position inside the video region together with the region's size, and
+    // scales that to whatever its own display happens to be. That is what makes this
+    // correct across a switch between monitors of different resolutions - the
+    // proportion is what travels, not the pixels.
+    SDL_Rect src, dst;
+
+    src.x = src.y = 0;
+    src.w = m_StreamWidth;
+    src.h = m_StreamHeight;
+
+    dst.x = dst.y = 0;
+    dst.w = windowWidth;
+    dst.h = windowHeight;
+
+    StreamUtils::scaleSourceToDestinationSurface(&src, &dst);
+
+    // Outside the video there is no position worth sending; the host keeps the last
+    // one it had, which is what happens during normal use anyway.
+    if (!isMouseInVideoRegion(x, y, windowWidth, windowHeight)) {
+        return;
+    }
+
+    x = qMin(qMax(x - dst.x, 0), dst.w);
+    y = qMin(qMax(y - dst.y, 0), dst.h);
+
+    LiSendMousePositionEvent((short)x, (short)y, dst.w, dst.h);
+}
+
+void SdlInputHandler::scheduleMousePositionReannounce()
+{
+    if (!m_AbsoluteMouseMode) {
+        return;
+    }
+
+    // Say it once straight away for the case where the host is already there, then
+    // keep saying it while the changeover completes.
+    reportCurrentMousePosition();
+
+    SDL_RemoveTimer(m_MouseReannounceTimer);
+    m_MouseReannouncesLeft = 8;
+
+    m_MouseReannounceTimer = SDL_AddTimer(250, [](Uint32 interval, void* param) -> Uint32 {
+        auto me = reinterpret_cast<SdlInputHandler*>(param);
+
+        // SDL_GetMouseState() is main-thread only, so this hands the work over rather
+        // than doing it here.
+        SDL_Event event;
+        event.type = SDL_USEREVENT;
+        event.user.code = SDL_CODE_REPORT_MOUSE_POSITION;
+        event.user.data1 = nullptr;
+        event.user.data2 = nullptr;
+        SDL_PushEvent(&event);
+
+        if (--me->m_MouseReannouncesLeft <= 0) {
+            me->m_MouseReannounceTimer = 0;
+            return 0;
+        }
+
+        return interval;
+    }, this);
+}

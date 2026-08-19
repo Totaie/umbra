@@ -204,7 +204,7 @@ Item {
                 Text {
                     text: qsTr("HDR brightness profile")
                     color: Theme.text
-                    font.family: Theme.fontSans
+                    font.family: Theme.fontUi
                     font.pointSize: Theme.fontRowTitle
                     font.weight: Font.ExtraBold
                     font.capitalization: Font.AllUppercase
@@ -285,7 +285,7 @@ Item {
             Text {
                 text: qsTr("Peak brightness")
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontBody
                 Layout.fillWidth: true
             }
@@ -334,7 +334,7 @@ Item {
             Text {
                 text: qsTr("Minimum brightness")
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontBody
                 Layout.fillWidth: true
             }
@@ -382,7 +382,7 @@ Item {
             Text {
                 text: qsTr("Full-frame brightness")
                 color: Theme.text
-                font.family: Theme.fontSans
+                font.family: Theme.fontUi
                 font.pointSize: Theme.fontBody
                 Layout.fillWidth: true
             }
