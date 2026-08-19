@@ -5947,6 +5947,9 @@ namespace confighttp {
     register_api_route("^/api/auth/status$", "GET", authStatus);
     register_api_route("^/api/auth/sessions$", "GET", listSessions);
     register_api_route("^/api/auth/sessions/([A-Fa-f0-9]+)$", "DELETE", revokeSession);
+    // See nvhttp: the default is unbounded, and this listener accepts config
+    // uploads, so it gets a larger but still finite ceiling.
+    server.config.max_request_streambuf_size = 8 * 1024 * 1024;
     server.config.reuse_address = true;
     server.config.address = net::get_bind_address(address_family);
     server.config.port = port_https;

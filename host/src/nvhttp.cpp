@@ -99,6 +99,56 @@ namespace nvhttp {
   crypto::cert_chain_t cert_chain;
   static std::shared_ptr<safe::queue_t<crypto::x509_t>> pending_cert_queue =
     std::make_shared<safe::queue_t<crypto::x509_t>>(30);
+  // How many pairing attempts an address gets, and how fast it earns them back.
+  //
+  // Pairing is the one thing a stranger can reach before proving anything, and this
+  // host is meant to be put on the internet. The passphrase is 256 bits, so guessing
+  // it is not the worry; a weak one someone sets later is, and so is being pinned at
+  // 100% CPU deriving AES keys for whoever is knocking. A real client pairs once.
+  constexpr int PAIR_ATTEMPT_BURST = 10;
+  constexpr auto PAIR_ATTEMPT_REFILL = std::chrono::seconds(6);
+
+  struct pair_attempt_bucket_t {
+    int tokens = PAIR_ATTEMPT_BURST;
+    std::chrono::steady_clock::time_point last_refill = std::chrono::steady_clock::now();
+  };
+
+  static std::mutex pair_attempt_mutex;
+  static std::unordered_map<std::string, pair_attempt_bucket_t> pair_attempts;
+
+  // Returns false when the caller has spent its allowance.
+  bool claim_pair_attempt(const std::string &address) {
+    if (address.empty()) {
+      return true;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock(pair_attempt_mutex);
+
+    // Buckets at full charge carry no information, so idle addresses are dropped
+    // rather than remembered forever. Without this an attacker cycling source
+    // addresses would grow this map instead of being slowed by it.
+    if (pair_attempts.size() > 4096) {
+      std::erase_if(pair_attempts, [&](const auto &entry) {
+        return entry.second.tokens >= PAIR_ATTEMPT_BURST;
+      });
+    }
+
+    auto &bucket = pair_attempts[address];
+    const auto earned = (now - bucket.last_refill) / PAIR_ATTEMPT_REFILL;
+    if (earned > 0) {
+      bucket.tokens = (int) std::min<std::int64_t>(PAIR_ATTEMPT_BURST, bucket.tokens + earned);
+      bucket.last_refill = now;
+    }
+
+    if (bucket.tokens <= 0) {
+      return false;
+    }
+
+    bucket.tokens--;
+    return true;
+  }
+
   static std::string one_time_pin;
   static std::string otp_passphrase;
   static std::string otp_device_name;
@@ -1697,6 +1747,23 @@ namespace nvhttp {
       }
 
       std::lock_guard<std::mutex> lock(tls_client_identity_mutex);
+
+      // Keyed on the client's source address and ephemeral port, and only ever
+      // removed when something connects from that exact pair again - which for an
+      // ephemeral port is close to never. Each entry is small, but a host that is
+      // reachable from the internet and reconnected to all day accumulates one per
+      // connection and never gives any of them back.
+      //
+      // The map is a lookaside for the connection being served right now, so it does
+      // not need history. Dropping it wholesale when it grows past anything plausible
+      // costs one certificate comparison on the next request of any connection that
+      // was in flight, which is the same work verification already did.
+      if (tls_client_identity_by_endpoint.size() >= 1024) {
+        BOOST_LOG(debug) << "Clearing the TLS client identity lookaside ("sv
+                         << tls_client_identity_by_endpoint.size() << " entries)"sv;
+        tls_client_identity_by_endpoint.clear();
+      }
+
       tls_client_identity_by_endpoint[key] = identity;
     }
 
@@ -2563,6 +2630,15 @@ namespace nvhttp {
         return;
       }
 
+      if (!claim_pair_attempt(request->remote_endpoint().address().to_string())) {
+        BOOST_LOG(warning) << "Rate limiting pairing attempts from "sv
+                           << request->remote_endpoint().address().to_string();
+        tree.put("root.<xmlattr>.status_code", 429);
+        tree.put("root.<xmlattr>.status_message", "Too many pairing attempts. Try again shortly.");
+
+        return;
+      }
+
       auto args = request->parse_query_string();
       if (args.find("uniqueid"s) == std::end(args)) {
         tree.put("root.<xmlattr>.status_code", 400);
@@ -3216,6 +3292,38 @@ namespace nvhttp {
       }
     }
 
+    // Where the time between clicking a PC and being on it actually goes.
+    //
+    // /launch is by far the largest part of connecting and all of it is server side,
+    // so from the client there is no way to tell a slow display apply from a slow
+    // encoder probe from a slow app start - they are one opaque wait. Each phase is
+    // reported when it costs anything worth reporting.
+    struct launch_phase_timer_t {
+      std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+      std::chrono::steady_clock::time_point last = start;
+
+      void mark(const char *phase) {
+        const auto now = std::chrono::steady_clock::now();
+        const auto step = std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count();
+        const auto total = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+        last = now;
+
+        // Below this everything is noise; the interesting phases cost seconds.
+        if (step >= 50) {
+          BOOST_LOG(info) << "Launch timing: "sv << phase << " took "sv << step
+                          << " ms ("sv << total << " ms into the launch)"sv;
+        }
+      }
+
+      ~launch_phase_timer_t() {
+        const auto total = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start
+        )
+                             .count();
+        BOOST_LOG(info) << "Launch timing: answering the client after "sv << total << " ms"sv;
+      }
+    };
+
     void launch(bool &host_audio, resp_https_t response, req_https_t request, int current_appid) {
       print_req<SunshineHTTPS>(request);
 
@@ -3237,6 +3345,8 @@ namespace nvhttp {
           display_helper_integration::revert();
         }
       });
+
+      launch_phase_timer_t launch_timing;
 
       auto args = request->parse_query_string();
 
@@ -3441,6 +3551,7 @@ namespace nvhttp {
 #endif
       const bool allow_display_changes = true;
       auto launch_session = make_launch_session_from_snapshot(host_audio, is_input_only, args, verified_client, &request_client_identity);
+      launch_timing.mark("permission checks and session setup");
       std::optional<std::string> pending_output_override;
       auto output_override_guard = util::fail_guard([&]() {
         if (pending_output_override) {
@@ -3451,6 +3562,7 @@ namespace nvhttp {
       if (no_active_sessions) {
         config::set_runtime_output_name_override(std::nullopt);
       }
+      launch_timing.mark("session bookkeeping");
 
 #ifdef _WIN32
       std::optional<video::encoder_probe_adapter_hint_lease_t> pending_adapter_hint;
@@ -3469,6 +3581,7 @@ namespace nvhttp {
         display_startup_cancelled,
         display_startup_deadline
       );
+      launch_timing.mark("virtual display preparation");
 
       auto virtual_display_teardown_guard = util::fail_guard([&]() {
         stream::session::cleanup_reservation_t cleanup_reservation;
@@ -3541,6 +3654,8 @@ namespace nvhttp {
         }
       }
 
+        launch_timing.mark("display configuration apply");
+
         // Apply a per-client HDR profile to physical displays (virtual displays are handled at creation time).
         if (!launch_session->virtual_display) {
           const auto active_output = config::get_active_output_name();
@@ -3587,6 +3702,7 @@ namespace nvhttp {
       } else {
         BOOST_LOG(debug) << "Launch encoder probe skipped (matching selected-GPU cache).";
       }
+      launch_timing.mark("encoder probe");
 #else
       bool encoder_probe_failed = video::probe_encoders();
 #endif
@@ -4682,6 +4798,14 @@ namespace nvhttp {
     https_server.resource["^/api/abr/capabilities$"]["GET"] = getAbrCapabilities;
     https_server.resource["^/actions/displays$"]["GET"] = getDisplays;
 
+    // Cap how much of a request body will be buffered.
+    //
+    // Simple-Web-Server defaults this to SIZE_MAX, so a request body is read into
+    // memory until it ends or the machine runs out. On the plain HTTP listener that
+    // is reachable without any certificate at all, which makes it a way to exhaust a
+    // host from the internet without pairing with it. Nothing this API accepts is
+    // large - the biggest is a pasted clipboard - so a megabyte is generous.
+    https_server.config.max_request_streambuf_size = 1024 * 1024;
     https_server.config.reuse_address = true;
     https_server.config.address = net::get_bind_address(address_family);
     https_server.config.port = port_https;
@@ -4698,6 +4822,7 @@ namespace nvhttp {
     http_server.resource["^/unpair/?$"]["GET"] = unpair<SimpleWeb::HTTP>;
     http_server.resource["^/unpair/?$"]["POST"] = unpair<SimpleWeb::HTTP>;
 
+    http_server.config.max_request_streambuf_size = 1024 * 1024;
     http_server.config.reuse_address = true;
     http_server.config.address = net::get_bind_address(address_family);
     http_server.config.port = port_http;

@@ -16,6 +16,8 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/regex.hpp>
 #include <chrono>
+#include <mutex>
+#include <unordered_map>
 #include <ctime>
 #include <exception>
 #include <filesystem>
@@ -981,11 +983,82 @@ namespace confighttp {
   SessionTokenAPI::SessionTokenAPI(SessionTokenManager &session_manager):
       _session_manager(session_manager) {}
 
+  namespace {
+    // Login attempts allowed per address before an attacker has to wait.
+    //
+    // Stored credentials are a single salted SHA-256 with no key stretching, which is
+    // fast to test offline and, without this, just as fast to test online. Slowing the
+    // online path is the part we control. A person typing a password wrong a few times
+    // never notices; something working through a wordlist gets four tries a minute.
+    constexpr int LOGIN_ATTEMPT_BURST = 8;
+    constexpr auto LOGIN_ATTEMPT_REFILL = std::chrono::seconds(15);
+
+    struct login_bucket_t {
+      int tokens = LOGIN_ATTEMPT_BURST;
+      std::chrono::steady_clock::time_point last_refill = std::chrono::steady_clock::now();
+    };
+
+    std::mutex login_attempt_mutex;
+    std::unordered_map<std::string, login_bucket_t> login_attempts;
+
+    bool claim_login_attempt(const std::string &address) {
+      if (address.empty()) {
+        return true;
+      }
+
+      const auto now = std::chrono::steady_clock::now();
+      std::lock_guard<std::mutex> lock(login_attempt_mutex);
+
+      // A full bucket says nothing, so idle addresses are forgotten rather than
+      // accumulated - otherwise rotating source addresses would grow this map
+      // instead of being slowed by it.
+      if (login_attempts.size() > 4096) {
+        std::erase_if(login_attempts, [](const auto &entry) {
+          return entry.second.tokens >= LOGIN_ATTEMPT_BURST;
+        });
+      }
+
+      auto &bucket = login_attempts[address];
+      const auto earned = (now - bucket.last_refill) / LOGIN_ATTEMPT_REFILL;
+      if (earned > 0) {
+        bucket.tokens = (int) std::min<std::int64_t>(LOGIN_ATTEMPT_BURST, bucket.tokens + earned);
+        bucket.last_refill = now;
+      }
+
+      if (bucket.tokens <= 0) {
+        return false;
+      }
+
+      bucket.tokens--;
+      return true;
+    }
+
+    // Spent only on failure, so normal use never depletes the allowance.
+    void refund_login_attempt(const std::string &address) {
+      if (address.empty()) {
+        return;
+      }
+
+      std::lock_guard<std::mutex> lock(login_attempt_mutex);
+      if (auto it = login_attempts.find(address); it != login_attempts.end()) {
+        it->second.tokens = std::min(LOGIN_ATTEMPT_BURST, it->second.tokens + 1);
+      }
+    }
+  }  // namespace
+
   APIResponse SessionTokenAPI::login(const std::string &username, const std::string &password, const std::string &redirect_url, bool remember_me, const std::string &user_agent, const std::string &remote_address) {
+    if (!claim_login_attempt(remote_address)) {
+      BOOST_LOG(warning) << "Configuration API: rate limiting login attempts from " << remote_address;
+      return create_error_response("Too many login attempts. Try again shortly.", StatusCode::client_error_too_many_requests);
+    }
+
     if (!validate_credentials(username, password)) {
       BOOST_LOG(info) << "Configuration API: Login failed for user: " << username;
       return create_error_response("Invalid credentials", StatusCode::client_error_unauthorized);
     }
+
+    // Succeeded, so this attempt costs the caller nothing.
+    refund_login_attempt(remote_address);
 
     auto issued = _session_manager.issue_session_tokens(
       username,

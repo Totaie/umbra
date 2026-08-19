@@ -6,10 +6,16 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
+// standard includes
+#include <cstdlib>
+
 // local includes
 #include "crypto.h"
+#include "logging.h"
 
 namespace crypto {
+  using namespace std::literals;
+
   using asn1_string_t = util::safe_ptr<ASN1_STRING, ASN1_STRING_free>;
 
   cert_chain_t::cert_chain_t():
@@ -422,7 +428,16 @@ namespace crypto {
     std::string r;
     r.resize(bytes);
 
-    RAND_bytes((uint8_t *) r.data(), (int) r.size());
+    // Everything secret this host has starts here - pairing secrets, session tokens,
+    // the AES keys derived alongside them. RAND_bytes can fail, and a silent failure
+    // hands back the buffer as it was: predictable, and indistinguishable from a good
+    // value at every call site. There is no safe way to carry on without randomness,
+    // so this is deliberately fatal rather than a warning nobody reads.
+    if (RAND_bytes((uint8_t *) r.data(), (int) r.size()) != 1) {
+      BOOST_LOG(fatal) << "The random number generator failed. Refusing to continue with "sv
+                       << "predictable keys."sv;
+      std::abort();
+    }
 
     return r;
   }
