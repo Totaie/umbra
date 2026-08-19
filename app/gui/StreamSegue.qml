@@ -486,6 +486,17 @@ Item {
                         readonly property bool isNow: index === currentStage && !failed
                         readonly property bool isFail: index === currentStage && failed
 
+                        // Declared here because isDone is declared here. Hanging this
+                        // off the tick below made it a handler for a property that
+                        // object does not have, which QML only reports when the
+                        // component is first instantiated - which is the moment a
+                        // session starts, so it took the connect screen with it.
+                        onIsDoneChanged: {
+                            if (isDone) {
+                                completionPunch.restart()
+                            }
+                        }
+
                         Rectangle {
                             id: tick
 
@@ -537,12 +548,6 @@ Item {
                                     to: 1.0
                                     duration: 130
                                     easing.type: Easing.OutQuad
-                                }
-                            }
-
-                            onIsDoneChanged: {
-                                if (isDone) {
-                                    completionPunch.restart()
                                 }
                             }
                         }
