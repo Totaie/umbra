@@ -65,10 +65,15 @@ rem Locate Visual Studio and enter the x64 native toolchain
 rem ---------------------------------------------------------------------------
 set VSWHERE="%SOURCE_ROOT%\scripts\vswhere.exe"
 set VS_PATH=
-for /f "usebackq delims=" %%i in (`%VSWHERE% -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VS_PATH=%%i
+rem ATL is required as well as the compiler: the D3D11 renderer includes atlbase.h.
+rem Asking for the compiler alone picks whichever install is newest, and on a machine
+rem with both the Build Tools and the IDE that can be the one without ATL, which
+rem fails ten minutes in on a missing header.
+for /f "usebackq delims=" %%i in (`%VSWHERE% -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.ATL -property installationPath`) do set VS_PATH=%%i
 if "%VS_PATH%"=="" (
-    echo Unable to find a Visual Studio install with the C++ toolchain.
-    echo Install the "Desktop development with C++" workload.
+    echo Unable to find a Visual Studio install with the C++ toolchain and ATL.
+    echo Install the "Desktop development with C++" workload, and tick
+    echo "C++ ATL for latest build tools" under its optional components.
     exit /b 1
 )
 echo Using Visual Studio at %VS_PATH%
