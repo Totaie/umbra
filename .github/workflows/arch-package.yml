@@ -93,11 +93,7 @@ jobs:
     # is tested is what a user's machine will do with what gets published.
     - name: Install it from the repository
       run: |
-        printf '
-[umbra]
-SigLevel = Optional TrustAll
-Server = file://%s/dist
-' "$GITHUB_WORKSPACE" >> /etc/pacman.conf
+        printf '\n[umbra]\nSigLevel = Optional TrustAll\nServer = file://%s/dist\n' "$GITHUB_WORKSPACE" >> /etc/pacman.conf
         pacman -Sy --noconfirm umbra
         pacman -Qi umbra
         pacman -Ql umbra
