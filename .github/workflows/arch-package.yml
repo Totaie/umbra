@@ -39,36 +39,18 @@ jobs:
 
     steps:
     # Before checkout: without git in the container, actions/checkout falls back to
-    # downloading an archive, and an archive has no submodules to update.
+    # downloading an archive, and an archive has no submodules to fetch later.
     - name: Install git
       run: pacman -Syu --noconfirm --needed git github-cli
 
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Fetch submodules
-      run: |
-        git config --global --add safe.directory '*'
-
-        # third-party/AMF is left out: only the Windows build compiles it.
-        git submodule update --init app/SDL_GameControllerDB qmdnsengine/qmdnsengine
-
-        # umbra-v2 pins moonlight-common-c at a commit that was made in one working
-        # copy and never pushed, so a clean clone cannot fetch it. Until the pin
-        # names something published, fall back to the last commit that is, plus the
-        # one change the missing commit made. Once the pin is fixed the first
-        # command succeeds and none of the fallback runs.
-        common=moonlight-common-c/moonlight-common-c
-        if ! git submodule update --init "$common"; then
-          echo "::warning::moonlight-common-c pin is not fetchable; using 7bfa0c1e plus packaging/patches"
-          git -C "$common" checkout 7bfa0c1e79d55871c519287c441a629b9eeed045
-          git -C "$common" apply "$GITHUB_WORKSPACE/packaging/patches/moonlight-common-c-optional-mic.patch"
-        fi
-        git -C "$common" submodule update --init --recursive
-
     - name: Build package
       run: |
         # makepkg refuses to run as root, and --syncdeps needs to install through sudo.
+        # Nothing is fetched for it beforehand: the PKGBUILD brings in the submodules
+        # itself, so this is the same `makepkg` a fresh clone on someone's machine runs.
         useradd --create-home builder
         echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
         mkdir -p dist

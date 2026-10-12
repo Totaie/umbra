@@ -7,10 +7,10 @@
 #
 #   cd packaging/arch && makepkg -si
 #
-# You only need this to build by hand. Published builds come from the pacman
-# repository that .github/workflows/arch-package.yml maintains; see the notes on
-# https://github.com/Totaie/umbra/releases/tag/arch for the two lines to add to
-# /etc/pacman.conf, after which `pacman -Syu` keeps Umbra current.
+# That is all a fresh clone needs; README.md beside this file is the long version.
+# You only need to build by hand to try something unreleased. Published builds
+# come from the pacman repository that .github/workflows/arch-package.yml
+# maintains, after which `pacman -Syu` keeps Umbra current.
 
 _root=$(realpath "$(dirname "${BASH_SOURCE[0]}")/../..")
 
@@ -43,11 +43,12 @@ depends=(
     'wayland'
 )
 makedepends=(
+    'git'
     'python'
     'vulkan-headers'
 )
 optdepends=(
-    'libva-mesa-driver: hardware decoding on AMD and Intel (Mesa)'
+    'mesa: hardware decoding on AMD graphics, and older Intel'
     'intel-media-driver: hardware decoding on recent Intel graphics'
     'libva-nvidia-driver: hardware decoding on NVIDIA through VA-API'
 )
@@ -55,8 +56,13 @@ optdepends=(
 # publish a second, much larger umbra-debug package to the repository.
 options=('!debug')
 
+prepare() {
+    # Not `git submodule update --init --recursive`; the script says why.
+    bash "$_root/scripts/fetch-submodules.sh"
+}
+
 build() {
-    # Out of tree, so the checkout is left exactly as it was found.
+    # Out of tree, so no build output lands in the checkout.
     mkdir -p "$srcdir/build"
     cd "$srcdir/build"
 
