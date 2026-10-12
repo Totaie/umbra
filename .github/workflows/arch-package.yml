@@ -78,9 +78,28 @@ jobs:
         sudo -u builder env MAKEFLAGS="-j$(nproc)" BUILDDIR=/tmp/makepkg PKGDEST="$GITHUB_WORKSPACE/dist" \
           makepkg --syncdeps --noconfirm
 
-    - name: Check the package installs and links
+    - name: Build the repository database
       run: |
-        pacman -U --noconfirm dist/umbra-*.pkg.tar.zst
+        cd dist
+        repo-add umbra.db.tar.gz umbra-*.pkg.tar.zst
+        # repo-add leaves umbra.db and umbra.files as symlinks to the archives. A
+        # release asset has to be a real file, and these two names are the ones
+        # pacman asks the server for.
+        rm umbra.db umbra.files
+        cp umbra.db.tar.gz umbra.db
+        cp umbra.files.tar.gz umbra.files
+
+    # Through pacman and the database rather than `pacman -U` on the file, so what
+    # is tested is what a user's machine will do with what gets published.
+    - name: Install it from the repository
+      run: |
+        printf '
+[umbra]
+SigLevel = Optional TrustAll
+Server = file://%s/dist
+' "$GITHUB_WORKSPACE" >> /etc/pacman.conf
+        pacman -Sy --noconfirm umbra
+        pacman -Qi umbra
         pacman -Ql umbra
 
         # A library the package forgot to depend on shows up here as "not found".
@@ -88,13 +107,13 @@ jobs:
           exit 1
         fi
 
-    # Informational. There is no GPU here, so this cannot say the app works, but a
-    # QML type error or a missing Qt module shows up in this log, and those are
-    # fatal at startup while compiling perfectly cleanly. Xvfb rather than SDL's
-    # dummy video driver: the startup decoder probe needs a real window to ask
-    # questions of.
+    # There is no GPU here, so this cannot say streaming works. What it catches is
+    # an Umbra that does not survive its own startup: a QML type error or a missing
+    # Qt module is fatal there while compiling perfectly cleanly. It should load the
+    # interface, find no hardware decoder, settle on software decoding and still be
+    # running when the timer stops it. Xvfb rather than SDL's dummy video driver:
+    # the startup decoder probe needs a real window to ask questions of.
     - name: Start it once
-      continue-on-error: true
       run: |
         pacman -S --noconfirm --needed xorg-server-xvfb mesa gdb
         status=0
@@ -113,7 +132,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: umbra-arch-package
-        path: dist/*.pkg.tar.zst
+        path: |
+          dist/*.pkg.tar.zst
+          dist/umbra.db
+          dist/umbra.files
 
     - name: Publish to the pacman repository
       if: github.ref == 'refs/heads/umbra-v2'
@@ -123,14 +145,6 @@ jobs:
       run: |
         cd dist
         pkg=$(ls umbra-*.pkg.tar.zst)
-
-        repo-add umbra.db.tar.gz "$pkg"
-        # repo-add leaves umbra.db and umbra.files as symlinks to the archives. A
-        # release asset has to be a real file, and these two names are the ones
-        # pacman asks the server for.
-        rm umbra.db umbra.files
-        cp umbra.db.tar.gz umbra.db
-        cp umbra.files.tar.gz umbra.files
 
         cat > notes.md <<EOF
         This is not a version of Umbra. It is a pacman repository: the files below are
