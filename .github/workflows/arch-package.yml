@@ -88,16 +88,26 @@ jobs:
           exit 1
         fi
 
-    # Informational. There is no display or GPU here, so this cannot say the app
-    # works, but a QML type error or a missing Qt module shows up in this log,
-    # and those are fatal at startup while compiling perfectly cleanly.
+    # Informational. There is no GPU here, so this cannot say the app works, but a
+    # QML type error or a missing Qt module shows up in this log, and those are
+    # fatal at startup while compiling perfectly cleanly. Xvfb rather than SDL's
+    # dummy video driver: the startup decoder probe needs a real window to ask
+    # questions of.
     - name: Start it once
       continue-on-error: true
       run: |
+        pacman -S --noconfirm --needed xorg-server-xvfb mesa gdb
         status=0
-        QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-          timeout 20 umbra || status=$?
+        SDL_AUDIODRIVER=dummy xvfb-run -a timeout 20 umbra || status=$?
         echo "exit status: $status (124 means it was still running when stopped)"
+
+        if [ "$status" != 124 ]; then
+          # The copy in the build tree still has its symbols; the packaged one is stripped.
+          SDL_AUDIODRIVER=dummy DEBUGINFOD_URLS=https://debuginfod.archlinux.org \
+            xvfb-run -a timeout 120 gdb -batch -ex 'set debuginfod enabled on' -ex run -ex bt \
+            /tmp/makepkg/umbra/src/build/app/umbra || true
+          exit 1
+        fi
 
     - name: Upload package
       uses: actions/upload-artifact@v4
