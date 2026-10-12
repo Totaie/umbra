@@ -231,7 +231,7 @@ void OverlayMenuPanel::buildMenuLevels()
                                MenuItemType::Action, MenuAction::UngrabInput, 0, true, false, false});
     shortcuts.items.push_back({tr("Paste Clipboard"), QStringLiteral("Ctrl+Alt+Shift+V"),
                                MenuItemType::Action, MenuAction::PasteText, 0, true, false, false});
-    shortcuts.items.push_back({tr("Minimize"), QStringLiteral("Ctrl+Alt+Shift+D"),
+    shortcuts.items.push_back({tr("Minimize"), QStringLiteral("Ctrl+Alt+Shift+Tab"),
                                MenuItemType::Action, MenuAction::ToggleMinimize, 0, true, false, false});
     shortcuts.items.push_back({tr("Quit Umbra"), QStringLiteral("Ctrl+Alt+Shift+E"),
                                MenuItemType::Action, MenuAction::QuitAndExit, 0, true, false, false});

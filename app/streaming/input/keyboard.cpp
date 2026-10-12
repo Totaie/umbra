@@ -324,6 +324,19 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
         // where the SDLK for one shortcut collides with
         // the scancode of another.
 
+        // Tab minimizes, the same as D. It is the key your hand is already on for
+        // Alt+Tab, and D is one modifier away from Ctrl+Shift+D above. Matched on the
+        // scancode because Tab is in the same place on every layout.
+        //
+        // Windows keeps Ctrl+Alt+Shift+Tab for its own task switcher, so this only
+        // reaches us while system keys are being captured - which by default means
+        // while the stream is full-screen.
+        if (event->keysym.scancode == SDL_SCANCODE_TAB &&
+                m_SpecialKeyCombos[KeyComboToggleMinimize].enabled) {
+            performSpecialKeyCombo(KeyComboToggleMinimize);
+            return;
+        }
+
         for (int i = 0; i < KeyComboMax; i++) {
             if (m_SpecialKeyCombos[i].enabled && event->keysym.sym == m_SpecialKeyCombos[i].keyCode) {
                 performSpecialKeyCombo(m_SpecialKeyCombos[i].keyCombo);
