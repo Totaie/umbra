@@ -202,6 +202,11 @@ private:
 
     void toggleFullscreen();
 
+    // The clipboard shortcuts. Each returns false when the shortcut is not ours to
+    // handle, and the key should go to the host like any other.
+    bool clipboardCopyFromHost();
+    bool clipboardPasteToHost();
+
     // Qt-based overlay menu
     void showQtOverlayMenu();
     void hideQtOverlayMenu();

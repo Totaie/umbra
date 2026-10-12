@@ -197,6 +197,14 @@ public:
     // in the host's src/input.cpp.
     void sendHostShortcut(short keyCode);
 
+    // Presses Ctrl+<key> on the host, whatever is physically held here: Shift, Alt
+    // and Win are lifted around it and put back, and Ctrl is pressed if it is not
+    // already down. This is how Ctrl+Shift+C here becomes Ctrl+C there.
+    void sendHostCtrlChord(short keyCode);
+
+    // Types UTF-8 text on the host as if it were entered on its keyboard.
+    void typeTextOnHost(const QByteArray& textUtf8);
+
     // Asks the host to stop drawing its own cursor into the captured video, so we can
     // draw a local one that tracks the mouse without a round trip.
     void hideHostCursor();

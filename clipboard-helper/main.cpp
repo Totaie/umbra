@@ -79,6 +79,25 @@ public slots:
             return;
         }
 
+        if (message.type == ClipboardIpc::MessageType::CopyFromHost) {
+            if (m_ClipboardEngine != nullptr) {
+                m_ClipboardEngine->copyFromHost();
+            }
+            return;
+        }
+
+        if (message.type == ClipboardIpc::MessageType::PasteToHost) {
+            if (m_ClipboardEngine == nullptr) {
+                // The main process is waiting for an answer before it pastes.
+                writeProtocolLine(ClipboardIpc::encodePasteResult(message.sequence, false, false,
+                                                                  QStringLiteral("clipboard sync is not configured")));
+                return;
+            }
+            m_ClipboardEngine->pasteToHost(message.sequence,
+                                           message.hasClipboardText ? &message.clipboardText : nullptr);
+            return;
+        }
+
         writeProtocolLine(ClipboardIpc::encodeError(message.sequence,
                                                     QStringLiteral("unexpected-message"),
                                                     QStringLiteral("message type is not valid for helper input")));
@@ -112,14 +131,24 @@ private:
             return;
         }
 
+        const ClipboardSync::Mode mode = config.manual ? ClipboardSync::Mode::Manual
+                                                       : ClipboardSync::Mode::Automatic;
         if (m_ClipboardEngine == nullptr) {
             m_ClipboardEngine = new ClipboardSync(context, this);
+            m_ClipboardEngine->setMode(mode);
+            m_ClipboardEngine->setDelegateLocalText(config.delegateText);
             connect(m_ClipboardEngine, &ClipboardSync::outboundFrame,
                     this, &ClipboardHelperController::sendLocalFrame);
+            connect(m_ClipboardEngine, &ClipboardSync::localTextRequested,
+                    this, &ClipboardHelperController::sendLocalText);
+            connect(m_ClipboardEngine, &ClipboardSync::pasteFinished,
+                    this, &ClipboardHelperController::sendPasteResult);
             m_ClipboardEngine->start();
         }
         else {
             m_ClipboardEngine->setHostContext(context);
+            m_ClipboardEngine->setMode(mode);
+            m_ClipboardEngine->setDelegateLocalText(config.delegateText);
         }
 
         writeProtocolLine(ClipboardIpc::encodeReady(sequence));
@@ -128,6 +157,22 @@ private:
     void sendLocalFrame(const QByteArray& frame)
     {
         writeProtocolLine(ClipboardIpc::encodeLocalFrame(m_NextSequence++, frame));
+    }
+
+    void sendLocalText(const QByteArray& textUtf8)
+    {
+        if (textUtf8.size() > ClipboardIpc::MAX_TEXT_BYTES) {
+            writeProtocolLine(ClipboardIpc::encodeError(0, QStringLiteral("text-too-large"),
+                                                        QStringLiteral("the host's clipboard text is too large to hand over (%1 bytes)")
+                                                        .arg(textUtf8.size())));
+            return;
+        }
+        writeProtocolLine(ClipboardIpc::encodeSetLocalText(m_NextSequence++, textUtf8));
+    }
+
+    void sendPasteResult(quint32 requestId, bool ok, bool outOfBand, const QString& detail)
+    {
+        writeProtocolLine(ClipboardIpc::encodePasteResult(requestId, ok, outOfBand, detail));
     }
 
     void writeProtocolLine(const QByteArray& line)

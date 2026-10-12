@@ -472,6 +472,30 @@ void Session::clSetHdrMode(bool enabled, void* hdrMetadata)
     }
 }
 
+bool Session::clipboardCopyFromHost()
+{
+    if (m_ClipboardHelper == nullptr || !m_ClipboardHelper->isShortcutMode() || m_InputHandler == nullptr) {
+        return false;
+    }
+
+    // Ask first: the host answers the keystroke with its new clipboard, and that
+    // answer has to find the request already waiting for it.
+    m_ClipboardHelper->copyFromHost();
+    m_InputHandler->sendHostCtrlChord(0x43 /* VK_C */);
+    return true;
+}
+
+bool Session::clipboardPasteToHost()
+{
+    if (m_ClipboardHelper == nullptr || !m_ClipboardHelper->isShortcutMode() || m_InputHandler == nullptr) {
+        return false;
+    }
+
+    // The keystroke follows from the streaming loop, once the host has the clipboard.
+    m_ClipboardHelper->pasteToHost();
+    return true;
+}
+
 void Session::clClipboardData(const char* data, int length)
 {
     Session* session = s_ActiveSession;
@@ -3462,7 +3486,7 @@ void Session::start()
     // thread can possibly invoke clClipboardData(). Host frames are queued by
     // ClipboardHelperClient and flushed from the SDL loop.
     if (m_ClipboardHelper == nullptr) {
-        m_ClipboardHelper = new ClipboardHelperClient(m_Computer, this);
+        m_ClipboardHelper = new ClipboardHelperClient(m_Computer, m_Preferences->clipboardShortcuts, this);
         m_ClipboardHelper->start();
     }
 #endif
@@ -4003,8 +4027,28 @@ void Session::exec()
     };
 
     auto processClipboardHelperMessages = [this]() {
-        if (m_ClipboardHelper != nullptr) {
-            m_ClipboardHelper->processPendingMessages();
+        if (m_ClipboardHelper == nullptr) {
+            return;
+        }
+
+        m_ClipboardHelper->processPendingMessages();
+
+        // A paste finishes here: the clipboard has reached the host (or cannot), and
+        // only now does the host get the keystroke that uses it.
+        QByteArray text;
+        switch (m_ClipboardHelper->takePasteAction(text)) {
+        case ClipboardHelperClient::PasteAction::SendPasteChord:
+            if (m_InputHandler != nullptr) {
+                m_InputHandler->sendHostCtrlChord(0x56 /* VK_V */);
+            }
+            break;
+        case ClipboardHelperClient::PasteAction::TypeText:
+            if (m_InputHandler != nullptr) {
+                m_InputHandler->typeTextOnHost(text);
+            }
+            break;
+        case ClipboardHelperClient::PasteAction::None:
+            break;
         }
     };
 
@@ -4052,6 +4096,10 @@ void Session::exec()
         // issues that could cause indefinite timeouts, delayed joystick detection,
         // and other problems.
         int waitTimeoutMs = (m_ClipboardHelper != nullptr && m_ClipboardHelper->isRunning()) ? 100 : 1000;
+        if (m_ClipboardHelper != nullptr && m_ClipboardHelper->hasPendingWork()) {
+            // A paste is waiting on the helper or on its keystroke; don't sit on it.
+            waitTimeoutMs = 10;
+        }
         if (!SDL_WaitEventTimeout(&event, waitTimeoutMs)) {
             presence.runCallbacks();
             processClipboardHelperMessages();

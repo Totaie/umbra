@@ -9,12 +9,13 @@
 #include <QFileInfo>
 #include <QMutexLocker>
 #include <QProcess>
+#include <QProcessEnvironment>
 
 #include <SDL.h>
 
 #include <Limelight.h>
 
-ClipboardHelperClient::ClipboardHelperClient(NvComputer* computer, QObject* parent)
+ClipboardHelperClient::ClipboardHelperClient(NvComputer* computer, bool shortcutMode, QObject* parent)
     : QObject(parent),
       m_Computer(computer),
       m_Process(nullptr),
@@ -26,7 +27,15 @@ ClipboardHelperClient::ClipboardHelperClient(NvComputer* computer, QObject* pare
       m_NextSequence(1),
       m_NextRestartTicks(0),
       m_RestartAttempts(0),
-      m_DroppedInboundFrames(0)
+      m_DroppedInboundFrames(0),
+      m_ShortcutMode(shortcutMode),
+      m_HostRejectedClipboard(false),
+      m_LoggedHostRejection(false),
+      m_PasteSequence(0),
+      m_PasteDeadlineTicks(0),
+      m_PasteFrameFailed(false),
+      m_PasteAction(PasteAction::None),
+      m_PasteActionTicks(0)
 {
 }
 
@@ -66,6 +75,25 @@ bool ClipboardHelperClient::startProcess()
     m_Process = new QProcess(this);
     m_Process->setProgram(m_HelperPath);
     m_Process->setProcessChannelMode(QProcess::SeparateChannels);
+
+#if defined(Q_OS_UNIX) && !defined(Q_OS_DARWIN)
+    // A Wayland client without keyboard focus can neither read nor set the clipboard,
+    // and the helper never has a window, let alone focus. Through XWayland it can at
+    // least set it, which is what brings images across from the host; text goes
+    // through this process instead (see mainProcessOwnsLocalText()). The list is a
+    // fallback order, so a session without XWayland still gets the helper.
+    if (mainProcessOwnsLocalText() && !qEnvironmentVariableIsEmpty("DISPLAY") &&
+            qEnvironmentVariableIsEmpty("UMBRA_CLIPBOARD_HELPER_PLATFORM")) {
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("xcb;wayland"));
+        m_Process->setProcessEnvironment(env);
+    }
+    else if (!qEnvironmentVariableIsEmpty("UMBRA_CLIPBOARD_HELPER_PLATFORM")) {
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert(QStringLiteral("QT_QPA_PLATFORM"), qEnvironmentVariable("UMBRA_CLIPBOARD_HELPER_PLATFORM"));
+        m_Process->setProcessEnvironment(env);
+    }
+#endif
     m_Process->start();
     if (!m_Process->waitForStarted(2000)) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
@@ -146,6 +174,8 @@ void ClipboardHelperClient::handleIncomingFrame(const char* data, int length)
 
 void ClipboardHelperClient::processPendingMessages()
 {
+    checkPasteTimeout();
+
     if (m_Process == nullptr) {
         maybeRestart();
         return;
@@ -162,6 +192,9 @@ void ClipboardHelperClient::processPendingMessages()
         m_Process = nullptr;
         m_HelperReady = false;
         m_StdinBuffer.clear();
+        if (m_PasteSequence != 0) {
+            finishPaste(false, false, QStringLiteral("the clipboard helper stopped"));
+        }
         if (!m_StopRequested) {
             scheduleRestart("unexpected exit");
         }
@@ -183,6 +216,133 @@ void ClipboardHelperClient::processPendingMessages()
 bool ClipboardHelperClient::isRunning() const
 {
     return m_Process != nullptr && m_Process->state() != QProcess::NotRunning;
+}
+
+bool ClipboardHelperClient::mainProcessOwnsLocalText()
+{
+    // On Wayland only the client with keyboard focus may use the clipboard. While a
+    // shortcut is being pressed that is the stream window, which is SDL's and lives
+    // in this process, so text is read and written here rather than in the helper.
+    const char* driver = SDL_GetCurrentVideoDriver();
+    return driver != nullptr && SDL_strcmp(driver, "wayland") == 0;
+}
+
+void ClipboardHelperClient::setLocalText(const QByteArray& textUtf8)
+{
+    if (SDL_SetClipboardText(textUtf8.constData()) != 0) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Could not put the host's text on the clipboard: %s",
+                    SDL_GetError());
+        return;
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Clipboard: copied %d bytes of text from the host",
+                static_cast<int>(textUtf8.size()));
+}
+
+void ClipboardHelperClient::copyFromHost()
+{
+    if (!m_HelperReady || !isRunning()) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Clipboard: cannot copy from the host, the clipboard helper is not running");
+        return;
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Clipboard: copying from the host");
+    writeLine(ClipboardIpc::encodeCopyFromHost(nextSequence()));
+}
+
+void ClipboardHelperClient::pasteToHost()
+{
+    // Read the text here when this process is the one allowed to, and in any case
+    // keep a copy to type if the host turns out not to take a clipboard at all.
+    QByteArray text;
+    if (SDL_HasClipboardText()) {
+        char* sdlText = SDL_GetClipboardText();
+        if (sdlText != nullptr) {
+            text = QByteArray(sdlText);
+            SDL_free(sdlText);
+        }
+    }
+
+    m_PasteAction = PasteAction::None;
+    m_PasteSequence = 0;
+    m_PasteFrameFailed = false;
+    m_PasteText = text;
+
+    const bool ownsText = mainProcessOwnsLocalText();
+    if (m_HostRejectedClipboard || !m_HelperReady || !isRunning() ||
+            (ownsText && text.size() > ClipboardIpc::MAX_TEXT_BYTES)) {
+        finishPaste(false, false, m_HostRejectedClipboard
+                    ? QStringLiteral("the host has no clipboard channel")
+                    : QStringLiteral("the clipboard helper cannot take it"));
+        return;
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Clipboard: pasting to the host");
+    m_PasteSequence = nextSequence();
+    m_PasteDeadlineTicks = SDL_GetTicks() + PASTE_ANSWER_TIMEOUT_MS;
+    // Without text the helper looks at the clipboard itself, which is where an image
+    // comes from on platforms that let a background process read it.
+    if (!writeLine(ClipboardIpc::encodePasteToHost(m_PasteSequence,
+                                                   ownsText && !text.isEmpty() ? &text : nullptr))) {
+        m_PasteSequence = 0;
+        finishPaste(false, false, QStringLiteral("the clipboard helper stopped"));
+    }
+}
+
+void ClipboardHelperClient::finishPaste(bool ok, bool outOfBand, const QString& detail)
+{
+    m_PasteSequence = 0;
+
+    if (ok) {
+        m_PasteAction = PasteAction::SendPasteChord;
+        m_PasteActionTicks = SDL_GetTicks() + (outOfBand ? PASTE_SETTLE_OUT_OF_BAND_MS : PASTE_SETTLE_MS);
+        return;
+    }
+
+    if (!m_PasteText.isEmpty()) {
+        // What a paste was before hosts had a clipboard channel, and still the only
+        // way into a stock Sunshine or GeForce Experience host.
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Clipboard: %s; typing the text instead",
+                    detail.toUtf8().constData());
+        m_PasteAction = PasteAction::TypeText;
+        m_PasteActionTicks = SDL_GetTicks();
+        return;
+    }
+
+    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                "Clipboard: nothing pasted to the host: %s",
+                detail.toUtf8().constData());
+}
+
+void ClipboardHelperClient::checkPasteTimeout()
+{
+    if (m_PasteSequence != 0 && SDL_TICKS_PASSED(SDL_GetTicks(), m_PasteDeadlineTicks)) {
+        finishPaste(false, false, QStringLiteral("the clipboard helper did not answer"));
+    }
+}
+
+ClipboardHelperClient::PasteAction ClipboardHelperClient::takePasteAction(QByteArray& outText)
+{
+    if (m_PasteAction == PasteAction::None || !SDL_TICKS_PASSED(SDL_GetTicks(), m_PasteActionTicks)) {
+        return PasteAction::None;
+    }
+
+    const PasteAction action = m_PasteAction;
+    m_PasteAction = PasteAction::None;
+    if (action == PasteAction::TypeText) {
+        outText = m_PasteText;
+    }
+    m_PasteText.clear();
+    return action;
+}
+
+bool ClipboardHelperClient::hasPendingWork() const
+{
+    return m_PasteSequence != 0 || m_PasteAction != PasteAction::None;
 }
 
 void ClipboardHelperClient::scheduleRestart(const char* reason)
@@ -271,6 +431,8 @@ bool ClipboardHelperClient::sendCurrentConfig()
         config.clientCertPem = identity->getCertificate();
         config.clientKeyPem = identity->getPrivateKey();
     }
+    config.manual = m_ShortcutMode;
+    config.delegateText = mainProcessOwnsLocalText();
 
     if (config.address.isEmpty() || config.httpsPort == 0 ||
             config.serverCertPem.isEmpty() ||
@@ -410,6 +572,36 @@ void ClipboardHelperClient::processProtocolLine(const QByteArray& line)
                          "LiSendClipboardData(helper, %d bytes) -> %d",
                          static_cast<int>(message.frame.size()),
                          rc);
+            // The frame of a paste comes just before its result, so the result
+            // handler below knows not to press Ctrl+V on a clipboard that never left.
+            m_PasteFrameFailed = true;
+            if (rc == -2) { // no clipboard packet type on this control stream generation
+                m_HostRejectedClipboard = true;
+                if (!m_LoggedHostRejection) {
+                    m_LoggedHostRejection = true;
+                    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                                "This host has no clipboard channel; pasting will type text instead");
+                }
+            }
+        }
+        return;
+    }
+
+    if (message.type == ClipboardIpc::MessageType::SetLocalText) {
+        setLocalText(message.clipboardText);
+        return;
+    }
+
+    if (message.type == ClipboardIpc::MessageType::PasteResult) {
+        if (message.sequence != m_PasteSequence || m_PasteSequence == 0) {
+            // An older paste that a newer one replaced.
+            return;
+        }
+        if (message.ok && m_PasteFrameFailed) {
+            finishPaste(false, false, QStringLiteral("the host did not take the clipboard"));
+        }
+        else {
+            finishPaste(message.ok, message.outOfBand, message.text);
         }
         return;
     }

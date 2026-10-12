@@ -956,6 +956,23 @@ Column {
                 }
 
                 HardCheckBox {
+                    id: clipboardShortcutsCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Copy and paste between this device and the host with Ctrl+Shift+C and Ctrl+Shift+V")
+                    font.pointSize:  12
+                    checked: StreamingPreferences.clipboardShortcuts
+                    onCheckedChanged: {
+                        StreamingPreferences.clipboardShortcuts = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Ctrl+Shift+C copies on the host and brings the result to this device. Ctrl+Shift+V pastes this device's clipboard on the host. Ctrl+C and Ctrl+V stay on the host. When unchecked, the two clipboards are kept the same automatically instead, where the desktop allows it. Changes apply to the next stream.")
+                }
+
+                HardCheckBox {
                     id: swapWinAltKeysCheck
                     hoverEnabled: true
                     width: parent.width

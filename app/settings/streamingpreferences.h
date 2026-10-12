@@ -225,6 +225,7 @@ public:
     Q_PROPERTY(WindowMode recommendedFullScreenMode MEMBER recommendedFullScreenMode CONSTANT)
     Q_PROPERTY(UIDisplayMode uiDisplayMode MEMBER uiDisplayMode NOTIFY uiDisplayModeChanged)
     Q_PROPERTY(bool swapMouseButtons MEMBER swapMouseButtons NOTIFY mouseButtonsChanged)
+    Q_PROPERTY(bool clipboardShortcuts MEMBER clipboardShortcuts NOTIFY clipboardShortcutsChanged)
     Q_PROPERTY(bool swapWinAltKeys MEMBER swapWinAltKeys NOTIFY swapWinAltKeysChanged)
     Q_PROPERTY(bool muteOnFocusLoss MEMBER muteOnFocusLoss NOTIFY muteOnFocusLossChanged)
     Q_PROPERTY(bool backgroundGamepad MEMBER backgroundGamepad NOTIFY backgroundGamepadChanged)
@@ -294,6 +295,9 @@ public:
     bool detectNetworkBlocking;
     bool showPerformanceOverlay;
     bool swapMouseButtons;
+    // True: the clipboard only crosses on Ctrl+Shift+C and Ctrl+Shift+V.
+    // False: every clipboard change is shared with the host as it happens.
+    bool clipboardShortcuts;
     bool swapWinAltKeys;
     bool muteOnFocusLoss;
     bool backgroundGamepad;
@@ -388,6 +392,7 @@ signals:
     void reverseScrollDirectionChanged();
     void swapFaceButtonsChanged();
     void captureSysKeysModeChanged();
+    void clipboardShortcutsChanged();
     void umbraSettingsChanged();
     void keepAwakeChanged();
     void languageChanged();

@@ -26,6 +26,7 @@ You can use it like a regular Moonlight client, or pair it with a Foundation Sun
 ### Protocol And Streaming
 
 - **Bidirectional clipboard sync**: supports text and PNG image sync between the client and Foundation Sunshine host, including common browser and native clipboard formats.
+- **Copy and paste across machines on request**: `Ctrl+Shift+C` copies on the host and brings the result to the client, `Ctrl+Shift+V` pastes the client's clipboard on the host, and `Ctrl+C` / `Ctrl+V` stay on the host. This is the default; the setting under Input switches back to keeping both clipboards the same automatically.
 - **High-quality microphone forwarding**: uses the microphone extension in `moonlight-common-c` for continuous audio input and multichannel scenarios.
 - **Remote resolution decoupling**: stream resolution can be independent from the local display resolution, with custom remote resolution and frame-rate controls.
 - **AppView display control**: supports target display selection, virtual display groups, remote resolution, and remote frame-rate preferences so the client and Foundation Sunshine share the same display intent.

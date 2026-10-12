@@ -48,6 +48,10 @@ umbra
    decoder line in it says whether video is being decoded in hardware.
 3. With the stream full-screen, `Ctrl+Alt+Shift+Tab` minimizes it and
    `Ctrl+Alt+Shift+Q` disconnects.
+4. `Ctrl+Shift+C` copies on the host and brings what was copied to this machine;
+   `Ctrl+Shift+V` pastes this machine's clipboard on the host. `Ctrl+C` and
+   `Ctrl+V` stay on the host. Text crosses on every desktop. On Wayland an image
+   only crosses from the host to here, and only where XWayland is running.
 
 The shortcuts reach Umbra because a full-screen stream captures system keys.
 GNOME asks once whether Umbra may do that; say yes. In a window the desktop

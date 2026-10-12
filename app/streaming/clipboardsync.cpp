@@ -14,6 +14,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRegularExpression>
+#include <QScopeGuard>
 #include <QSslConfiguration>
 #include <QSslError>
 #include <QTimer>
@@ -81,6 +82,7 @@ ClipboardSync::ClipboardSync(const ClipboardSyncHostContext& hostContext, QObjec
       m_HostContext(hostContext)
 {
     qRegisterMetaType<QByteArray>("QByteArray");
+    m_Clock.start();
 }
 
 ClipboardSync::~ClipboardSync()
@@ -91,6 +93,96 @@ ClipboardSync::~ClipboardSync()
 void ClipboardSync::setHostContext(const ClipboardSyncHostContext& hostContext)
 {
     m_HostContext = hostContext;
+}
+
+void ClipboardSync::setMode(Mode mode)
+{
+    if (m_Mode == mode) {
+        return;
+    }
+
+    m_Mode = mode;
+    m_CopyArmedUntil = -1;
+    ++m_CopyGeneration;
+    ClipboardLog::info("ClipboardSync: mode is now %s",
+                       mode == Mode::Manual ? "manual (on request)" : "automatic");
+}
+
+void ClipboardSync::setDelegateLocalText(bool delegate)
+{
+    m_DelegateLocalText = delegate;
+}
+
+void ClipboardSync::copyFromHost()
+{
+    if (!m_Active) {
+        return;
+    }
+
+    m_CopyArmedUntil = m_Clock.elapsed() + COPY_ARMED_MS;
+    const quint32 generation = ++m_CopyGeneration;
+    const quint32 framesBefore = m_HostFrameCount;
+
+    QTimer::singleShot(COPY_SETTLE_MS, this, [this, generation, framesBefore]() {
+        if (!m_Active || generation != m_CopyGeneration || m_CopyArmedUntil < 0) {
+            // Stopped, asked again, or the host already answered.
+            return;
+        }
+        if (framesBefore != m_HostFrameCount) {
+            return;
+        }
+        if (m_LatestHostFrame.isEmpty()) {
+            ClipboardLog::info("ClipboardSync: copy from host: the host has not sent its clipboard yet");
+            return;
+        }
+
+        // Stay armed: a slow copy on the host may still answer, and should win.
+        ClipboardLog::info("ClipboardSync: copy from host: using the clipboard the host last sent");
+        applyHostFrame(m_LatestHostFrame);
+    });
+}
+
+void ClipboardSync::pasteToHost(quint32 requestId, const QByteArray* textUtf8)
+{
+    auto finish = [this, requestId](bool ok, bool outOfBand, const QString& detail) {
+        emit pasteFinished(requestId, ok, outOfBand, detail);
+    };
+
+    if (!m_Active) {
+        finish(false, false, QStringLiteral("clipboard sync is not running"));
+        return;
+    }
+
+    auto done = [finish](bool ok, bool outOfBand) {
+        finish(ok, outOfBand, ok ? QString() : QStringLiteral("the clipboard could not be sent to the host"));
+    };
+
+    if (textUtf8 != nullptr) {
+        if (textUtf8->isEmpty()) {
+            finish(false, false, QStringLiteral("the local clipboard is empty"));
+            return;
+        }
+        sendLocalText(*textUtf8, true, done);
+        return;
+    }
+
+    QClipboard* cb = QGuiApplication::clipboard();
+    const QMimeData* mime = cb != nullptr ? cb->mimeData() : nullptr;
+
+    // Same order as an automatic change: the picture before any label beside it.
+    QByteArray png;
+    QString imageSourceDescription;
+    if (extractClipboardPng(mime, png, &imageSourceDescription)) {
+        sendClipboardPng(png, imageSourceDescription, true, done);
+        return;
+    }
+
+    const QByteArray utf8 = cb != nullptr ? cb->text().toUtf8() : QByteArray();
+    if (utf8.isEmpty()) {
+        finish(false, false, QStringLiteral("the local clipboard has no text or image"));
+        return;
+    }
+    sendLocalText(utf8, true, done);
 }
 
 void ClipboardSync::start()
@@ -210,6 +302,24 @@ void ClipboardSync::onIncomingFrame(QByteArray frame)
         return;
     }
 
+    if (m_Mode == Mode::Manual) {
+        // Remember it either way, so a later request has something to use.
+        m_LatestHostFrame = frame;
+        ++m_HostFrameCount;
+
+        if (m_CopyArmedUntil < 0 || m_Clock.elapsed() > m_CopyArmedUntil) {
+            m_CopyArmedUntil = -1;
+            return;
+        }
+        m_CopyArmedUntil = -1;
+        ClipboardLog::info("ClipboardSync: copy from host: received the host's clipboard");
+    }
+
+    applyHostFrame(frame);
+}
+
+void ClipboardSync::applyHostFrame(const QByteArray& frame)
+{
     uint8_t kind = 0;
     QByteArray payload;
     if (!decodeFrame(frame, kind, payload)) {
@@ -261,6 +371,12 @@ void ClipboardSync::applyInboundText(const QByteArray& payload)
 {
     if (payload.contains('\0')) {
         ClipboardLog::warn("ClipboardSync: dropping inbound text payload with embedded NUL");
+        return;
+    }
+
+    if (m_DelegateLocalText) {
+        recordHash(hashBytes(payload));
+        emit localTextRequested(payload);
         return;
     }
 
@@ -339,8 +455,16 @@ bool ClipboardSync::encodeImageAsPng(const QImage& image,
 }
 
 void ClipboardSync::sendClipboardPng(const QByteArray& png,
-                                     const QString& sourceDescription)
+                                     const QString& sourceDescription,
+                                     bool force,
+                                     const std::function<void(bool ok, bool outOfBand)>& done)
 {
+    auto report = [&done](bool ok, bool outOfBand) {
+        if (done) {
+            done(ok, outOfBand);
+        }
+    };
+
     const QByteArray sourceUtf8 = sourceDescription.isEmpty()
             ? QByteArrayLiteral("unknown source")
             : sourceDescription.toUtf8();
@@ -350,35 +474,96 @@ void ClipboardSync::sendClipboardPng(const QByteArray& png,
                     static_cast<long long>(png.size()),
                     sourceUtf8.constData(),
                     static_cast<long long>(MAX_BLOB_BYTES));
+        report(false, false);
         return;
     }
 
-    if (shouldTransferOutOfBand(png.size())) {
-        // Out-of-band path. Record the underlying PNG hash before
-        // upload so the echo we'll see when the host loops the REF
-        // back (and we fetch the same bytes) is suppressed.
-        uint64_t hash = hashBytes(png);
-        if (seenRecently(hash)) {
-            return;
-        }
-        recordHash(hash);
-        uploadAndSendRef(png, QStringLiteral("image/png"));
-        return;
-    }
-
+    // An explicit paste always goes: the echo cache only knows what crossed
+    // recently, not what the host's clipboard holds now.
     uint64_t hash = hashBytes(png);
-    if (seenRecently(hash)) {
+    if (!force && seenRecently(hash)) {
         return;
     }
     recordHash(hash);
 
-    QByteArray frame;
-    if (encodeFrame(KIND_PNG, png, frame)) {
-        ClipboardLog::debug("ClipboardSync: outbound PNG frame queued (%d bytes from %s)",
-                     static_cast<int>(frame.size()),
-                     sourceUtf8.constData());
-        emit outboundFrame(frame);
+    if (shouldTransferOutOfBand(png.size())) {
+        // Out-of-band path. The hash is recorded before the upload so the
+        // echo we'll see when the host loops the REF back (and we fetch the
+        // same bytes) is suppressed.
+        uploadAndSendRef(png, QStringLiteral("image/png"), [done](bool ok) {
+            if (done) {
+                done(ok, true);
+            }
+        });
+        return;
     }
+
+    QByteArray frame;
+    if (!encodeFrame(KIND_PNG, png, frame)) {
+        report(false, false);
+        return;
+    }
+
+    ClipboardLog::debug("ClipboardSync: outbound PNG frame queued (%d bytes from %s)",
+                 static_cast<int>(frame.size()),
+                 sourceUtf8.constData());
+    emit outboundFrame(frame);
+    report(true, false);
+}
+
+void ClipboardSync::sendLocalText(const QByteArray& utf8, bool force,
+                                  const std::function<void(bool ok, bool outOfBand)>& done)
+{
+    auto report = [&done](bool ok, bool outOfBand) {
+        if (done) {
+            done(ok, outOfBand);
+        }
+    };
+
+    if (utf8.isEmpty()) {
+        report(false, false);
+        return;
+    }
+
+    if (utf8.size() > MAX_BLOB_BYTES) {
+        ClipboardLog::info("ClipboardSync: text payload %lld B exceeds %lld B blob cap, dropping",
+                    static_cast<long long>(utf8.size()),
+                    static_cast<long long>(MAX_BLOB_BYTES));
+        report(false, false);
+        return;
+    }
+
+    uint64_t hash = hashBytes(utf8);
+    if (!force && seenRecently(hash)) {
+        // This change was the echo of a payload the host just pushed to us.
+        return;
+    }
+    recordHash(hash);
+
+    if (shouldTransferOutOfBand(utf8.size())) {
+        ClipboardLog::debug("ClipboardSync: uploading outbound text blob (%lld bytes)",
+                     static_cast<long long>(utf8.size()));
+        // Sunshine's blob endpoint intentionally accepts only a bare
+        // RFC 6838 type/subtype without parameters. KIND_TEXT already
+        // defines the blob bytes as UTF-8.
+        uploadAndSendRef(utf8, QStringLiteral("text/plain"), [done](bool ok) {
+            if (done) {
+                done(ok, true);
+            }
+        });
+        return;
+    }
+
+    QByteArray frame;
+    if (!encodeFrame(KIND_TEXT, utf8, frame)) {
+        report(false, false);
+        return;
+    }
+
+    ClipboardLog::debug("ClipboardSync: outbound text frame queued (%d bytes)",
+                 static_cast<int>(frame.size()));
+    emit outboundFrame(frame);
+    report(true, false);
 }
 
 bool ClipboardSync::tryExtractImageBytes(const QMimeData* mime,
@@ -617,6 +802,11 @@ void ClipboardSync::onLocalClipboardChanged()
         return;
     }
 
+    if (m_Mode == Mode::Manual) {
+        // Nothing leaves this machine until pasteToHost() asks.
+        return;
+    }
+
     QClipboard* cb = QGuiApplication::clipboard();
     if (cb == nullptr) {
         return;
@@ -658,43 +848,7 @@ void ClipboardSync::onLocalClipboardChanged()
         return;
     }
 
-    QByteArray utf8 = text.toUtf8();
-    if (utf8.isEmpty()) {
-        return;
-    }
-
-    if (utf8.size() > MAX_BLOB_BYTES) {
-        ClipboardLog::info("ClipboardSync: text payload %lld B exceeds %lld B blob cap, dropping",
-                    static_cast<long long>(utf8.size()),
-                    static_cast<long long>(MAX_BLOB_BYTES));
-        return;
-    }
-
-    uint64_t hash = hashBytes(utf8);
-    if (seenRecently(hash)) {
-        // This change was the echo of a payload the host just pushed to us.
-        return;
-    }
-    recordHash(hash);
-
-    if (shouldTransferOutOfBand(utf8.size())) {
-        ClipboardLog::debug("ClipboardSync: uploading outbound text blob (%lld bytes)",
-                     static_cast<long long>(utf8.size()));
-        // Sunshine's blob endpoint intentionally accepts only a bare
-        // RFC 6838 type/subtype without parameters. KIND_TEXT already
-        // defines the blob bytes as UTF-8.
-        uploadAndSendRef(utf8, QStringLiteral("text/plain"));
-        return;
-    }
-
-    QByteArray frame;
-    if (!encodeFrame(KIND_TEXT, utf8, frame)) {
-        return;
-    }
-
-    ClipboardLog::debug("ClipboardSync: outbound text frame queued (%d bytes)",
-                 static_cast<int>(frame.size()));
-    emit outboundFrame(frame);
+    sendLocalText(text.toUtf8(), false);
 }
 
 bool ClipboardSync::encodeFrame(uint8_t kind, const QByteArray& payload, QByteArray& outFrame) const
@@ -825,11 +979,15 @@ bool ClipboardSync::buildBlobUrl(const QString& tail, QUrl& outUrl) const
     return outUrl.isValid();
 }
 
-void ClipboardSync::uploadAndSendRef(const QByteArray& payload, const QString& mime)
+void ClipboardSync::uploadAndSendRef(const QByteArray& payload, const QString& mime,
+                                     const std::function<void(bool ok)>& done)
 {
     QUrl url;
     if (!buildBlobUrl(QStringLiteral("/blob"), url)) {
         ClipboardLog::warn("ClipboardSync: cannot upload blob (no host context)");
+        if (done) {
+            done(false);
+        }
         return;
     }
 
@@ -846,8 +1004,15 @@ void ClipboardSync::uploadAndSendRef(const QByteArray& payload, const QString& m
     req.setSslConfiguration(sslConfig);
 
     QNetworkReply* reply = nam()->post(req, payload);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, mime, payloadSize = payload.size()]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, mime, done, payloadSize = payload.size()]() {
         reply->deleteLater();
+        // Every way out below but the last is a failure.
+        bool sent = false;
+        auto report = qScopeGuard([&done, &sent]() {
+            if (done) {
+                done(sent);
+            }
+        });
         if (reply->error() != QNetworkReply::NoError) {
             ClipboardLog::warn("ClipboardSync: blob upload failed: %s",
                         reply->errorString().toUtf8().constData());
@@ -879,6 +1044,7 @@ void ClipboardSync::uploadAndSendRef(const QByteArray& payload, const QString& m
         ClipboardLog::debug("ClipboardSync: outbound REF frame queued (%d bytes)",
                      static_cast<int>(frame.size()));
         emit outboundFrame(frame);
+        sent = true;
     });
 }
 

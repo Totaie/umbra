@@ -45,6 +45,63 @@ void SdlInputHandler::sendHostShortcut(short keyCode)
     LiSendKeyboardEvent(VK_LCONTROL_LOCAL, KEY_ACTION_UP, 0);
 }
 
+void SdlInputHandler::sendHostCtrlChord(short keyCode)
+{
+    // The host believes every key in m_KeysDown is down, because we told it so.
+    static const short kInTheWay[] = { 0xA0, 0xA1,    // left and right Shift
+                                       0xA4, 0xA5,    // left and right Alt
+                                       0x5B, 0x5C };  // left and right Win
+    const bool ctrlHeld = m_KeysDown.contains(0xA2) || m_KeysDown.contains(0xA3);
+
+    QVector<short> lifted;
+    for (short vk : kInTheWay) {
+        if (m_KeysDown.contains(vk)) {
+            LiSendKeyboardEvent(vk, KEY_ACTION_UP, ctrlHeld ? MODIFIER_CTRL : 0);
+            lifted.append(vk);
+        }
+    }
+
+    if (!ctrlHeld) {
+        LiSendKeyboardEvent(VK_LCONTROL_LOCAL, KEY_ACTION_DOWN, MODIFIER_CTRL);
+    }
+    LiSendKeyboardEvent(keyCode, KEY_ACTION_DOWN, MODIFIER_CTRL);
+    LiSendKeyboardEvent(keyCode, KEY_ACTION_UP, MODIFIER_CTRL);
+    if (!ctrlHeld) {
+        LiSendKeyboardEvent(VK_LCONTROL_LOCAL, KEY_ACTION_UP, 0);
+    }
+
+    // Back down, so that the host agrees with the keyboard again and the release
+    // that is still to come is the release of a key the host knows about.
+    char modifiers = ctrlHeld ? MODIFIER_CTRL : 0;
+    for (short vk : std::as_const(lifted)) {
+        if (vk == 0xA0 || vk == 0xA1) {
+            modifiers |= MODIFIER_SHIFT;
+        }
+        else if (vk == 0xA4 || vk == 0xA5) {
+            modifiers |= MODIFIER_ALT;
+        }
+        else {
+            modifiers |= MODIFIER_META;
+        }
+        LiSendKeyboardEvent(vk, KEY_ACTION_DOWN, modifiers);
+    }
+}
+
+void SdlInputHandler::typeTextOnHost(const QByteArray& textUtf8)
+{
+    // Force raise all keys to ensure that none of them interfere
+    // with the text we're going to type.
+    raiseAllKeys();
+
+    // Sending both CR and LF will lead to two newlines in the destination for
+    // each newline in the source, so we fix up any CRLFs into just a single LF.
+    QByteArray text = textUtf8;
+    text.replace("\r\n", "\n");
+
+    // Send this text to the PC
+    LiSendUtf8TextEvent(text.constData(), (unsigned int)text.size());
+}
+
 void SdlInputHandler::hideHostCursor()
 {
     // Sets rather than toggles, so asking twice is harmless and a reconnect can't
@@ -207,24 +264,9 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
         SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                     "Detected type clipboard text combo");
 
-        // Force raise all keys to ensure that none of them interfere
-        // with the text we're going to type.
-        raiseAllKeys();
-
         char* text;
         if (SDL_HasClipboardText() && (text = SDL_GetClipboardText()) != nullptr) {
-            // Sending both CR and LF will lead to two newlines in the destination for
-            // each newline in the source, so we fix up any CRLFs into just a single LF.
-            for (char* c = text; *c != 0; c++) {
-                if (*c == '\r' && *(c + 1) == '\n') {
-                    // We're using strlen() rather than strlen() - 1 since we need to add 1
-                    // to copy the null terminator which is not included in strlen()'s count.
-                    memmove(c, c + 1, strlen(c));
-                }
-            }
-
-            // Send this text to the PC
-            LiSendUtf8TextEvent(text, (unsigned int)strlen(text));
+            typeTextOnHost(QByteArray(text));
 
             // SDL_GetClipboardText() allocates, so we must free
             SDL_free((void*)text);
@@ -306,6 +348,28 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
             event->keysym.sym == SDLK_d) {
         cycleHostDisplay();
         return;
+    }
+
+    // Ctrl+Shift+C and Ctrl+Shift+V copy and paste between this machine and the host;
+    // Ctrl+C and Ctrl+V are left alone and stay on the host. Like Ctrl+Shift+D, the
+    // host never sees these two itself. The letter is matched as printed on the key,
+    // and by position on a layout that has no such letter.
+    if ((event->state == SDL_PRESSED) &&
+            (event->keysym.mod & KMOD_CTRL) &&
+            (event->keysym.mod & KMOD_SHIFT) &&
+            !(event->keysym.mod & (KMOD_ALT | KMOD_GUI))) {
+        const bool latin = event->keysym.sym >= SDLK_a && event->keysym.sym <= SDLK_z;
+        const bool isCopy = event->keysym.sym == SDLK_c ||
+                (!latin && event->keysym.scancode == SDL_SCANCODE_C);
+        const bool isPaste = event->keysym.sym == SDLK_v ||
+                (!latin && event->keysym.scancode == SDL_SCANCODE_V);
+
+        if (isCopy && Session::get()->clipboardCopyFromHost()) {
+            return;
+        }
+        if (isPaste && Session::get()->clipboardPasteToHost()) {
+            return;
+        }
     }
 
     // Check for our special key combos

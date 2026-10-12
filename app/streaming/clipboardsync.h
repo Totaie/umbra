@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QByteArray>
+#include <QElapsedTimer>
 #include <QMutex>
 #include <QPair>
 #include <QQueue>
@@ -10,6 +11,7 @@
 #include <QString>
 #include <QStringList>
 #include <cstdint>
+#include <functional>
 
 class QImage;
 class QMimeData;
@@ -47,6 +49,11 @@ struct ClipboardSyncHostContext
 // notifications for the same content are dropped, mirroring the Sunshine
 // GUI agent's logic so the two ends don't ping-pong.
 //
+// Modes: Automatic shares every clipboard change in both directions as it happens.
+// Manual shares nothing by itself; the host's clipboard is only remembered, and
+// crosses when copyFromHost() or pasteToHost() asks. That is what lets Ctrl+C and
+// Ctrl+V stay on the host while Ctrl+Shift+C and Ctrl+Shift+V cross between machines.
+//
 // Threading:
 //   * Construct on the GUI thread.
 //   * start() / stop() must run on the GUI thread.
@@ -62,6 +69,18 @@ public:
         KIND_PNG  = 2,
         KIND_REF  = 3,
     };
+
+    enum class Mode {
+        Automatic,
+        Manual,
+    };
+
+    // How long copyFromHost() keeps accepting the host's answer, and how long it
+    // waits for one before using what the host last reported. The host stays quiet
+    // when the same thing is copied twice within its echo window, so no answer does
+    // not mean nothing was copied.
+    static constexpr int COPY_ARMED_MS  = 5000;
+    static constexpr int COPY_SETTLE_MS = 400;
 
     static constexpr uint8_t WIRE_VERSION = 1;
     static constexpr int     MAX_PAYLOAD  = 65535 - 10; // wire frame must fit u16 length
@@ -88,6 +107,23 @@ public:
 
     void setHostContext(const ClipboardSyncHostContext& hostContext);
 
+    void setMode(Mode mode);
+    Mode mode() const { return m_Mode; }
+
+    // When set, text for the local clipboard is handed to localTextRequested()
+    // instead of being written here. A background process on Wayland is not allowed
+    // to touch the clipboard; the window with keyboard focus is.
+    void setDelegateLocalText(bool delegate);
+
+    // Manual mode: put the host's clipboard on the local one. Applies the next
+    // payload the host sends, or failing that the last one it sent.
+    void copyFromHost();
+
+    // Manual mode: send the local clipboard to the host, whether or not it changed.
+    // `textUtf8` is the local text when the caller already read it; nullptr reads
+    // the clipboard here (image first, then text). Answered by pasteFinished().
+    void pasteToHost(quint32 requestId, const QByteArray* textUtf8);
+
     // Start watching the local clipboard and accepting inbound payloads.
     // Must be called on the GUI thread.
     void start();
@@ -104,6 +140,13 @@ signals:
     // owner decides how to deliver the frame, which lets the clipboard engine
     // run in a helper process without direct access to the Limelight session.
     void outboundFrame(QByteArray frame);
+
+    // Only with setDelegateLocalText(true): put this UTF-8 text on the clipboard.
+    void localTextRequested(QByteArray textUtf8);
+
+    // The answer to pasteToHost(). `ok` means the payload is on its way; with
+    // `outOfBand` the host still has to fetch it, so pasting has to wait longer.
+    void pasteFinished(quint32 requestId, bool ok, bool outOfBand, QString detail);
 
 private slots:
 #ifdef Q_OS_MACOS
@@ -125,6 +168,10 @@ private slots:
     void onIncomingFrame(QByteArray frame);
 
 private:
+    void applyHostFrame(const QByteArray& frame);
+    void sendLocalText(const QByteArray& utf8, bool force,
+                       const std::function<void(bool ok, bool outOfBand)>& done = {});
+
     bool encodeFrame(uint8_t kind, const QByteArray& payload, QByteArray& outFrame) const;
     bool decodeFrame(const QByteArray& frame,
                      uint8_t& outKind,
@@ -140,7 +187,9 @@ private:
                           QByteArray& outPng,
                           const char* sourceDescription) const;
     void sendClipboardPng(const QByteArray& png,
-                          const QString& sourceDescription);
+                          const QString& sourceDescription,
+                          bool force = false,
+                          const std::function<void(bool ok, bool outOfBand)>& done = {});
     bool extractClipboardPng(const QMimeData* mime,
                              QByteArray& outPng,
                              QString* outSourceDescription = nullptr) const;
@@ -159,7 +208,8 @@ private:
     // QNetworkAccessManager event-loop callbacks land back on the GUI thread.
     bool buildBlobUrl(const QString& tail, QUrl& outUrl) const;
     QNetworkAccessManager* nam();
-    void uploadAndSendRef(const QByteArray& payload, const QString& mime);
+    void uploadAndSendRef(const QByteArray& payload, const QString& mime,
+                          const std::function<void(bool ok)>& done = {});
     void fetchRefAndApply(const QString& id, const QString& mime, qint64 advertisedSize);
     void applyInboundText(const QByteArray& payload);
     void applyInboundPng(const QByteArray& payload);
@@ -168,6 +218,15 @@ private:
     QNetworkAccessManager* m_Nam = nullptr;
 
     bool m_Active = false;
+    Mode m_Mode = Mode::Automatic;
+    bool m_DelegateLocalText = false;
+
+    // Manual mode. The last frame the host sent is its clipboard as far as we know.
+    QByteArray m_LatestHostFrame;
+    quint32 m_HostFrameCount = 0;
+    QElapsedTimer m_Clock;
+    qint64 m_CopyArmedUntil = -1;
+    quint32 m_CopyGeneration = 0;
     QQueue<QPair<uint64_t, qint64>> m_EchoCache; // (hash, timestamp_ms)
 
 #ifdef Q_OS_MACOS
