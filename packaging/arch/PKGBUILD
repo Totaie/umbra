@@ -1,0 +1,74 @@
+# Maintainer: Totaie <https://github.com/Totaie>
+#
+# Builds Umbra from the checkout this file lives in instead of downloading a
+# tarball. The tree needs its submodules, and the version comes from
+# app/version.txt, the same file the Windows installer is versioned from - so the
+# two can never disagree about what a release is called.
+#
+#   cd packaging/arch && makepkg -si
+#
+# You only need this to build by hand. Published builds come from the pacman
+# repository that .github/workflows/arch-package.yml maintains; see the notes on
+# https://github.com/Totaie/umbra/releases/tag/arch for the two lines to add to
+# /etc/pacman.conf, after which `pacman -Syu` keeps Umbra current.
+
+_root=$(realpath "$(dirname "${BASH_SOURCE[0]}")/../..")
+
+pkgname=umbra
+pkgver=$(tr -d '[:space:]' < "$_root/app/version.txt")
+# Bump this to republish the same Umbra version, which is what a rebuild against
+# a new FFmpeg or libplacebo soname in Arch needs. Reset it to 1 on a new pkgver.
+pkgrel=1
+pkgdesc='Remote desktop and game streaming client for Umbra Host and Sunshine'
+arch=('x86_64')
+url='https://github.com/Totaie/umbra'
+license=('GPL-3.0-or-later')
+depends=(
+    'ffmpeg'
+    'hicolor-icon-theme'
+    'libdrm'
+    'libglvnd'
+    'libplacebo'
+    'libva'
+    'libvdpau'
+    'libx11'
+    'openssl'
+    'opus'
+    'qt6-base'
+    'qt6-declarative'
+    'qt6-multimedia'
+    'qt6-svg'
+    'sdl2-compat'
+    'sdl2_ttf'
+    'wayland'
+)
+makedepends=(
+    'python'
+    'vulkan-headers'
+)
+optdepends=(
+    'libva-mesa-driver: hardware decoding on AMD and Intel (Mesa)'
+    'intel-media-driver: hardware decoding on recent Intel graphics'
+    'libva-nvidia-driver: hardware decoding on NVIDIA through VA-API'
+)
+# globaldefs.pri forces debug info on so Windows gets PDBs. Here that would
+# publish a second, much larger umbra-debug package to the repository.
+options=('!debug')
+
+build() {
+    # Out of tree, so the checkout is left exactly as it was found.
+    mkdir -p "$srcdir/build"
+    cd "$srcdir/build"
+
+    # Without this derive-version.py asks `git describe`, which on this fork
+    # finds upstream Moonlight's tags and reports something like 6.1.0+814.
+    export CI_VERSION=$pkgver
+
+    qmake6 PREFIX=/usr "$_root/umbra.pro"
+    make release
+}
+
+package() {
+    cd "$srcdir/build"
+    make INSTALL_ROOT="$pkgdir" install
+}
