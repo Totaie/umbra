@@ -16,4 +16,5 @@ SOURCES += \
 HEADERS += \
     ../../app/streaming/clipboardipc.h \
     ../../app/streaming/clipboardlogging.h \
-    ../../app/streaming/clipboardsync.h
+    ../../app/streaming/clipboardsync.h \
+    testhostidentity.h

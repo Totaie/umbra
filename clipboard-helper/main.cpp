@@ -119,6 +119,7 @@ private:
         ClipboardSyncHostContext context;
         context.address = config.address;
         context.httpsPort = config.httpsPort;
+        context.actionsApi = config.actionsApi;
         context.serverCertificate = QSslCertificate(config.serverCertPem);
         context.clientCertificate = QSslCertificate(config.clientCertPem);
         context.clientPrivateKey = QSslKey(config.clientKeyPem, QSsl::Rsa);

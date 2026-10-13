@@ -37,6 +37,9 @@ struct HostConfig {
     // True when the helper cannot reach the local clipboard for text (a background
     // process on Wayland), so the main process reads and writes it instead.
     bool delegateText = false;
+    // True for hosts whose clipboard is reached over HTTPS (/actions/clipboard, text
+    // only) instead of through clipboard frames on the control stream.
+    bool actionsApi = false;
 };
 
 struct Message {

@@ -15,6 +15,7 @@
 #include <QNetworkRequest>
 #include <QRegularExpression>
 #include <QScopeGuard>
+#include <QSharedPointer>
 #include <QSslConfiguration>
 #include <QSslError>
 #include <QTimer>
@@ -22,6 +23,7 @@
 #include <QtEndian>
 
 #include <cstring>
+#include <iterator>
 
 #ifdef Q_OS_MACOS
 extern "C" int ClipboardHelperPasteboardChangeCount();
@@ -119,6 +121,11 @@ void ClipboardSync::copyFromHost()
         return;
     }
 
+    if (m_HostContext.actionsApi) {
+        copyFromHostOverActions();
+        return;
+    }
+
     m_CopyArmedUntil = m_Clock.elapsed() + COPY_ARMED_MS;
     const quint32 generation = ++m_CopyGeneration;
     const quint32 framesBefore = m_HostFrameCount;
@@ -142,6 +149,126 @@ void ClipboardSync::copyFromHost()
     });
 }
 
+void ClipboardSync::copyFromHostOverActions()
+{
+    QUrl url;
+    if (!buildHostUrl(QStringLiteral("/actions/clipboard?type=text"), url)) {
+        ClipboardLog::warn("ClipboardSync: copy from host: no host to ask");
+        return;
+    }
+
+    const quint32 generation = ++m_CopyGeneration;
+    // What this request has already put on the clipboard, shared by its attempts.
+    auto applied = QSharedPointer<QByteArray>::create();
+    auto appliedAny = QSharedPointer<bool>::create(false);
+    const int lastDelay = ACTIONS_COPY_DELAYS_MS[std::size(ACTIONS_COPY_DELAYS_MS) - 1];
+
+    for (int delay : ACTIONS_COPY_DELAYS_MS) {
+        QTimer::singleShot(delay, this, [this, url, generation, applied, appliedAny, delay, lastDelay]() {
+            if (!m_Active || generation != m_CopyGeneration) {
+                return;
+            }
+
+            QNetworkReply* reply = nam()->get(hostRequest(url));
+            connect(reply, &QNetworkReply::finished, this, [this, reply, generation, applied, appliedAny, delay, lastDelay]() {
+                reply->deleteLater();
+                if (!m_Active || generation != m_CopyGeneration) {
+                    return;
+                }
+
+                const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+                if (reply->error() != QNetworkReply::NoError) {
+                    // Each attempt would fail the same way; say it once.
+                    if (delay == lastDelay) {
+                        if (status == 401) {
+                            ClipboardLog::warn("ClipboardSync: copy from host: the host does not let this device read its clipboard (device permissions in the host's web UI)");
+                        }
+                        else {
+                            ClipboardLog::warn("ClipboardSync: copy from host failed: %s",
+                                               reply->errorString().toUtf8().constData());
+                        }
+                    }
+                    return;
+                }
+
+                QByteArray text = reply->readAll();
+#ifndef Q_OS_WIN
+                // A Windows host hands over CRLF line ends, which nothing here wants.
+                text.replace("\r\n", "\n");
+#endif
+                if (text.isEmpty()) {
+                    if (delay == lastDelay && !*appliedAny) {
+                        ClipboardLog::info("ClipboardSync: copy from host: the host's clipboard has no text");
+                    }
+                    return;
+                }
+                if (*appliedAny && text == *applied) {
+                    return;
+                }
+
+                *applied = text;
+                *appliedAny = true;
+                ClipboardLog::info("ClipboardSync: copy from host: received %d bytes of text",
+                                   static_cast<int>(text.size()));
+                applyInboundText(text);
+            });
+        });
+    }
+}
+
+void ClipboardSync::pasteToHostOverActions(quint32 requestId, const QByteArray* textUtf8)
+{
+    auto finish = [this, requestId](bool ok, const QString& detail) {
+        emit pasteFinished(requestId, ok, false, detail);
+    };
+
+    QByteArray utf8;
+    if (textUtf8 != nullptr) {
+        utf8 = *textUtf8;
+    }
+    else {
+        QClipboard* cb = QGuiApplication::clipboard();
+        utf8 = cb != nullptr ? cb->text().toUtf8() : QByteArray();
+    }
+    if (utf8.isEmpty()) {
+        // Whatever else is on the clipboard, an image say, this host cannot take.
+        finish(false, QStringLiteral("the local clipboard has no text, and this host takes text only"));
+        return;
+    }
+
+    QUrl url;
+    if (!buildHostUrl(QStringLiteral("/actions/clipboard?type=text"), url)) {
+        finish(false, QStringLiteral("no host to send the clipboard to"));
+        return;
+    }
+
+    QNetworkRequest req = hostRequest(url);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("text/plain; charset=utf-8"));
+
+    QNetworkReply* reply = nam()->post(req, utf8);
+    connect(reply, &QNetworkReply::finished, this, [reply, finish, size = utf8.size()]() {
+        reply->deleteLater();
+        if (reply->error() == QNetworkReply::NoError) {
+            // The host sets its clipboard before it answers, so this is on it now.
+            ClipboardLog::info("ClipboardSync: paste to host: sent %d bytes of text",
+                               static_cast<int>(size));
+            finish(true, QString());
+            return;
+        }
+
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status == 401) {
+            finish(false, QStringLiteral("the host does not let this device set its clipboard (device permissions in the host's web UI)"));
+        }
+        else if (status == 403) {
+            finish(false, QStringLiteral("the host does not see this device as streaming"));
+        }
+        else {
+            finish(false, QStringLiteral("the host did not take the clipboard: %1").arg(reply->errorString()));
+        }
+    });
+}
+
 void ClipboardSync::pasteToHost(quint32 requestId, const QByteArray* textUtf8)
 {
     auto finish = [this, requestId](bool ok, bool outOfBand, const QString& detail) {
@@ -150,6 +277,11 @@ void ClipboardSync::pasteToHost(quint32 requestId, const QByteArray* textUtf8)
 
     if (!m_Active) {
         finish(false, false, QStringLiteral("clipboard sync is not running"));
+        return;
+    }
+
+    if (m_HostContext.actionsApi) {
+        pasteToHostOverActions(requestId, textUtf8);
         return;
     }
 
@@ -964,7 +1096,7 @@ QNetworkAccessManager* ClipboardSync::nam()
     return m_Nam;
 }
 
-bool ClipboardSync::buildBlobUrl(const QString& tail, QUrl& outUrl) const
+bool ClipboardSync::buildHostUrl(const QString& path, QUrl& outUrl) const
 {
     if (m_HostContext.address.isEmpty() ||
             m_HostContext.httpsPort == 0 ||
@@ -975,8 +1107,26 @@ bool ClipboardSync::buildBlobUrl(const QString& tail, QUrl& outUrl) const
     if (host.contains(':')) {
         host = QString("[%1]").arg(host); // bracketed IPv6
     }
-    outUrl = QUrl(QString("https://%1:%2/api/v1/clipboard%3").arg(host).arg(m_HostContext.httpsPort).arg(tail));
+    outUrl = QUrl(QString("https://%1:%2%3").arg(host).arg(m_HostContext.httpsPort).arg(path));
     return outUrl.isValid();
+}
+
+bool ClipboardSync::buildBlobUrl(const QString& tail, QUrl& outUrl) const
+{
+    return buildHostUrl(QStringLiteral("/api/v1/clipboard") + tail, outUrl);
+}
+
+QNetworkRequest ClipboardSync::hostRequest(const QUrl& url) const
+{
+    // The host only answers a paired device, which it knows by the client
+    // certificate; nam() in turn only accepts the host's pinned one.
+    QNetworkRequest req(url);
+    QSslConfiguration sslConfig(QSslConfiguration::defaultConfiguration());
+    sslConfig.setLocalCertificate(m_HostContext.clientCertificate);
+    sslConfig.setPrivateKey(m_HostContext.clientPrivateKey);
+    req.setSslConfiguration(sslConfig);
+    req.setTransferTimeout(ACTIONS_TIMEOUT_MS);
+    return req;
 }
 
 void ClipboardSync::uploadAndSendRef(const QByteArray& payload, const QString& mime,

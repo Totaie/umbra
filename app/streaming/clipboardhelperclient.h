@@ -65,6 +65,8 @@ private:
     // inline, and one the host has to fetch back from its own blob store first.
     static constexpr quint32 PASTE_SETTLE_MS = 250;
     static constexpr quint32 PASTE_SETTLE_OUT_OF_BAND_MS = 600;
+    // A host reached over its actions API has set its clipboard by the time it answers.
+    static constexpr quint32 PASTE_SETTLE_CONFIRMED_MS = 30;
     // Long enough to upload a large image over a slow link.
     static constexpr quint32 PASTE_ANSWER_TIMEOUT_MS = 15000;
 
@@ -84,6 +86,7 @@ private:
     bool writeLine(const QByteArray& line);
     quint32 nextSequence();
     static bool mainProcessOwnsLocalText();
+    bool hostUsesActionsApi() const;
     void setLocalText(const QByteArray& textUtf8);
     void finishPaste(bool ok, bool outOfBand, const QString& detail);
     void checkPasteTimeout();

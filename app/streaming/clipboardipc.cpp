@@ -115,6 +115,7 @@ QByteArray encodeConfigure(quint32 sequence, const HostConfig& config)
     obj.insert(QStringLiteral("host"), host);
     obj.insert(QStringLiteral("manual"), config.manual);
     obj.insert(QStringLiteral("delegateText"), config.delegateText);
+    obj.insert(QStringLiteral("actionsApi"), config.actionsApi);
     return encodeObject(obj);
 }
 
@@ -230,6 +231,7 @@ bool decodeLine(const QByteArray& line, Message& outMessage, QString& outError)
             readBase64Payload(host, QStringLiteral("clientKeyPem"), outMessage.config.clientKeyPem);
             outMessage.config.manual = obj.value(QStringLiteral("manual")).toBool(false);
             outMessage.config.delegateText = obj.value(QStringLiteral("delegateText")).toBool(false);
+            outMessage.config.actionsApi = obj.value(QStringLiteral("actionsApi")).toBool(false);
             return true;
         }
     case MessageType::HostFrame:

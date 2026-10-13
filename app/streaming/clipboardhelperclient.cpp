@@ -227,6 +227,14 @@ bool ClipboardHelperClient::mainProcessOwnsLocalText()
     return driver != nullptr && SDL_strcmp(driver, "wayland") == 0;
 }
 
+bool ClipboardHelperClient::hostUsesActionsApi() const
+{
+    // Umbra Host is built on Apollo, whose clipboard is an HTTPS call rather than the
+    // control stream frames a Foundation Sunshine host exchanges. It is the one host
+    // that names itself, so that is what there is to go by.
+    return m_Computer != nullptr && !m_Computer->hostVersion.isEmpty();
+}
+
 void ClipboardHelperClient::setLocalText(const QByteArray& textUtf8)
 {
     if (SDL_SetClipboardText(textUtf8.constData()) != 0) {
@@ -298,7 +306,9 @@ void ClipboardHelperClient::finishPaste(bool ok, bool outOfBand, const QString& 
 
     if (ok) {
         m_PasteAction = PasteAction::SendPasteChord;
-        m_PasteActionTicks = SDL_GetTicks() + (outOfBand ? PASTE_SETTLE_OUT_OF_BAND_MS : PASTE_SETTLE_MS);
+        m_PasteActionTicks = SDL_GetTicks() + (hostUsesActionsApi() ? PASTE_SETTLE_CONFIRMED_MS
+                                               : outOfBand ? PASTE_SETTLE_OUT_OF_BAND_MS
+                                                           : PASTE_SETTLE_MS);
         return;
     }
 
@@ -433,6 +443,7 @@ bool ClipboardHelperClient::sendCurrentConfig()
     }
     config.manual = m_ShortcutMode;
     config.delegateText = mainProcessOwnsLocalText();
+    config.actionsApi = hostUsesActionsApi();
 
     if (config.address.isEmpty() || config.httpsPort == 0 ||
             config.serverCertPem.isEmpty() ||

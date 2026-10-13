@@ -10,12 +10,14 @@
 #include <QSslKey>
 #include <QString>
 #include <QStringList>
+#include <QUrl>
 #include <cstdint>
 #include <functional>
 
 class QImage;
 class QMimeData;
 class QNetworkAccessManager;
+class QNetworkRequest;
 class QNetworkReply;
 class QSslError;
 class QTimer;
@@ -27,6 +29,11 @@ struct ClipboardSyncHostContext
     QSslCertificate serverCertificate;
     QSslCertificate clientCertificate;
     QSslKey clientPrivateKey;
+    // Apollo-derived hosts, Umbra Host among them, have no clipboard frames on the
+    // control stream. Their clipboard is read and set over HTTPS instead, with
+    // GET and POST /actions/clipboard?type=text, and it is text only. Nothing is
+    // pushed from such a host, so with one of them only the requests below work.
+    bool actionsApi = false;
 };
 
 // ClipboardSync owns the local clipboard state inside the clipboard helper
@@ -81,6 +88,12 @@ public:
     // not mean nothing was copied.
     static constexpr int COPY_ARMED_MS  = 5000;
     static constexpr int COPY_SETTLE_MS = 400;
+    // A host reached over the actions API is asked rather than listened to. These
+    // are the moments after copyFromHost() at which it is asked: once the keystroke
+    // has had time to land and be acted on, then again for an application that was
+    // slow about it. A later answer replaces an earlier one only if it differs.
+    static constexpr int ACTIONS_COPY_DELAYS_MS[] = { 150, 500, 1200 };
+    static constexpr int ACTIONS_TIMEOUT_MS = 5000;
 
     static constexpr uint8_t WIRE_VERSION = 1;
     static constexpr int     MAX_PAYLOAD  = 65535 - 10; // wire frame must fit u16 length
@@ -169,6 +182,10 @@ private slots:
 
 private:
     void applyHostFrame(const QByteArray& frame);
+    void copyFromHostOverActions();
+    void pasteToHostOverActions(quint32 requestId, const QByteArray* textUtf8);
+    bool buildHostUrl(const QString& path, QUrl& outUrl) const;
+    QNetworkRequest hostRequest(const QUrl& url) const;
     void sendLocalText(const QByteArray& utf8, bool force,
                        const std::function<void(bool ok, bool outOfBand)>& done = {});
 

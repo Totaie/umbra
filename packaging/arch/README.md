@@ -50,8 +50,10 @@ umbra
    `Ctrl+Alt+Shift+Q` disconnects.
 4. `Ctrl+Shift+C` copies on the host and brings what was copied to this machine;
    `Ctrl+Shift+V` pastes this machine's clipboard on the host. `Ctrl+C` and
-   `Ctrl+V` stay on the host. Text crosses on every desktop. On Wayland an image
-   only crosses from the host to here, and only where XWayland is running.
+   `Ctrl+V` stay on the host. Text crosses on every desktop and with every host
+   that has a clipboard at all. Umbra Host and Apollo take text only. A
+   Foundation Sunshine host takes images too, though on Wayland an image only
+   crosses from the host to here, and only where XWayland is running.
 
 The shortcuts reach Umbra because a full-screen stream captures system keys.
 GNOME asks once whether Umbra may do that; say yes. In a window the desktop

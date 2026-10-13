@@ -6,12 +6,16 @@
 
 #include "streaming/clipboardipc.h"
 #include "streaming/clipboardsync.h"
+#include "testhostidentity.h"
 
 #include <QClipboard>
 #include <QElapsedTimer>
 #include <QGuiApplication>
 #include <QImage>
 #include <QMimeData>
+#include <QSslConfiguration>
+#include <QSslServer>
+#include <QSslSocket>
 #include <QTextStream>
 #include <QtEndian>
 
@@ -243,6 +247,193 @@ void testPasteOfLargeTextWithoutHostFails()
             "large paste: the failed upload was not reported");
 }
 
+// A host whose clipboard is an HTTPS call: GET and POST /actions/clipboard?type=text,
+// as on Apollo and Umbra Host. Enough of HTTP for QNetworkAccessManager and no more.
+class FakeActionsHost : public QObject
+{
+public:
+    QByteArray clipboard;
+    int answerWith = 200;
+    int gets = 0;
+    QList<QByteArray> posts;
+
+    FakeActionsHost()
+    {
+        QSslConfiguration config = QSslConfiguration::defaultConfiguration();
+        config.setLocalCertificate(QSslCertificate(QByteArray(kTestHostCertPem)));
+        config.setPrivateKey(QSslKey(QByteArray(kTestHostKeyPem), QSsl::Rsa));
+        config.setPeerVerifyMode(QSslSocket::VerifyNone);
+        m_Server.setSslConfiguration(config);
+        m_Server.listen(QHostAddress::LocalHost);
+
+        connect(&m_Server, &QTcpServer::pendingConnectionAvailable, this, [this]() {
+            while (QTcpSocket* socket = m_Server.nextPendingConnection()) {
+                connect(socket, &QTcpSocket::readyRead, this, [this, socket]() { serve(socket); });
+                connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
+            }
+        });
+    }
+
+    ClipboardSyncHostContext context() const
+    {
+        ClipboardSyncHostContext context;
+        context.address = QStringLiteral("127.0.0.1");
+        context.httpsPort = m_Server.serverPort();
+        context.serverCertificate = QSslCertificate(QByteArray(kTestHostCertPem));
+        context.clientCertificate = context.serverCertificate;
+        context.clientPrivateKey = QSslKey(QByteArray(kTestHostKeyPem), QSsl::Rsa);
+        context.actionsApi = true;
+        return context;
+    }
+
+private:
+    void serve(QTcpSocket* socket)
+    {
+        QByteArray buffer = socket->property("buffer").toByteArray() + socket->readAll();
+        for (;;) {
+            const int headerEnd = buffer.indexOf("\r\n\r\n");
+            if (headerEnd < 0) {
+                break;
+            }
+            const QByteArray head = buffer.left(headerEnd);
+            int length = 0;
+            for (const QByteArray& line : head.split('\n')) {
+                if (line.toLower().startsWith("content-length:")) {
+                    length = line.mid(15).trimmed().toInt();
+                }
+            }
+            if (buffer.size() < headerEnd + 4 + length) {
+                break;
+            }
+            const QByteArray body = buffer.mid(headerEnd + 4, length);
+            buffer.remove(0, headerEnd + 4 + length);
+
+            QByteArray answer;
+            const bool rightPath = head.contains(" /actions/clipboard?type=text ");
+            int status = rightPath ? answerWith : 404;
+            if (status == 200 && head.startsWith("GET ")) {
+                gets++;
+                answer = clipboard;
+            }
+            else if (status == 200 && head.startsWith("POST ")) {
+                posts.append(body);
+                clipboard = body;
+            }
+            socket->write("HTTP/1.1 " + QByteArray::number(status) + " X\r\nContent-Length: " +
+                          QByteArray::number(answer.size()) + "\r\n\r\n" + answer);
+        }
+        socket->setProperty("buffer", buffer);
+    }
+
+    QSslServer m_Server;
+};
+
+void testActionsHostCopy()
+{
+    FakeActionsHost host;
+    ClipboardSync sync(host.context());
+    Capture seen(sync);
+    sync.setMode(ClipboardSync::Mode::Manual);
+    sync.start();
+    setLocalText(QStringLiteral("local"));
+
+    host.clipboard = "from the host\r\nsecond line";
+    sync.copyFromHost();
+    spin(60);
+    require(host.gets == 0, "actions copy: asked before the keystroke could have landed");
+    spin(300);
+#ifdef Q_OS_WIN
+    require(localText() == QStringLiteral("from the host\r\nsecond line"), "actions copy: the host's text was not applied");
+#else
+    require(localText() == QStringLiteral("from the host\nsecond line"), "actions copy: the host's text was not applied with local line ends");
+#endif
+
+    // An application that only now finishes copying still gets through.
+    host.clipboard = "slow application";
+    spin(1300);
+    require(localText() == QStringLiteral("slow application"), "actions copy: a slow copy on the host was missed");
+    require(host.gets == 3, "actions copy: the host was not asked three times");
+    require(seen.frames.isEmpty(), "actions copy: clipboard frames were sent to a host that has none");
+
+    // Afterwards the host is left alone again.
+    host.clipboard = "later, on the host only";
+    spin(600);
+    require(localText() == QStringLiteral("slow application"), "actions copy: the host's clipboard arrived without a request");
+}
+
+void testActionsHostCopyDelegated()
+{
+    FakeActionsHost host;
+    ClipboardSync sync(host.context());
+    Capture seen(sync);
+    sync.setMode(ClipboardSync::Mode::Manual);
+    sync.setDelegateLocalText(true);
+    sync.start();
+    setLocalText(QStringLiteral("local"));
+
+    host.clipboard = "for the main process";
+    sync.copyFromHost();
+    spin(1500);
+    require(seen.delegatedText.size() == 1 && seen.delegatedText.first() == "for the main process",
+            "actions copy: unchanged text was handed over more than once, or not at all");
+    require(localText() == QStringLiteral("local"), "actions copy: the helper wrote the clipboard itself");
+}
+
+void testActionsHostCopyRefused()
+{
+    FakeActionsHost host;
+    host.answerWith = 401;
+    host.clipboard = "not for this device";
+    ClipboardSync sync(host.context());
+    Capture seen(sync);
+    sync.setMode(ClipboardSync::Mode::Manual);
+    sync.start();
+    setLocalText(QStringLiteral("local"));
+
+    sync.copyFromHost();
+    spin(1500);
+    require(localText() == QStringLiteral("local"), "actions copy: a refusal changed the local clipboard");
+}
+
+void testActionsHostPaste()
+{
+    FakeActionsHost host;
+    ClipboardSync sync(host.context());
+    Capture seen(sync);
+    sync.setMode(ClipboardSync::Mode::Manual);
+    sync.start();
+
+    const QByteArray text = "pasted \xc3\xa9 text";
+    sync.pasteToHost(11, &text);
+    spin(300);
+    require(host.posts.size() == 1 && host.posts.first() == text, "actions paste: the host did not get the text");
+    require(seen.results.size() == 1 && seen.results.first().id == 11 && seen.results.first().ok,
+            "actions paste: no success answer");
+    require(seen.frames.isEmpty(), "actions paste: a clipboard frame was sent as well");
+
+    setLocalText(QStringLiteral("read from the clipboard"));
+    sync.pasteToHost(12, nullptr);
+    spin(300);
+    require(host.posts.size() == 2 && host.posts.last() == "read from the clipboard",
+            "actions paste: the clipboard's own text was not sent");
+
+    QImage image(8, 8, QImage::Format_ARGB32);
+    image.fill(Qt::red);
+    QGuiApplication::clipboard()->setImage(image);
+    spin(30);
+    sync.pasteToHost(13, nullptr);
+    spin(300);
+    require(host.posts.size() == 2, "actions paste: something was sent for an image the host cannot take");
+    require(seen.results.size() == 3 && !seen.results.last().ok, "actions paste: an image was reported as pasted");
+
+    host.answerWith = 401;
+    sync.pasteToHost(14, &text);
+    spin(300);
+    require(seen.results.size() == 4 && seen.results.last().id == 14 && !seen.results.last().ok &&
+            seen.results.last().detail.contains(QStringLiteral("permission")),
+            "actions paste: a refusal was not reported as one");
+}
+
 void testAutomaticModeIsUnchanged()
 {
     ClipboardSync sync;
@@ -272,8 +463,10 @@ void testIpcRoundTrip()
     config.clientKeyPem = "k";
     config.manual = true;
     config.delegateText = true;
+    config.actionsApi = true;
     require(ClipboardIpc::decodeLine(ClipboardIpc::encodeConfigure(3, config), m, error) &&
-            m.type == ClipboardIpc::MessageType::Configure && m.config.manual && m.config.delegateText,
+            m.type == ClipboardIpc::MessageType::Configure && m.config.manual && m.config.delegateText &&
+            m.config.actionsApi,
             "ipc: configure lost the mode flags");
 
     require(ClipboardIpc::decodeLine(ClipboardIpc::encodeCopyFromHost(4), m, error) &&
@@ -299,7 +492,7 @@ void testIpcRoundTrip()
 
     // A configure line from before the flags existed still means automatic.
     require(ClipboardIpc::decodeLine(R"({"type":"configure","sequence":1,"version":1,"host":{}})", m, error) &&
-            !m.config.manual && !m.config.delegateText,
+            !m.config.manual && !m.config.delegateText && !m.config.actionsApi,
             "ipc: a configure line without flags did not default to automatic");
 }
 
@@ -318,6 +511,10 @@ int main(int argc, char* argv[])
     testPasteSendsGivenText();
     testPasteReadsTheClipboard();
     testPasteOfLargeTextWithoutHostFails();
+    testActionsHostCopy();
+    testActionsHostCopyDelegated();
+    testActionsHostCopyRefused();
+    testActionsHostPaste();
     testAutomaticModeIsUnchanged();
 
     if (g_Failures != 0) {
