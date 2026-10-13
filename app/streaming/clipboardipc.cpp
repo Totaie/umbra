@@ -26,6 +26,8 @@ QString typeToString(MessageType type)
         return QStringLiteral("copyFromHost");
     case MessageType::PasteToHost:
         return QStringLiteral("pasteToHost");
+    case MessageType::LocalText:
+        return QStringLiteral("localText");
     case MessageType::SetLocalText:
         return QStringLiteral("setLocalText");
     case MessageType::PasteResult:
@@ -61,6 +63,9 @@ MessageType stringToType(const QString& type)
     }
     if (type == QStringLiteral("pasteToHost")) {
         return MessageType::PasteToHost;
+    }
+    if (type == QStringLiteral("localText")) {
+        return MessageType::LocalText;
     }
     if (type == QStringLiteral("setLocalText")) {
         return MessageType::SetLocalText;
@@ -165,6 +170,15 @@ QByteArray encodePasteToHost(quint32 sequence, const QByteArray* textUtf8)
     return encodeObject(obj);
 }
 
+QByteArray encodeLocalText(quint32 sequence, const QByteArray& textUtf8)
+{
+    QJsonObject obj = baseMessage(MessageType::LocalText, sequence);
+    if (!textUtf8.isEmpty()) {
+        obj.insert(QStringLiteral("text"), QString::fromLatin1(textUtf8.toBase64()));
+    }
+    return encodeObject(obj);
+}
+
 QByteArray encodeSetLocalText(quint32 sequence, const QByteArray& textUtf8)
 {
     QJsonObject obj = baseMessage(MessageType::SetLocalText, sequence);
@@ -172,11 +186,12 @@ QByteArray encodeSetLocalText(quint32 sequence, const QByteArray& textUtf8)
     return encodeObject(obj);
 }
 
-QByteArray encodePasteResult(quint32 sequence, bool ok, bool outOfBand, const QString& detail)
+QByteArray encodePasteResult(quint32 sequence, bool ok, bool outOfBand, bool confirmed, const QString& detail)
 {
     QJsonObject obj = baseMessage(MessageType::PasteResult, sequence);
     obj.insert(QStringLiteral("ok"), ok);
     obj.insert(QStringLiteral("outOfBand"), outOfBand);
+    obj.insert(QStringLiteral("confirmed"), confirmed);
     obj.insert(QStringLiteral("detail"), detail);
     return encodeObject(obj);
 }
@@ -245,8 +260,10 @@ bool decodeLine(const QByteArray& line, Message& outMessage, QString& outError)
         outMessage.code = obj.value(QStringLiteral("code")).toString();
         outMessage.text = obj.value(QStringLiteral("text")).toString();
         return true;
+    case MessageType::LocalText:
     case MessageType::PasteToHost:
-        // No text means "read the clipboard yourself"; empty text never crosses the pipe.
+        // No text means "read the clipboard yourself" for a paste and "there is none"
+        // for a report; empty text never crosses the pipe.
         outMessage.hasClipboardText =
                 readBase64Payload(obj, QStringLiteral("text"), outMessage.clipboardText);
         return true;
@@ -260,6 +277,7 @@ bool decodeLine(const QByteArray& line, Message& outMessage, QString& outError)
     case MessageType::PasteResult:
         outMessage.ok = obj.value(QStringLiteral("ok")).toBool(false);
         outMessage.outOfBand = obj.value(QStringLiteral("outOfBand")).toBool(false);
+        outMessage.confirmed = obj.value(QStringLiteral("confirmed")).toBool(false);
         outMessage.text = obj.value(QStringLiteral("detail")).toString();
         return true;
     case MessageType::Ready:

@@ -86,10 +86,17 @@ public slots:
             return;
         }
 
+        if (message.type == ClipboardIpc::MessageType::LocalText) {
+            if (m_ClipboardEngine != nullptr) {
+                m_ClipboardEngine->localTextChanged(message.clipboardText);
+            }
+            return;
+        }
+
         if (message.type == ClipboardIpc::MessageType::PasteToHost) {
             if (m_ClipboardEngine == nullptr) {
                 // The main process is waiting for an answer before it pastes.
-                writeProtocolLine(ClipboardIpc::encodePasteResult(message.sequence, false, false,
+                writeProtocolLine(ClipboardIpc::encodePasteResult(message.sequence, false, false, false,
                                                                   QStringLiteral("clipboard sync is not configured")));
                 return;
             }
@@ -171,9 +178,9 @@ private:
         writeProtocolLine(ClipboardIpc::encodeSetLocalText(m_NextSequence++, textUtf8));
     }
 
-    void sendPasteResult(quint32 requestId, bool ok, bool outOfBand, const QString& detail)
+    void sendPasteResult(quint32 requestId, bool ok, bool outOfBand, bool confirmed, const QString& detail)
     {
-        writeProtocolLine(ClipboardIpc::encodePasteResult(requestId, ok, outOfBand, detail));
+        writeProtocolLine(ClipboardIpc::encodePasteResult(requestId, ok, outOfBand, confirmed, detail));
     }
 
     void writeProtocolLine(const QByteArray& line)

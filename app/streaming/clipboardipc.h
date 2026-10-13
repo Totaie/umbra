@@ -21,6 +21,7 @@ enum class MessageType {
     // Shortcut mode (see ClipboardSync::Mode). Main -> helper:
     CopyFromHost,   // put the host's clipboard on the local one
     PasteToHost,    // send the local clipboard to the host; `text` when the main process read it
+    LocalText,      // the main process read the local clipboard: `text`, or none
     // Helper -> main:
     SetLocalText,   // the main process owns the local text clipboard and must set `text`
     PasteResult,    // answer to PasteToHost: `ok`, `outOfBand`, and `text` saying why not
@@ -53,6 +54,7 @@ struct Message {
     bool hasClipboardText = false;
     bool ok = false;            // PasteResult
     bool outOfBand = false;     // PasteResult: the host still has to fetch the blob
+    bool confirmed = false;     // PasteResult: the host has said it holds the clipboard
 };
 
 QByteArray encodeConfigure(quint32 sequence, const HostConfig& config);
@@ -63,8 +65,9 @@ QByteArray encodeError(quint32 sequence, const QString& code, const QString& tex
 QByteArray encodeStop(quint32 sequence);
 QByteArray encodeCopyFromHost(quint32 sequence);
 QByteArray encodePasteToHost(quint32 sequence, const QByteArray* textUtf8);
+QByteArray encodeLocalText(quint32 sequence, const QByteArray& textUtf8);
 QByteArray encodeSetLocalText(quint32 sequence, const QByteArray& textUtf8);
-QByteArray encodePasteResult(quint32 sequence, bool ok, bool outOfBand, const QString& detail);
+QByteArray encodePasteResult(quint32 sequence, bool ok, bool outOfBand, bool confirmed, const QString& detail);
 
 bool decodeLine(const QByteArray& line, Message& outMessage, QString& outError);
 

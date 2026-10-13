@@ -207,6 +207,13 @@ private:
     bool clipboardCopyFromHost();
     bool clipboardPasteToHost();
 
+    // The shared clipboard, when the shortcuts are off. Ctrl+V is about to go to the
+    // host: true when it has to wait for this machine's clipboard to get there first,
+    // in which case the paste is sent for it afterwards. And Ctrl+C or Ctrl+X went to
+    // the host, so its clipboard is worth a look now.
+    bool clipboardBeforeHostPaste();
+    void clipboardAfterHostCopy();
+
     // Qt-based overlay menu
     void showQtOverlayMenu();
     void hideQtOverlayMenu();

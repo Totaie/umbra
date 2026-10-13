@@ -1,5 +1,8 @@
-// Shortcut ("manual") mode of the clipboard engine: nothing crosses by itself, and
-// copyFromHost() / pasteToHost() carry exactly one clipboard each way.
+// The clipboard engine against both kinds of host. In shortcut ("manual") mode nothing
+// crosses by itself, and copyFromHost() / pasteToHost() carry exactly one clipboard
+// each way. In automatic mode the two clipboards are kept the same, and against a host
+// that has to be asked (the actions API) that means asking it, and this machine's
+// clipboard winning at the start.
 //
 // Run with QT_QPA_PLATFORM=offscreen: that platform keeps the clipboard inside the
 // process, so the test neither needs a desktop nor touches the one it runs on.
@@ -65,7 +68,7 @@ void hostSends(ClipboardSync& sync, const QByteArray& text)
 struct Capture {
     QList<QByteArray> frames;
     QList<QByteArray> delegatedText;
-    struct Result { quint32 id; bool ok; bool outOfBand; QString detail; };
+    struct Result { quint32 id; bool ok; bool outOfBand; bool confirmed; QString detail; };
     QList<Result> results;
 
     explicit Capture(ClipboardSync& sync)
@@ -75,8 +78,8 @@ struct Capture {
         QObject::connect(&sync, &ClipboardSync::localTextRequested,
                          [this](QByteArray t) { delegatedText.append(t); });
         QObject::connect(&sync, &ClipboardSync::pasteFinished,
-                         [this](quint32 id, bool ok, bool outOfBand, QString detail) {
-                             results.append({id, ok, outOfBand, detail});
+                         [this](quint32 id, bool ok, bool outOfBand, bool confirmed, QString detail) {
+                             results.append({id, ok, outOfBand, confirmed, detail});
                          });
     }
 };
@@ -254,6 +257,7 @@ class FakeActionsHost : public QObject
 public:
     QByteArray clipboard;
     int answerWith = 200;
+    bool hasActionsApi = true;
     int gets = 0;
     QList<QByteArray> posts;
 
@@ -309,7 +313,7 @@ private:
             buffer.remove(0, headerEnd + 4 + length);
 
             QByteArray answer;
-            const bool rightPath = head.contains(" /actions/clipboard?type=text ");
+            const bool rightPath = hasActionsApi && head.contains(" /actions/clipboard?type=text ");
             int status = rightPath ? answerWith : 404;
             if (status == 200 && head.startsWith("GET ")) {
                 gets++;
@@ -407,8 +411,9 @@ void testActionsHostPaste()
     sync.pasteToHost(11, &text);
     spin(300);
     require(host.posts.size() == 1 && host.posts.first() == text, "actions paste: the host did not get the text");
-    require(seen.results.size() == 1 && seen.results.first().id == 11 && seen.results.first().ok,
-            "actions paste: no success answer");
+    require(seen.results.size() == 1 && seen.results.first().id == 11 && seen.results.first().ok &&
+            seen.results.first().confirmed,
+            "actions paste: no success answer saying the host has it");
     require(seen.frames.isEmpty(), "actions paste: a clipboard frame was sent as well");
 
     setLocalText(QStringLiteral("read from the clipboard"));
@@ -432,6 +437,165 @@ void testActionsHostPaste()
     require(seen.results.size() == 4 && seen.results.last().id == 14 && !seen.results.last().ok &&
             seen.results.last().detail.contains(QStringLiteral("permission")),
             "actions paste: a refusal was not reported as one");
+}
+
+void testHostKindIsAskedOfTheHost()
+{
+    // Nothing says which kind of host this is; the host does.
+    FakeActionsHost host;
+    ClipboardSyncHostContext context = host.context();
+    context.actionsApi = false;
+    {
+        ClipboardSync sync(context);
+        Capture seen(sync);
+        sync.setMode(ClipboardSync::Mode::Manual);
+        sync.start();
+
+        const QByteArray text = "to an actions host";
+        sync.pasteToHost(21, &text);
+        spin(400);
+        require(host.posts.size() == 1 && host.posts.first() == text && seen.frames.isEmpty(),
+                "host kind: a host with the actions API was sent a frame instead");
+        require(seen.results.size() == 1 && seen.results.first().ok, "host kind: the paste was not answered");
+    }
+
+    host.hasActionsApi = false;
+    {
+        ClipboardSync sync(context);
+        Capture seen(sync);
+        sync.setMode(ClipboardSync::Mode::Manual);
+        sync.start();
+
+        const QByteArray text = "to a frames host";
+        sync.pasteToHost(22, &text);
+        spin(400);
+        require(seen.frames.size() == 1 && seen.frames.first() == frame(ClipboardSync::KIND_TEXT, text),
+                "host kind: a host without the actions API was not sent a frame");
+        require(host.posts.size() == 1, "host kind: a host without the actions API was posted to");
+        require(seen.results.size() == 1 && seen.results.first().ok && !seen.results.first().confirmed,
+                "host kind: the frame paste was not answered, or claimed the host confirmed it");
+    }
+}
+
+void testSharedClipboard()
+{
+    FakeActionsHost host;
+    host.clipboard = "what the host had";
+    setLocalText(QStringLiteral("what this machine had"));
+
+    ClipboardSync sync(host.context());
+    Capture seen(sync);
+    sync.start();
+
+    // This machine's clipboard wins at the start.
+    spin(ClipboardSync::SYNC_TICK_MS + 400);
+    require(host.clipboard == "what this machine had", "shared: the local clipboard did not go to the host at the start");
+    require(localText() == QStringLiteral("what this machine had"), "shared: the host's clipboard won at the start");
+
+    // Copied on the host, by whatever means: it turns up here, and is not sent back.
+    host.clipboard = "copied on the host\r\nsecond line";
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+#ifdef Q_OS_WIN
+    require(localText() == QStringLiteral("copied on the host\r\nsecond line"), "shared: a host copy did not arrive");
+#else
+    require(localText() == QStringLiteral("copied on the host\nsecond line"), "shared: a host copy did not arrive");
+#endif
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+    require(host.posts.size() == 1, "shared: the host's own text was sent back to it");
+
+    // Copied here: the host has it before anyone could paste.
+    setLocalText(QStringLiteral("copied here"));
+    spin(300);
+    require(host.clipboard == "copied here", "shared: a local copy did not reach the host");
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+    require(host.posts.size() == 2 && localText() == QStringLiteral("copied here"),
+            "shared: a local copy bounced between the two");
+
+    // Ctrl+C on the host is looked at right away, not at the next regular look.
+    host.clipboard = "copied with the keyboard";
+    sync.copyFromHost();
+    spin(ClipboardSync::ACTIONS_COPY_DELAYS_MS[0] + 150);
+    require(localText() == QStringLiteral("copied with the keyboard"), "shared: a host Ctrl+C was not picked up promptly");
+
+    // Pasting what both already have needs no trip; pasting something new makes one.
+    const QByteArray same = "copied with the keyboard";
+    sync.pasteToHost(31, &same);
+    require(seen.results.size() == 1 && seen.results.last().ok && seen.results.last().confirmed && host.posts.size() == 2,
+            "shared: pasting what the host already has was sent again, or not answered at once");
+    const QByteArray fresh = "typed nowhere, copied just now";
+    sync.pasteToHost(32, &fresh);
+    spin(300);
+    require(seen.results.size() == 2 && seen.results.last().ok && host.clipboard == fresh,
+            "shared: new local text was not sent ahead of the paste");
+    require(seen.frames.isEmpty(), "shared: clipboard frames were sent to a host that has none");
+}
+
+void testSharedClipboardOwnedElsewhere()
+{
+    // Wayland: the engine cannot see the local clipboard, and is told about it.
+    FakeActionsHost host;
+    host.clipboard = "what the host had";
+
+    ClipboardSync sync(host.context());
+    Capture seen(sync);
+    sync.setDelegateLocalText(true);
+    sync.start();
+
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+    require(host.gets == 0 && seen.delegatedText.isEmpty(),
+            "shared, delegated: the host was asked before the local clipboard was known");
+
+    sync.localTextChanged("what this machine had");
+    spin(300);
+    require(host.clipboard == "what this machine had" && seen.delegatedText.isEmpty(),
+            "shared, delegated: the local clipboard did not win at the start");
+
+    host.clipboard = "copied on the host";
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+    require(seen.delegatedText.size() == 1 && seen.delegatedText.first() == "copied on the host",
+            "shared, delegated: a host copy was not handed over");
+
+    // The owner reports the clipboard again each time its window gets focus.
+    sync.localTextChanged("copied on the host");
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+    require(host.posts.size() == 1 && seen.delegatedText.size() == 1,
+            "shared, delegated: text both sides have was passed around again");
+}
+
+void testSharedClipboardWithNothingLocal()
+{
+    FakeActionsHost host;
+    host.clipboard = "what the host had";
+
+    ClipboardSync sync(host.context());
+    Capture seen(sync);
+    sync.setDelegateLocalText(true);
+    sync.start();
+
+    sync.localTextChanged(QByteArray());
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+    require(host.posts.isEmpty() && seen.delegatedText.size() == 1 && seen.delegatedText.first() == "what the host had",
+            "shared: with nothing here, the host's clipboard was not taken");
+}
+
+void testSharedClipboardWhileTheStreamStarts()
+{
+    // Until the stream is up the host refuses: 403, not streaming.
+    FakeActionsHost host;
+    host.answerWith = 403;
+    setLocalText(QStringLiteral("copied before connecting"));
+
+    ClipboardSync sync(host.context());
+    Capture seen(sync);
+    sync.start();
+
+    spin(2 * ClipboardSync::SYNC_TICK_MS + 300);
+    require(host.posts.isEmpty(), "starting: the refusing host took a post");
+    host.answerWith = 200;
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+    require(host.clipboard == "copied before connecting", "starting: the local clipboard was not sent once the host let it");
+    spin(ClipboardSync::SYNC_TICK_MS + 300);
+    require(host.posts.size() == 1, "starting: the clipboard was sent more than once");
 }
 
 void testAutomaticModeIsUnchanged()
@@ -485,10 +649,17 @@ void testIpcRoundTrip()
             m.type == ClipboardIpc::MessageType::SetLocalText && m.clipboardText == text,
             "ipc: setLocalText");
 
-    require(ClipboardIpc::decodeLine(ClipboardIpc::encodePasteResult(8, true, true, QStringLiteral("why")), m, error) &&
+    require(ClipboardIpc::decodeLine(ClipboardIpc::encodePasteResult(8, true, true, true, QStringLiteral("why")), m, error) &&
             m.type == ClipboardIpc::MessageType::PasteResult && m.sequence == 8 && m.ok && m.outOfBand &&
-            m.text == QStringLiteral("why"),
+            m.confirmed && m.text == QStringLiteral("why"),
             "ipc: pasteResult");
+
+    require(ClipboardIpc::decodeLine(ClipboardIpc::encodeLocalText(9, text), m, error) &&
+            m.type == ClipboardIpc::MessageType::LocalText && m.hasClipboardText && m.clipboardText == text,
+            "ipc: localText with text");
+    require(ClipboardIpc::decodeLine(ClipboardIpc::encodeLocalText(10, QByteArray()), m, error) &&
+            m.type == ClipboardIpc::MessageType::LocalText && !m.hasClipboardText && m.clipboardText.isEmpty(),
+            "ipc: localText with none");
 
     // A configure line from before the flags existed still means automatic.
     require(ClipboardIpc::decodeLine(R"({"type":"configure","sequence":1,"version":1,"host":{}})", m, error) &&
@@ -515,6 +686,11 @@ int main(int argc, char* argv[])
     testActionsHostCopyDelegated();
     testActionsHostCopyRefused();
     testActionsHostPaste();
+    testHostKindIsAskedOfTheHost();
+    testSharedClipboard();
+    testSharedClipboardOwnedElsewhere();
+    testSharedClipboardWithNothingLocal();
+    testSharedClipboardWhileTheStreamStarts();
     testAutomaticModeIsUnchanged();
 
     if (g_Failures != 0) {

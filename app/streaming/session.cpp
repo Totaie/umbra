@@ -496,6 +496,19 @@ bool Session::clipboardPasteToHost()
     return true;
 }
 
+bool Session::clipboardBeforeHostPaste()
+{
+    return m_ClipboardHelper != nullptr && !m_ClipboardHelper->isShortcutMode() &&
+            m_InputHandler != nullptr && m_ClipboardHelper->syncBeforePaste();
+}
+
+void Session::clipboardAfterHostCopy()
+{
+    if (m_ClipboardHelper != nullptr && !m_ClipboardHelper->isShortcutMode()) {
+        m_ClipboardHelper->hostMayHaveCopied();
+    }
+}
+
 void Session::clClipboardData(const char* data, int length)
 {
     Session* session = s_ActiveSession;
@@ -4233,6 +4246,11 @@ void Session::exec()
                     m_AudioMuted = false;
                 }
                 m_InputHandler->notifyFocusGained();
+                // Whatever was copied on this machine while the stream was in the
+                // background is on the clipboard now.
+                if (m_ClipboardHelper != nullptr) {
+                    m_ClipboardHelper->localClipboardMayHaveChanged();
+                }
                 break;
             case SDL_WINDOWEVENT_LEAVE:
                 m_InputHandler->notifyMouseLeave();
@@ -4453,6 +4471,11 @@ void Session::exec()
                 break;
             }
             m_InputHandler->handleKeyEvent(&event.key);
+            break;
+        case SDL_CLIPBOARDUPDATE:
+            if (m_ClipboardHelper != nullptr) {
+                m_ClipboardHelper->localClipboardMayHaveChanged();
+            }
             break;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:

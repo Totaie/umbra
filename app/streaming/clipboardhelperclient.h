@@ -49,6 +49,23 @@ public:
     // arrives through takePasteAction() once the host has it, or cannot have it.
     void pasteToHost();
 
+    // Automatic mode, SDL thread. The next three only do anything where this process
+    // is the one that reads and writes the local text clipboard (Wayland); elsewhere
+    // the helper watches the clipboard by itself.
+    //
+    // The stream window got keyboard focus or was told the clipboard changed: if this
+    // machine has new text, it goes to the host.
+    void localClipboardMayHaveChanged();
+
+    // Ctrl+V is about to go to the host. True when this machine has text the host
+    // has not been sent yet: the key must then be held back, and the paste follows
+    // through takePasteAction() as in shortcut mode.
+    bool syncBeforePaste();
+
+    // Ctrl+C or Ctrl+X just went to the host: look at its clipboard now rather than
+    // at the next regular look.
+    void hostMayHaveCopied();
+
     // Poll after processPendingMessages(). `outText` is only set for TypeText.
     PasteAction takePasteAction(QByteArray& outText);
 
@@ -86,9 +103,14 @@ private:
     bool writeLine(const QByteArray& line);
     quint32 nextSequence();
     static bool mainProcessOwnsLocalText();
+    static QByteArray readLocalText();
     bool hostUsesActionsApi() const;
+    bool mirrorsLocalText() const;
+    bool takeLocalChange(QByteArray& outText);
+    void sendInitialLocalText();
     void setLocalText(const QByteArray& textUtf8);
-    void finishPaste(bool ok, bool outOfBand, const QString& detail);
+    void startPaste(const QByteArray& text);
+    void finishPaste(bool ok, bool outOfBand, bool confirmed, const QString& detail);
     void checkPasteTimeout();
 
     NvComputer* m_Computer;
@@ -118,4 +140,12 @@ private:
     QByteArray m_PasteText;          // what to type if the clipboard cannot cross
     PasteAction m_PasteAction;       // decided, waiting for m_PasteActionTicks
     quint32 m_PasteActionTicks;
+
+    // Automatic mode where this process owns the local text. m_LastLocalText is the
+    // text (LF line ends) the local clipboard held when the two were last the same.
+    bool m_InitialLocalSent;
+    bool m_HaveLastLocal;
+    QByteArray m_LastLocalText;
+    bool m_HavePendingHostText;      // arrived while the stream window had no focus
+    QByteArray m_PendingHostText;
 };

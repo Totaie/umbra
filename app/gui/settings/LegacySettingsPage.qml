@@ -959,7 +959,7 @@ Column {
                     id: clipboardShortcutsCheck
                     hoverEnabled: true
                     width: parent.width
-                    text: qsTr("Copy and paste between this device and the host with Ctrl+Shift+C and Ctrl+Shift+V")
+                    text: qsTr("Keep the host's clipboard separate, and cross it with Ctrl+Shift+C and Ctrl+Shift+V")
                     font.pointSize:  12
                     checked: StreamingPreferences.clipboardShortcuts
                     onCheckedChanged: {
@@ -969,7 +969,7 @@ Column {
                     ToolTip.delay: 1000
                     ToolTip.timeout: 10000
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Ctrl+Shift+C copies on the host and brings the result to this device. Ctrl+Shift+V pastes this device's clipboard on the host. Ctrl+C and Ctrl+V stay on the host. When unchecked, the two clipboards are kept the same automatically instead, where the desktop allows it. Changes apply to the next stream.")
+                    ToolTip.text: qsTr("When unchecked, this device and the host share one clipboard: what is copied on either can be pasted on the other with Ctrl+C and Ctrl+V, and what this device copied wins when both have something new. When checked, Ctrl+C and Ctrl+V stay on the host; Ctrl+Shift+C copies on the host and brings the result here, and Ctrl+Shift+V pastes this device's clipboard on the host. Changes apply to the next stream.")
                 }
 
                 HardCheckBox {

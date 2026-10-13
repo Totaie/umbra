@@ -71,6 +71,13 @@ bool isImageLikeMimeFormat(const QString& format)
 // stuff a DIB/BMP payload inside; loadFromData still decodes those by
 // sniffing the actual magic, so we cannot trust the mime name alone.
 // Only treat the bytes as wire-ready PNG when the magic matches.
+// Line ends as they are compared and, off Windows, as they are put on the clipboard.
+QByteArray withLocalLineEnds(QByteArray text)
+{
+    text.replace("\r\n", "\n");
+    return text;
+}
+
 bool looksLikePngBytes(const QByteArray& bytes)
 {
     static const unsigned char kMagic[8] = { 0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a };
@@ -95,6 +102,9 @@ ClipboardSync::~ClipboardSync()
 void ClipboardSync::setHostContext(const ClipboardSyncHostContext& hostContext)
 {
     m_HostContext = hostContext;
+    if (hostContext.actionsApi && m_Active) {
+        resolveHostKind(HostKind::Actions);
+    }
 }
 
 void ClipboardSync::setMode(Mode mode)
@@ -121,11 +131,20 @@ void ClipboardSync::copyFromHost()
         return;
     }
 
-    if (m_HostContext.actionsApi) {
-        copyFromHostOverActions();
-        return;
+    if (m_Mode == Mode::Manual) {
+        armForHostFrame();
     }
 
+    // A host with the actions API is asked; one that sends frames answers by itself.
+    whenHostKindKnown([this]() {
+        if (m_HostKind == HostKind::Actions) {
+            copyFromHostOverActions();
+        }
+    });
+}
+
+void ClipboardSync::armForHostFrame()
+{
     m_CopyArmedUntil = m_Clock.elapsed() + COPY_ARMED_MS;
     const quint32 generation = ++m_CopyGeneration;
     const quint32 framesBefore = m_HostFrameCount;
@@ -135,7 +154,7 @@ void ClipboardSync::copyFromHost()
             // Stopped, asked again, or the host already answered.
             return;
         }
-        if (framesBefore != m_HostFrameCount) {
+        if (framesBefore != m_HostFrameCount || m_HostKind == HostKind::Actions) {
             return;
         }
         if (m_LatestHostFrame.isEmpty()) {
@@ -151,75 +170,315 @@ void ClipboardSync::copyFromHost()
 
 void ClipboardSync::copyFromHostOverActions()
 {
+    const quint32 generation = ++m_CopyGeneration;
+    if (m_Mode == Mode::Manual) {
+        // An explicit request brings the host's clipboard over even when it is what
+        // was seen last; only its later attempts are compared against the first.
+        m_HaveShared = false;
+    }
+
+    const int lastDelay = ACTIONS_COPY_DELAYS_MS[std::size(ACTIONS_COPY_DELAYS_MS) - 1];
+    for (int delay : ACTIONS_COPY_DELAYS_MS) {
+        QTimer::singleShot(delay, this, [this, generation, delay, lastDelay]() {
+            if (m_Active && generation == m_CopyGeneration) {
+                pollHost(delay == lastDelay);
+            }
+        });
+    }
+}
+
+void ClipboardSync::pollHost(bool report)
+{
     QUrl url;
     if (!buildHostUrl(QStringLiteral("/actions/clipboard?type=text"), url)) {
-        ClipboardLog::warn("ClipboardSync: copy from host: no host to ask");
         return;
     }
 
-    const quint32 generation = ++m_CopyGeneration;
-    // What this request has already put on the clipboard, shared by its attempts.
-    auto applied = QSharedPointer<QByteArray>::create();
-    auto appliedAny = QSharedPointer<bool>::create(false);
-    const int lastDelay = ACTIONS_COPY_DELAYS_MS[std::size(ACTIONS_COPY_DELAYS_MS) - 1];
+    const quint32 generation = m_SyncGeneration;
+    QNetworkReply* reply = nam()->get(hostRequest(url));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, generation, report]() {
+        reply->deleteLater();
+        if (!m_Active) {
+            return;
+        }
 
-    for (int delay : ACTIONS_COPY_DELAYS_MS) {
-        QTimer::singleShot(delay, this, [this, url, generation, applied, appliedAny, delay, lastDelay]() {
-            if (!m_Active || generation != m_CopyGeneration) {
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() != QNetworkReply::NoError) {
+            if (status == 401) {
+                if (!m_WarnedReadDenied) {
+                    m_WarnedReadDenied = true;
+                    ClipboardLog::warn("ClipboardSync: the host does not let this device read its clipboard (device permissions in the host's web UI)");
+                }
+            }
+            else if (report && status != 403) {
+                // 403 is the host not counting this device as streaming yet, or any more.
+                ClipboardLog::warn("ClipboardSync: could not read the host's clipboard: %s",
+                                   reply->errorString().toUtf8().constData());
+            }
+            return;
+        }
+
+        if (generation != m_SyncGeneration) {
+            // The local clipboard went to the host while this was on its way, so
+            // what it carries is what the host had before, not news.
+            return;
+        }
+
+        const QByteArray raw = reply->readAll();
+        m_LastHostTextBytes = raw.size();
+        const QByteArray text = withLocalLineEnds(raw);
+        if (text.isEmpty()) {
+            if (report && !m_HaveShared) {
+                ClipboardLog::info("ClipboardSync: the host's clipboard has no text");
+            }
+            return;
+        }
+        if (m_HaveShared && text == m_SharedText) {
+            return;
+        }
+
+        m_SharedText = text;
+        m_HaveShared = true;
+        ClipboardLog::info("ClipboardSync: received %d bytes of text from the host",
+                           static_cast<int>(text.size()));
+#ifdef Q_OS_WIN
+        applyInboundText(raw);
+#else
+        // A Windows host hands over CRLF line ends, which nothing here wants.
+        applyInboundText(text);
+#endif
+    });
+}
+
+void ClipboardSync::pushTextToHost(const QByteArray& utf8,
+                                   const std::function<void(bool ok, int status, const QString& error)>& done)
+{
+    QUrl url;
+    if (!buildHostUrl(QStringLiteral("/actions/clipboard?type=text"), url)) {
+        if (done) {
+            done(false, 0, QStringLiteral("no host to send the clipboard to"));
+        }
+        return;
+    }
+
+    // Shared from this moment, not from the host's answer: the answer to a poll
+    // that crosses this on the wire must not bring the old text back, and a second
+    // notice of the same copy must not send it twice.
+    ++m_SyncGeneration;
+    ++m_PushesInFlight;
+    m_SharedText = withLocalLineEnds(utf8);
+    m_HaveShared = true;
+
+    QNetworkRequest req = hostRequest(url);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("text/plain; charset=utf-8"));
+
+    QNetworkReply* reply = nam()->post(req, utf8);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, done, size = utf8.size()]() {
+        reply->deleteLater();
+        ++m_SyncGeneration;
+        --m_PushesInFlight;
+
+        const bool ok = reply->error() == QNetworkReply::NoError;
+        if (ok) {
+            // The host sets its clipboard before it answers, so this is on it now.
+            ClipboardLog::info("ClipboardSync: sent %d bytes of text to the host",
+                               static_cast<int>(size));
+        }
+        else if (m_PushesInFlight == 0) {
+            // The host does not have it after all; let the next poll say what it has.
+            m_HaveShared = false;
+        }
+        if (done) {
+            done(ok, reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), reply->errorString());
+        }
+    });
+}
+
+void ClipboardSync::mirrorLocalText(const QByteArray& utf8)
+{
+    if (utf8.isEmpty()) {
+        return;
+    }
+    if (m_HaveShared && withLocalLineEnds(utf8) == m_SharedText) {
+        // Already what the host has: its own text coming back, or the same copy again.
+        return;
+    }
+
+    m_RetryText = utf8;
+    m_RetriesLeft = PUSH_RETRIES;
+    pushMirroredText();
+}
+
+void ClipboardSync::pushMirroredText()
+{
+    const QByteArray utf8 = m_RetryText;
+    pushTextToHost(utf8, [this, utf8](bool ok, int status, const QString& error) {
+        if (m_RetryText != utf8) {
+            // A newer copy took its place.
+            return;
+        }
+        if (ok) {
+            m_RetryText.clear();
+            return;
+        }
+        if (status == 401) {
+            if (!m_WarnedSetDenied) {
+                m_WarnedSetDenied = true;
+                ClipboardLog::warn("ClipboardSync: the host does not let this device set its clipboard (device permissions in the host's web UI)");
+            }
+            m_RetryText.clear();
+            return;
+        }
+        // Most often the stream is still starting and the host does not count this
+        // device as streaming yet. The tick tries again.
+        if (--m_RetriesLeft <= 0) {
+            ClipboardLog::warn("ClipboardSync: could not send the clipboard to the host: %s",
+                               error.toUtf8().constData());
+            m_RetryText.clear();
+        }
+    });
+}
+
+void ClipboardSync::localTextChanged(const QByteArray& utf8)
+{
+    m_LocalStateKnown = true;
+    if (!m_Active || m_Mode != Mode::Automatic) {
+        return;
+    }
+
+    whenHostKindKnown([this, utf8]() {
+        if (m_HostKind == HostKind::Actions) {
+            mirrorLocalText(utf8);
+        }
+        else {
+            sendLocalText(utf8, false);
+        }
+    });
+}
+
+void ClipboardSync::onSyncTick()
+{
+    if (!m_Active) {
+        return;
+    }
+    if (m_HostKind == HostKind::Unknown) {
+        probeHost();
+        return;
+    }
+    if (m_HostKind != HostKind::Actions) {
+        // A host that sends frames tells us; there is nothing to ask.
+        m_SyncTimer->stop();
+        return;
+    }
+    if (m_Mode != Mode::Automatic || m_PushesInFlight != 0) {
+        return;
+    }
+
+    if (!m_LocalStateKnown) {
+        if (m_DelegateLocalText) {
+            // The owner of the local clipboard has not said what is on it yet. Asking
+            // the host first would let the host's clipboard win at the start.
+            if (m_Clock.elapsed() - m_StartedAt < LOCAL_STATE_WAIT_MS) {
                 return;
             }
-
-            QNetworkReply* reply = nam()->get(hostRequest(url));
-            connect(reply, &QNetworkReply::finished, this, [this, reply, generation, applied, appliedAny, delay, lastDelay]() {
-                reply->deleteLater();
-                if (!m_Active || generation != m_CopyGeneration) {
-                    return;
-                }
-
-                const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-                if (reply->error() != QNetworkReply::NoError) {
-                    // Each attempt would fail the same way; say it once.
-                    if (delay == lastDelay) {
-                        if (status == 401) {
-                            ClipboardLog::warn("ClipboardSync: copy from host: the host does not let this device read its clipboard (device permissions in the host's web UI)");
-                        }
-                        else {
-                            ClipboardLog::warn("ClipboardSync: copy from host failed: %s",
-                                               reply->errorString().toUtf8().constData());
-                        }
-                    }
-                    return;
-                }
-
-                QByteArray text = reply->readAll();
-#ifndef Q_OS_WIN
-                // A Windows host hands over CRLF line ends, which nothing here wants.
-                text.replace("\r\n", "\n");
-#endif
-                if (text.isEmpty()) {
-                    if (delay == lastDelay && !*appliedAny) {
-                        ClipboardLog::info("ClipboardSync: copy from host: the host's clipboard has no text");
-                    }
-                    return;
-                }
-                if (*appliedAny && text == *applied) {
-                    return;
-                }
-
-                *applied = text;
-                *appliedAny = true;
-                ClipboardLog::info("ClipboardSync: copy from host: received %d bytes of text",
-                                   static_cast<int>(text.size()));
-                applyInboundText(text);
-            });
-        });
+            m_LocalStateKnown = true;
+        }
+        else {
+            m_LocalStateKnown = true;
+            QClipboard* cb = QGuiApplication::clipboard();
+            const QByteArray local = cb != nullptr ? cb->text().toUtf8() : QByteArray();
+            if (!local.isEmpty()) {
+                // What this machine has goes first.
+                mirrorLocalText(local);
+                return;
+            }
+        }
     }
+
+    if (!m_RetryText.isEmpty()) {
+        pushMirroredText();
+        return;
+    }
+
+    // Reading megabytes back every second to learn that nothing changed is waste.
+    if (m_LastHostTextBytes > LARGE_TEXT_BYTES && (++m_TickCount % LARGE_TEXT_TICKS) != 0) {
+        return;
+    }
+    pollHost(false);
+}
+
+void ClipboardSync::probeHost()
+{
+    if (m_ProbeInFlight) {
+        return;
+    }
+
+    QUrl url;
+    if (!buildHostUrl(QStringLiteral("/actions/clipboard?type=text"), url)) {
+        // Nothing to ask over HTTPS at all, so frames it is.
+        resolveHostKind(HostKind::Frames);
+        return;
+    }
+
+    m_ProbeInFlight = true;
+    QNetworkReply* reply = nam()->get(hostRequest(url));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        m_ProbeInFlight = false;
+        if (m_HostKind != HostKind::Unknown) {
+            return;
+        }
+
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status == 404) {
+            resolveHostKind(HostKind::Frames);
+        }
+        else if (status != 0) {
+            // Whatever it said - here is the text, not allowed, not streaming - it
+            // knows the question.
+            resolveHostKind(HostKind::Actions);
+        }
+        else if (++m_ProbeFailures >= PROBE_ATTEMPTS) {
+            ClipboardLog::info("ClipboardSync: the host did not answer over HTTPS (%s)",
+                               reply->errorString().toUtf8().constData());
+            resolveHostKind(HostKind::Frames);
+        }
+    });
+}
+
+void ClipboardSync::resolveHostKind(HostKind kind)
+{
+    if (m_HostKind == kind) {
+        return;
+    }
+
+    m_HostKind = kind;
+    ClipboardLog::info("ClipboardSync: the host's clipboard is reached %s",
+                       kind == HostKind::Actions ? "over its actions API (text only)"
+                                                 : "through clipboard frames");
+
+    const auto waiting = std::move(m_WhenHostKindKnown);
+    m_WhenHostKindKnown.clear();
+    for (const auto& resume : waiting) {
+        resume();
+    }
+}
+
+void ClipboardSync::whenHostKindKnown(const std::function<void()>& resume)
+{
+    if (m_HostKind != HostKind::Unknown) {
+        resume();
+        return;
+    }
+
+    m_WhenHostKindKnown.append(resume);
+    probeHost();
 }
 
 void ClipboardSync::pasteToHostOverActions(quint32 requestId, const QByteArray* textUtf8)
 {
     auto finish = [this, requestId](bool ok, const QString& detail) {
-        emit pasteFinished(requestId, ok, false, detail);
+        emit pasteFinished(requestId, ok, false, ok, detail);
     };
 
     QByteArray utf8;
@@ -236,35 +495,26 @@ void ClipboardSync::pasteToHostOverActions(quint32 requestId, const QByteArray* 
         return;
     }
 
-    QUrl url;
-    if (!buildHostUrl(QStringLiteral("/actions/clipboard?type=text"), url)) {
-        finish(false, QStringLiteral("no host to send the clipboard to"));
+    if (m_Mode == Mode::Automatic && m_HaveShared && m_PushesInFlight == 0 &&
+            withLocalLineEnds(utf8) == m_SharedText) {
+        // The host has had this since the clipboard last changed.
+        finish(true, QString());
         return;
     }
 
-    QNetworkRequest req = hostRequest(url);
-    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("text/plain; charset=utf-8"));
-
-    QNetworkReply* reply = nam()->post(req, utf8);
-    connect(reply, &QNetworkReply::finished, this, [reply, finish, size = utf8.size()]() {
-        reply->deleteLater();
-        if (reply->error() == QNetworkReply::NoError) {
-            // The host sets its clipboard before it answers, so this is on it now.
-            ClipboardLog::info("ClipboardSync: paste to host: sent %d bytes of text",
-                               static_cast<int>(size));
+    m_RetryText.clear();
+    pushTextToHost(utf8, [finish](bool ok, int status, const QString& error) {
+        if (ok) {
             finish(true, QString());
-            return;
         }
-
-        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (status == 401) {
+        else if (status == 401) {
             finish(false, QStringLiteral("the host does not let this device set its clipboard (device permissions in the host's web UI)"));
         }
         else if (status == 403) {
             finish(false, QStringLiteral("the host does not see this device as streaming"));
         }
         else {
-            finish(false, QStringLiteral("the host did not take the clipboard: %1").arg(reply->errorString()));
+            finish(false, QStringLiteral("the host did not take the clipboard: %1").arg(error));
         }
     });
 }
@@ -272,7 +522,7 @@ void ClipboardSync::pasteToHostOverActions(quint32 requestId, const QByteArray* 
 void ClipboardSync::pasteToHost(quint32 requestId, const QByteArray* textUtf8)
 {
     auto finish = [this, requestId](bool ok, bool outOfBand, const QString& detail) {
-        emit pasteFinished(requestId, ok, outOfBand, detail);
+        emit pasteFinished(requestId, ok, outOfBand, false, detail);
     };
 
     if (!m_Active) {
@@ -280,7 +530,16 @@ void ClipboardSync::pasteToHost(quint32 requestId, const QByteArray* textUtf8)
         return;
     }
 
-    if (m_HostContext.actionsApi) {
+    if (m_HostKind == HostKind::Unknown) {
+        // Ask again once it is known which way this host takes a clipboard.
+        const bool hasText = textUtf8 != nullptr;
+        const QByteArray text = hasText ? *textUtf8 : QByteArray();
+        whenHostKindKnown([this, requestId, hasText, text]() {
+            pasteToHost(requestId, hasText ? &text : nullptr);
+        });
+        return;
+    }
+    if (m_HostKind == HostKind::Actions) {
         pasteToHostOverActions(requestId, textUtf8);
         return;
     }
@@ -348,6 +607,23 @@ void ClipboardSync::start()
 
     m_Active = true;
     ClipboardLog::info("ClipboardSync: started (text + PNG, bidirectional)");
+
+    m_HostKind = HostKind::Unknown;
+    m_ProbeFailures = 0;
+    m_LocalStateKnown = false;
+    m_HaveShared = false;
+    m_StartedAt = m_Clock.elapsed();
+    if (m_SyncTimer == nullptr) {
+        m_SyncTimer = new QTimer(this);
+        connect(m_SyncTimer, &QTimer::timeout, this, &ClipboardSync::onSyncTick);
+    }
+    m_SyncTimer->start(SYNC_TICK_MS);
+    if (m_HostContext.actionsApi) {
+        resolveHostKind(HostKind::Actions);
+    }
+    else {
+        probeHost();
+    }
 }
 
 void ClipboardSync::stop()
@@ -369,6 +645,11 @@ void ClipboardSync::stop()
 
     m_EchoCache.clear();
     m_PendingSelfWrites = 0;
+    if (m_SyncTimer != nullptr) {
+        m_SyncTimer->stop();
+    }
+    m_WhenHostKindKnown.clear();
+    m_RetryText.clear();
 #ifdef Q_OS_MACOS
     if (m_PasteboardPollTimer != nullptr) {
         m_PasteboardPollTimer->stop();
@@ -941,6 +1222,16 @@ void ClipboardSync::onLocalClipboardChanged()
 
     QClipboard* cb = QGuiApplication::clipboard();
     if (cb == nullptr) {
+        return;
+    }
+
+    if (m_HostKind == HostKind::Actions) {
+        // Text is all this host takes, and where the owner of the local clipboard
+        // reports its text itself (localTextChanged()), what Qt sees here is stale.
+        if (!m_DelegateLocalText) {
+            m_LocalStateKnown = true;
+            mirrorLocalText(cb->text().toUtf8());
+        }
         return;
     }
 

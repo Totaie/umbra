@@ -35,8 +35,21 @@ ClipboardHelperClient::ClipboardHelperClient(NvComputer* computer, bool shortcut
       m_PasteDeadlineTicks(0),
       m_PasteFrameFailed(false),
       m_PasteAction(PasteAction::None),
-      m_PasteActionTicks(0)
+      m_PasteActionTicks(0),
+      m_InitialLocalSent(false),
+      m_HaveLastLocal(false),
+      m_HavePendingHostText(false)
 {
+}
+
+namespace {
+// Line ends as the two clipboards are compared: a Windows host returns CRLF for
+// what was sent to it with LF.
+QByteArray comparable(QByteArray text)
+{
+    text.replace("\r\n", "\n");
+    return text;
+}
 }
 
 ClipboardHelperClient::~ClipboardHelperClient()
@@ -193,7 +206,7 @@ void ClipboardHelperClient::processPendingMessages()
         m_HelperReady = false;
         m_StdinBuffer.clear();
         if (m_PasteSequence != 0) {
-            finishPaste(false, false, QStringLiteral("the clipboard helper stopped"));
+            finishPaste(false, false, false, QStringLiteral("the clipboard helper stopped"));
         }
         if (!m_StopRequested) {
             scheduleRestart("unexpected exit");
@@ -210,6 +223,10 @@ void ClipboardHelperClient::processPendingMessages()
     readHelperErrors();
     if (m_HelperReady) {
         flushQueuedHostFrames();
+    }
+    if (mirrorsLocalText() && !m_InitialLocalSent && SDL_GetKeyboardFocus() != nullptr) {
+        // Only with keyboard focus does this process know what the clipboard holds.
+        sendInitialLocalText();
     }
 }
 
@@ -235,8 +252,47 @@ bool ClipboardHelperClient::hostUsesActionsApi() const
     return m_Computer != nullptr && !m_Computer->hostVersion.isEmpty();
 }
 
+QByteArray ClipboardHelperClient::readLocalText()
+{
+    QByteArray text;
+    if (SDL_HasClipboardText()) {
+        char* sdlText = SDL_GetClipboardText();
+        if (sdlText != nullptr) {
+            text = QByteArray(sdlText);
+            SDL_free(sdlText);
+        }
+    }
+    return text;
+}
+
+bool ClipboardHelperClient::mirrorsLocalText() const
+{
+    return !m_ShortcutMode && mainProcessOwnsLocalText() && m_HelperReady && isRunning();
+}
+
+bool ClipboardHelperClient::takeLocalChange(QByteArray& outText)
+{
+    const QByteArray text = readLocalText();
+    if (text.isEmpty() || (m_HaveLastLocal && comparable(text) == m_LastLocalText)) {
+        return false;
+    }
+
+    m_LastLocalText = comparable(text);
+    m_HaveLastLocal = true;
+    outText = text;
+    return true;
+}
+
 void ClipboardHelperClient::setLocalText(const QByteArray& textUtf8)
 {
+    if (!m_ShortcutMode && mainProcessOwnsLocalText() && SDL_GetKeyboardFocus() == nullptr) {
+        // Without keyboard focus the compositor will not let us set it, and what this
+        // machine copies in the meantime outranks it anyway. Decided when focus is back.
+        m_PendingHostText = textUtf8;
+        m_HavePendingHostText = true;
+        return;
+    }
+
     if (SDL_SetClipboardText(textUtf8.constData()) != 0) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "Could not put the host's text on the clipboard: %s",
@@ -244,9 +300,91 @@ void ClipboardHelperClient::setLocalText(const QByteArray& textUtf8)
         return;
     }
 
+    m_LastLocalText = comparable(textUtf8);
+    m_HaveLastLocal = true;
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "Clipboard: copied %d bytes of text from the host",
                 static_cast<int>(textUtf8.size()));
+}
+
+void ClipboardHelperClient::sendInitialLocalText()
+{
+    // Said once per stream, text or none: until then the helper holds off asking the
+    // host, so that what this machine has is what both end up with.
+    m_InitialLocalSent = true;
+    m_HavePendingHostText = false;
+
+    QByteArray text = readLocalText();
+    if (text.size() > ClipboardIpc::MAX_TEXT_BYTES) {
+        text.clear();
+    }
+    if (!text.isEmpty()) {
+        m_LastLocalText = comparable(text);
+        m_HaveLastLocal = true;
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Clipboard: sharing %d bytes of text with the host",
+                    static_cast<int>(text.size()));
+    }
+    writeLine(ClipboardIpc::encodeLocalText(nextSequence(), text));
+}
+
+void ClipboardHelperClient::localClipboardMayHaveChanged()
+{
+    if (!mirrorsLocalText() || !m_InitialLocalSent) {
+        return;
+    }
+
+    QByteArray text;
+    if (!takeLocalChange(text)) {
+        if (m_HavePendingHostText) {
+            // Nothing new here, so what the host copied meanwhile stands.
+            m_HavePendingHostText = false;
+            setLocalText(m_PendingHostText);
+        }
+        return;
+    }
+
+    // What this machine has goes first.
+    m_HavePendingHostText = false;
+    if (text.size() > ClipboardIpc::MAX_TEXT_BYTES) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Clipboard: %d bytes of text is too much to share with the host",
+                    static_cast<int>(text.size()));
+        return;
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Clipboard: sharing %d bytes of text with the host",
+                static_cast<int>(text.size()));
+    writeLine(ClipboardIpc::encodeLocalText(nextSequence(), text));
+}
+
+bool ClipboardHelperClient::syncBeforePaste()
+{
+    if (!mirrorsLocalText() || !m_InitialLocalSent) {
+        return false;
+    }
+
+    QByteArray text;
+    if (!takeLocalChange(text) || text.size() > ClipboardIpc::MAX_TEXT_BYTES) {
+        // The host has what this machine has; the key can go straight through.
+        return false;
+    }
+
+    m_HavePendingHostText = false;
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Clipboard: sharing %d bytes of text with the host before pasting",
+                static_cast<int>(text.size()));
+    startPaste(text);
+    return true;
+}
+
+void ClipboardHelperClient::hostMayHaveCopied()
+{
+    if (m_ShortcutMode || !m_HelperReady || !isRunning()) {
+        return;
+    }
+    writeLine(ClipboardIpc::encodeCopyFromHost(nextSequence()));
 }
 
 void ClipboardHelperClient::copyFromHost()
@@ -263,17 +401,14 @@ void ClipboardHelperClient::copyFromHost()
 
 void ClipboardHelperClient::pasteToHost()
 {
-    // Read the text here when this process is the one allowed to, and in any case
-    // keep a copy to type if the host turns out not to take a clipboard at all.
-    QByteArray text;
-    if (SDL_HasClipboardText()) {
-        char* sdlText = SDL_GetClipboardText();
-        if (sdlText != nullptr) {
-            text = QByteArray(sdlText);
-            SDL_free(sdlText);
-        }
-    }
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Clipboard: pasting to the host");
+    startPaste(readLocalText());
+}
 
+void ClipboardHelperClient::startPaste(const QByteArray& text)
+{
+    // The text is read in this process when this is the one allowed to, and in any
+    // case kept to be typed if the host turns out not to take a clipboard at all.
     m_PasteAction = PasteAction::None;
     m_PasteSequence = 0;
     m_PasteFrameFailed = false;
@@ -282,13 +417,12 @@ void ClipboardHelperClient::pasteToHost()
     const bool ownsText = mainProcessOwnsLocalText();
     if (m_HostRejectedClipboard || !m_HelperReady || !isRunning() ||
             (ownsText && text.size() > ClipboardIpc::MAX_TEXT_BYTES)) {
-        finishPaste(false, false, m_HostRejectedClipboard
+        finishPaste(false, false, false, m_HostRejectedClipboard
                     ? QStringLiteral("the host has no clipboard channel")
                     : QStringLiteral("the clipboard helper cannot take it"));
         return;
     }
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Clipboard: pasting to the host");
     m_PasteSequence = nextSequence();
     m_PasteDeadlineTicks = SDL_GetTicks() + PASTE_ANSWER_TIMEOUT_MS;
     // Without text the helper looks at the clipboard itself, which is where an image
@@ -296,17 +430,17 @@ void ClipboardHelperClient::pasteToHost()
     if (!writeLine(ClipboardIpc::encodePasteToHost(m_PasteSequence,
                                                    ownsText && !text.isEmpty() ? &text : nullptr))) {
         m_PasteSequence = 0;
-        finishPaste(false, false, QStringLiteral("the clipboard helper stopped"));
+        finishPaste(false, false, false, QStringLiteral("the clipboard helper stopped"));
     }
 }
 
-void ClipboardHelperClient::finishPaste(bool ok, bool outOfBand, const QString& detail)
+void ClipboardHelperClient::finishPaste(bool ok, bool outOfBand, bool confirmed, const QString& detail)
 {
     m_PasteSequence = 0;
 
     if (ok) {
         m_PasteAction = PasteAction::SendPasteChord;
-        m_PasteActionTicks = SDL_GetTicks() + (hostUsesActionsApi() ? PASTE_SETTLE_CONFIRMED_MS
+        m_PasteActionTicks = SDL_GetTicks() + (confirmed ? PASTE_SETTLE_CONFIRMED_MS
                                                : outOfBand ? PASTE_SETTLE_OUT_OF_BAND_MS
                                                            : PASTE_SETTLE_MS);
         return;
@@ -331,7 +465,7 @@ void ClipboardHelperClient::finishPaste(bool ok, bool outOfBand, const QString& 
 void ClipboardHelperClient::checkPasteTimeout()
 {
     if (m_PasteSequence != 0 && SDL_TICKS_PASSED(SDL_GetTicks(), m_PasteDeadlineTicks)) {
-        finishPaste(false, false, QStringLiteral("the clipboard helper did not answer"));
+        finishPaste(false, false, false, QStringLiteral("the clipboard helper did not answer"));
     }
 }
 
@@ -609,10 +743,10 @@ void ClipboardHelperClient::processProtocolLine(const QByteArray& line)
             return;
         }
         if (message.ok && m_PasteFrameFailed) {
-            finishPaste(false, false, QStringLiteral("the host did not take the clipboard"));
+            finishPaste(false, false, false, QStringLiteral("the host did not take the clipboard"));
         }
         else {
-            finishPaste(message.ok, message.outOfBand, message.text);
+            finishPaste(message.ok, message.outOfBand, message.confirmed, message.text);
         }
         return;
     }

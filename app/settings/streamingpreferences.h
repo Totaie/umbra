@@ -295,8 +295,9 @@ public:
     bool detectNetworkBlocking;
     bool showPerformanceOverlay;
     bool swapMouseButtons;
+    // False: one clipboard for both machines; what is copied on either is there to
+    // paste on the other, and this machine's wins when both have something new.
     // True: the clipboard only crosses on Ctrl+Shift+C and Ctrl+Shift+V.
-    // False: every clipboard change is shared with the host as it happens.
     bool clipboardShortcuts;
     bool swapWinAltKeys;
     bool muteOnFocusLoss;

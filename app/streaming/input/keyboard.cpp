@@ -372,6 +372,26 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
         }
     }
 
+    // With one clipboard for both machines, Ctrl+C, Ctrl+X and Ctrl+V are the host's
+    // as ever. A paste only waits when this machine has something the host has not
+    // been sent yet, and a copy or cut is a reason to look at the host's clipboard.
+    if ((event->state == SDL_PRESSED) &&
+            (event->keysym.mod & KMOD_CTRL) &&
+            !(event->keysym.mod & (KMOD_ALT | KMOD_GUI))) {
+        const bool latin = event->keysym.sym >= SDLK_a && event->keysym.sym <= SDLK_z;
+        auto isKey = [event, latin](SDL_Keycode sym, SDL_Scancode scancode) {
+            return event->keysym.sym == sym || (!latin && event->keysym.scancode == scancode);
+        };
+
+        if (isKey(SDLK_v, SDL_SCANCODE_V) && !(event->keysym.mod & KMOD_SHIFT) &&
+                Session::get()->clipboardBeforeHostPaste()) {
+            return;
+        }
+        if (isKey(SDLK_c, SDL_SCANCODE_C) || isKey(SDLK_x, SDL_SCANCODE_X)) {
+            Session::get()->clipboardAfterHostCopy();
+        }
+    }
+
     // Check for our special key combos
     if ((event->state == SDL_PRESSED) &&
             (event->keysym.mod & KMOD_CTRL) &&

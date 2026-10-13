@@ -94,6 +94,17 @@ public:
     // slow about it. A later answer replaces an earlier one only if it differs.
     static constexpr int ACTIONS_COPY_DELAYS_MS[] = { 150, 500, 1200 };
     static constexpr int ACTIONS_TIMEOUT_MS = 5000;
+    // Automatic mode with such a host: how often it is asked whether its clipboard
+    // changed, since it will not say. A clipboard this large is asked for less often.
+    static constexpr int SYNC_TICK_MS = 1000;
+    static constexpr qint64 LARGE_TEXT_BYTES = 256 * 1024;
+    static constexpr int LARGE_TEXT_TICKS = 5;
+    // How long the first question waits for the owner of the local clipboard to say
+    // what is on it, so that this machine's clipboard is the one that wins at the start.
+    static constexpr int LOCAL_STATE_WAIT_MS = 2500;
+    // A stream that is still starting refuses the clipboard for a moment.
+    static constexpr int PUSH_RETRIES = 8;
+    static constexpr int PROBE_ATTEMPTS = 3;
 
     static constexpr uint8_t WIRE_VERSION = 1;
     static constexpr int     MAX_PAYLOAD  = 65535 - 10; // wire frame must fit u16 length
@@ -137,6 +148,10 @@ public:
     // the clipboard here (image first, then text). Answered by pasteFinished().
     void pasteToHost(quint32 requestId, const QByteArray* textUtf8);
 
+    // With setDelegateLocalText(true): the owner of the local clipboard read it, and
+    // this is its text (empty for none). In automatic mode a change goes to the host.
+    void localTextChanged(const QByteArray& textUtf8);
+
     // Start watching the local clipboard and accepting inbound payloads.
     // Must be called on the GUI thread.
     void start();
@@ -158,10 +173,13 @@ signals:
     void localTextRequested(QByteArray textUtf8);
 
     // The answer to pasteToHost(). `ok` means the payload is on its way; with
-    // `outOfBand` the host still has to fetch it, so pasting has to wait longer.
-    void pasteFinished(quint32 requestId, bool ok, bool outOfBand, QString detail);
+    // `outOfBand` the host still has to fetch it, so pasting has to wait longer, and
+    // with `confirmed` the host has said it holds it, so pasting need not wait at all.
+    void pasteFinished(quint32 requestId, bool ok, bool outOfBand, bool confirmed, QString detail);
 
 private slots:
+    void onSyncTick();
+
 #ifdef Q_OS_MACOS
     // QClipboard::dataChanged wrapper that keeps the native pasteboard
     // changeCount baseline in sync before processing the clipboard.
@@ -181,9 +199,26 @@ private slots:
     void onIncomingFrame(QByteArray frame);
 
 private:
+    // Which of the two clipboard interfaces the host has. Asked of the host itself
+    // (see probeHost()) unless the host context already says.
+    enum class HostKind {
+        Unknown,
+        Actions,   // GET and POST /actions/clipboard, text only, never pushes
+        Frames,    // clipboard frames on the control stream, pushed both ways
+    };
+
     void applyHostFrame(const QByteArray& frame);
+    void armForHostFrame();
     void copyFromHostOverActions();
     void pasteToHostOverActions(quint32 requestId, const QByteArray* textUtf8);
+    void probeHost();
+    void resolveHostKind(HostKind kind);
+    void whenHostKindKnown(const std::function<void()>& resume);
+    void pollHost(bool report);
+    void pushTextToHost(const QByteArray& utf8,
+                        const std::function<void(bool ok, int status, const QString& error)>& done);
+    void mirrorLocalText(const QByteArray& utf8);
+    void pushMirroredText();
     bool buildHostUrl(const QString& path, QUrl& outUrl) const;
     QNetworkRequest hostRequest(const QUrl& url) const;
     void sendLocalText(const QByteArray& utf8, bool force,
@@ -244,6 +279,26 @@ private:
     QElapsedTimer m_Clock;
     qint64 m_CopyArmedUntil = -1;
     quint32 m_CopyGeneration = 0;
+
+    // A host with the actions API. m_SharedText is the text both clipboards are known
+    // to hold (LF line ends), so that neither side's copy of it is sent back.
+    HostKind m_HostKind = HostKind::Unknown;
+    QList<std::function<void()>> m_WhenHostKindKnown;
+    bool m_ProbeInFlight = false;
+    int m_ProbeFailures = 0;
+    QTimer* m_SyncTimer = nullptr;
+    QByteArray m_SharedText;
+    bool m_HaveShared = false;
+    quint32 m_SyncGeneration = 0;   // moves whenever a push starts or ends
+    int m_PushesInFlight = 0;
+    bool m_LocalStateKnown = false;
+    qint64 m_StartedAt = 0;
+    QByteArray m_RetryText;        // the local text still owed to the host, if any
+    int m_RetriesLeft = 0;
+    qint64 m_LastHostTextBytes = 0;
+    int m_TickCount = 0;
+    bool m_WarnedReadDenied = false;
+    bool m_WarnedSetDenied = false;
     QQueue<QPair<uint64_t, qint64>> m_EchoCache; // (hash, timestamp_ms)
 
 #ifdef Q_OS_MACOS
