@@ -14,6 +14,7 @@
 // Shared with session.cpp, which owns the rest of the SDL_USEREVENT codes and
 // dispatches this one on the main thread.
 #define SDL_CODE_REPORT_MOUSE_POSITION 108
+#define SDL_CODE_AUTO_GAME_MOUSE 109
 
 #ifdef HAVE_WINDOWS_RAW_TOUCHPAD
 #include <memory>
@@ -173,6 +174,10 @@ public:
     void flushPendingTouchpadFrameEvent();
 
     int getAttachedGamepadMask();
+
+    // Game mouse while the host's pointer is hidden, desktop mouse while it shows.
+    // Called on every pointer report and when its delay timer runs out; main thread.
+    void evaluateAutoGameMouse();
 
     void raiseAllKeys(bool clearKeys = true);
     bool hasKeysDown() const { return !m_KeysDown.isEmpty(); }
@@ -430,6 +435,18 @@ private:
     int m_StreamWidth;
     int m_StreamHeight;
     bool m_AbsoluteMouseMode;
+
+    // Automatic game mouse (see evaluateAutoGameMouse()). Active means relative input
+    // because the host hid its pointer; pinned means the user chose a mode by hand,
+    // which holds until the host's pointer next comes back.
+    static constexpr Uint32 AUTO_GAME_MOUSE_DELAY_MS = 250;
+    void setAutoGameMouse(bool active);
+    bool m_AutoGameMouse;
+    bool m_AutoGameMouseActive;
+    bool m_AutoGameMousePinned;
+    Uint32 m_RemoteCursorHiddenSince;
+    SDL_TimerID m_AutoGameMouseTimer;
+
     int m_HostDisplayCount;
     int m_CurrentHostDisplay;
     bool m_AbsoluteTouchMode;

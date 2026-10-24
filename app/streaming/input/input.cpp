@@ -56,6 +56,11 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
       m_StreamWidth(streamWidth),
       m_StreamHeight(streamHeight),
       m_AbsoluteMouseMode(prefs.absoluteMouseMode),
+      m_AutoGameMouse(prefs.absoluteMouseMode && prefs.autoGameMouse),
+      m_AutoGameMouseActive(false),
+      m_AutoGameMousePinned(false),
+      m_RemoteCursorHiddenSince(0),
+      m_AutoGameMouseTimer(0),
       m_HostDisplayCount(0),
       m_CurrentHostDisplay(0),
       m_AbsoluteTouchMode(prefs.absoluteTouchMode),
@@ -302,6 +307,7 @@ SdlInputHandler::~SdlInputHandler()
 
     SDL_RemoveTimer(m_LongPressTimer);
     SDL_RemoveTimer(m_MouseReannounceTimer);
+    SDL_RemoveTimer(m_AutoGameMouseTimer);
     SDL_RemoveTimer(m_LeftButtonReleaseTimer);
     SDL_RemoveTimer(m_RightButtonReleaseTimer);
     SDL_RemoveTimer(m_DragTimer);
@@ -408,7 +414,9 @@ void SdlInputHandler::resetRemoteCursor()
 
 void SdlInputHandler::synchronizeLocalCursorMode()
 {
-    const int cursorMode = m_AbsoluteMouseMode &&
+    // The automatic game mouse keeps the host reporting its pointer: those reports are
+    // how it knows when to switch back.
+    const int cursorMode = (m_AbsoluteMouseMode || m_AutoGameMouseActive) &&
                            m_MouseCursorCapturedVisibilityState == SDL_ENABLE ?
                                LI_CURSOR_MODE_LOCAL : LI_CURSOR_MODE_VIDEO;
     m_LocalCursorMode.store(cursorMode, std::memory_order_relaxed);
@@ -481,8 +489,92 @@ void SdlInputHandler::refreshRemoteCursorScale()
 #endif
 }
 
+void SdlInputHandler::evaluateAutoGameMouse()
+{
+    if (!m_AutoGameMouse || m_Window == nullptr) {
+        return;
+    }
+
+    // Only a host that reports its pointer, to a client drawing it, says when it hides.
+    if (getLocalCursorMode() != LI_CURSOR_MODE_LOCAL ||
+            (LiGetHostFeatureFlags() & LI_FF_CURSOR_SHAPE) == 0) {
+        return;
+    }
+
+    if (m_RemoteCursorVisible) {
+        SDL_RemoveTimer(m_AutoGameMouseTimer);
+        m_AutoGameMouseTimer = 0;
+        if (m_AutoGameMouseActive) {
+            setAutoGameMouse(false);
+        }
+        return;
+    }
+
+    if (m_AutoGameMouseActive || m_AutoGameMousePinned || !m_AbsoluteMouseMode) {
+        return;
+    }
+
+    // Not in the background, and not while the user has let go of the stream.
+    if (!isCaptureActive() || !(SDL_GetWindowFlags(m_Window) & SDL_WINDOW_INPUT_FOCUS)) {
+        return;
+    }
+
+    // A pointer hidden for a moment - a shape change, a loading screen - is not a game.
+    // Windows also hides it while you type, which only costs a switch and back.
+    const Uint32 due = m_RemoteCursorHiddenSince + AUTO_GAME_MOUSE_DELAY_MS;
+    if (!SDL_TICKS_PASSED(SDL_GetTicks(), due)) {
+        if (m_AutoGameMouseTimer == 0) {
+            m_AutoGameMouseTimer = SDL_AddTimer(AUTO_GAME_MOUSE_DELAY_MS + 10, [](Uint32, void* param) -> Uint32 {
+                // Main thread only past this point, so hand it over.
+                auto me = reinterpret_cast<SdlInputHandler*>(param);
+                me->m_AutoGameMouseTimer = 0;
+                SDL_Event event = {};
+                event.type = SDL_USEREVENT;
+                event.user.code = SDL_CODE_AUTO_GAME_MOUSE;
+                SDL_PushEvent(&event);
+                return 0;
+            }, this);
+        }
+        return;
+    }
+
+    setAutoGameMouse(true);
+}
+
+void SdlInputHandler::setAutoGameMouse(bool active)
+{
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                active ? "Mouse: the host hid its pointer, switching to game mouse"
+                       : "Mouse: the host's pointer is back, switching to desktop mouse");
+
+    const bool captured = isCaptureActive();
+    if (captured) {
+        setCaptureActive(false);
+    }
+
+    // The cursor mode is left as it is: LOCAL, so the host keeps reporting its pointer.
+    m_AbsoluteMouseMode = !active;
+    m_AutoGameMouseActive = active;
+
+    if (captured) {
+        setCaptureActive(true);
+    }
+}
+
 void SdlInputHandler::updateRemoteCursor(const RemoteCursorUpdate& update)
 {
+    if (m_RemoteCursorVisible != update.visible && m_AutoGameMouse) {
+        // Said so that a game which never hides its pointer shows up in the log as one.
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Mouse: the host's pointer is %s",
+                    update.visible ? "showing" : "hidden");
+    }
+    if (m_RemoteCursorVisible && !update.visible) {
+        m_RemoteCursorHiddenSince = SDL_GetTicks();
+    }
+    else if (!m_RemoteCursorVisible && update.visible) {
+        // Whatever was chosen by hand was for whatever hid the pointer.
+        m_AutoGameMousePinned = false;
+    }
     m_RemoteCursorVisible = update.visible;
 
     if (update.hasShape) {
@@ -569,6 +661,8 @@ void SdlInputHandler::updateRemoteCursor(const RemoteCursorUpdate& update)
     if (isCaptureActive()) {
         applyCapturedCursorState();
     }
+
+    evaluateAutoGameMouse();
 }
 
 void SdlInputHandler::raiseAllKeys(bool clearKeys)

@@ -4210,6 +4210,9 @@ void Session::exec()
             case SDL_CODE_REPORT_MOUSE_POSITION:
                 m_InputHandler->reportCurrentMousePosition();
                 break;
+            case SDL_CODE_AUTO_GAME_MOUSE:
+                m_InputHandler->evaluateAutoGameMouse();
+                break;
             case SDL_CODE_CURSOR_UPDATE:
             {
                 std::shared_ptr<RemoteCursorUpdate> cursorUpdate;

@@ -229,8 +229,11 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
         // Uncapture input
         setCaptureActive(false);
 
-        // Toggle mouse mode
+        // Toggle mouse mode. Chosen by hand, it holds until the host's pointer next
+        // comes back rather than being switched straight back automatically.
         m_AbsoluteMouseMode = !m_AbsoluteMouseMode;
+        m_AutoGameMouseActive = false;
+        m_AutoGameMousePinned = m_AutoGameMouse;
         synchronizeLocalCursorMode();
 
         // Recapture input

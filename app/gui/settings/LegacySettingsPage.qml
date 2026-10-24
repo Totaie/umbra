@@ -833,6 +833,25 @@ Column {
                                   qsTr("Needs the mouse optimized for remote desktop, above - otherwise this PC's cursor is captured and hidden, and there would be no pointer at all.")
                 }
 
+                HardCheckBox {
+                    id: autoGameMouseCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Switch to game mouse while a game hides the pointer")
+                    font.pointSize: 12
+                    enabled: StreamingPreferences.absoluteMouseMode && StreamingPreferences.hideHostCursor
+                    checked: StreamingPreferences.autoGameMouse
+                    onCheckedChanged: {
+                        StreamingPreferences.autoGameMouse = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("A game that steers with the mouse, such as Minecraft or a shooter, hides the pointer while you play. The mouse then switches to game input on its own - movement instead of positions, so turning feels right - and back to the desktop mouse the moment the pointer returns, in a menu or on the desktop.") + "\n\n" +
+                                  qsTr("Ctrl+Alt+Shift+M still switches by hand, and the choice holds until the host shows its pointer again. Needs a host that reports its pointer (Umbra Host or Sunshine) and the host's cursor hidden, above.")
+                }
+
                 Row {
                     spacing: 5
                     width: parent.width
