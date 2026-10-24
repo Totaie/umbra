@@ -1450,7 +1450,17 @@ namespace confighttp {
 
     if (auto scheme_end = auth_header.find(' ');
         scheme_end != std::string::npos && boost::iequals(auth_header.substr(0, scheme_end), "Basic")) {
-      return check_basic_auth(auth_header);
+      // A password guess either way, so it spends from the same allowance as the
+      // login form - otherwise any API route is an unthrottled way to try passwords.
+      if (!claim_login_attempt(remote_address)) {
+        BOOST_LOG(warning) << "Configuration API: rate limiting password attempts from " << remote_address;
+        return make_auth_error(StatusCode::client_error_too_many_requests, "Too many login attempts. Try again shortly.");
+      }
+      auto result = check_basic_auth(auth_header);
+      if (result.ok) {
+        refund_login_attempt(remote_address);
+      }
+      return result;
     }
 
     // Default: unauthorized

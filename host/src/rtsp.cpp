@@ -606,7 +606,7 @@ namespace rtsp_stream {
       auto socket = std::move(next_socket);
       boost::system::error_code remote_ec;
       const auto remote_endpoint = socket->sock.remote_endpoint(remote_ec);
-      const auto remote_address = remote_ec ? std::string {} : remote_endpoint.address().to_string();
+      const auto remote_address = remote_ec ? std::string {} : net::addr_to_normalized_string(remote_endpoint.address());
 
       auto launch_session {reserve_launch_session(remote_address)};
       if (launch_session) {
@@ -1094,7 +1094,11 @@ namespace rtsp_stream {
 
         if (!reserved) {
           for (auto &entry : _launch_sessions) {
-            if (!entry.accepted && entry.session) {
+            // A launch is claimed at TCP accept, before a single authenticated byte, so
+            // without this anyone who connects first takes it and the real client is
+            // turned away - a way to stop every stream from starting.
+            if (!entry.accepted && entry.session &&
+                (entry.session->requester_address.empty() || entry.session->requester_address == remote_address)) {
               entry.accepted = true;
               entry.remote_address = remote_address;
               BOOST_LOG(debug) << "Reserved RTSP launch session "sv << entry.session->id
@@ -1502,7 +1506,11 @@ namespace rtsp_stream {
     seqn.content = const_cast<char *>(seqn_str.c_str());
 
     std::string_view target {req->message.request.target};
-    auto begin = std::find(std::begin(target), std::end(target), '=') + 1;
+    auto begin = std::find(std::begin(target), std::end(target), '=');
+    // No '=' at all would put begin one past the end.
+    if (begin != std::end(target)) {
+      ++begin;
+    }
     auto end = std::find(begin, std::end(target), '/');
     std::string_view type {begin, (size_t) std::distance(begin, end)};
 
@@ -1589,10 +1597,13 @@ namespace rtsp_stream {
       } else if (type == "a=") {
         auto pos = line.find(':');
 
+        if (pos == std::string_view::npos) {
+          continue;
+        }
         auto name = line.substr(2, pos - 2);
         auto val = line.substr(pos + 1);
 
-        if (val[val.size() - 1] == ' ') {
+        if (!val.empty() && val[val.size() - 1] == ' ') {
           val = val.substr(0, val.size() - 1);
         }
         args.emplace(name, val);
@@ -1676,6 +1687,24 @@ namespace rtsp_stream {
       config.monitor.chromaSamplingType = (int) util::from_view(args.at("x-ss-video[0].chromaSamplingType"sv));
       config.monitor.enableIntraRefresh = (int) util::from_view(args.at("x-ss-video[0].intraRefresh"sv));
       config.monitor.vrr_low_latency = session->client_vrr_requested;
+
+      // Every number above came from the client, and several size buffers or divide:
+      // a packet size of 16 divides by zero in the video packetizer, and anything
+      // below the header size wraps the block arithmetic into writes past a buffer.
+      // A paired device is trusted to stream, not to pick those.
+      auto within = [](std::int64_t value, std::int64_t low, std::int64_t high) {
+        return value >= low && value <= high;
+      };
+      if (!within(config.packetsize, config::PACKETSIZE_MIN, config::PACKETSIZE_MAX) ||
+          !within(config.minRequiredFecPackets, 0, 255) ||
+          !within(config.audio.channels, 1, 12) ||
+          !within(config.audio.packetDuration, 1, 100) ||
+          !within(config.monitor.width, 0, 16384) || !within(config.monitor.height, 0, 16384) ||
+          !within(config.monitor.framerate, 0, 10000000) || !within(config.monitor.bitrate, 0, 10000000) ||
+          !within(config.monitor.slicesPerFrame, 0, 64) || !within(config.monitor.numRefFrames, 0, 16)) {
+        BOOST_LOG(warning) << "RTSP: refusing a stream request with out-of-range parameters"sv;
+        throw std::out_of_range("stream parameters");
+      }
 
       if (config::video.limit_framerate) {
         config.monitor.encodingFramerate = session->fps;

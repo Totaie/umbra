@@ -46,6 +46,10 @@ namespace rtsp_stream {
 
     uint32_t id;
 
+    /// The address the launch was asked for from. Only a connection from there may
+    /// open its RTSP session; empty (a launch from the Web UI) means any.
+    std::string requester_address;
+
     crypto::aes_t gcm_key;
     crypto::aes_t iv;
 

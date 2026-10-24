@@ -169,6 +169,12 @@ namespace crypto {
     }
 
     int gcm_t::decrypt(const std::string_view &tagged_cipher, std::vector<std::uint8_t> &plaintext, aes_t *iv) {
+      // Shorter than the tag, substr() below throws, and on the control thread that
+      // ends the process. The length comes off the network.
+      if (tagged_cipher.size() < tag_size) {
+        return -1;
+      }
+
       if (!decrypt_ctx && init_decrypt_gcm(decrypt_ctx, &key, iv, padding)) {
         return -1;
       }
@@ -176,7 +182,7 @@ namespace crypto {
       // Calling with cipher == nullptr results in a parameter change
       // without requiring a reallocation of the internal cipher ctx.
       if (EVP_DecryptInit_ex(decrypt_ctx.get(), nullptr, nullptr, nullptr, iv->data()) != 1) {
-        return false;
+        return -1;  // was `false`, which is 0, which callers read as success
       }
 
       auto cipher = tagged_cipher.substr(tag_size);

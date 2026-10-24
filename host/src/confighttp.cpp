@@ -582,8 +582,9 @@ namespace confighttp {
     if (!request->header.empty()) {
       BOOST_LOG(verbose) << "Headers:"sv;
       for (auto &[name, val] : request->header) {
+        // Any case: headers are case-insensitive, and the session cookie is as good as a password.
         BOOST_LOG(verbose) << name << " -- "
-                           << (name == "Authorization" ? "CREDENTIALS REDACTED" : val);
+                           << (http::is_secret_request_field(name) ? "CREDENTIALS REDACTED"sv : std::string_view(val));
       }
     }
 
@@ -591,7 +592,7 @@ namespace confighttp {
     if (!query.empty()) {
       BOOST_LOG(verbose) << "Query Params:"sv;
       for (auto &[name, val] : query) {
-        BOOST_LOG(verbose) << name << " -- " << val;
+        BOOST_LOG(verbose) << name << " -- " << (http::is_secret_request_field(name) ? "REDACTED"sv : std::string_view(val));
       }
     }
   }
@@ -1264,9 +1265,14 @@ namespace confighttp {
   constexpr auto CSRF_TOKEN_SIZE = 32;
   constexpr auto CSRF_TOKEN_LIFETIME = std::chrono::hours(1);
 
+  constexpr std::size_t CSRF_TOKEN_LIMIT = 4096;
+
   std::string get_client_id(const req_https_t &request) {
+    // Hashed, so a key costs the same whatever the header it came from: anyone can
+    // ask for a token, and a raw header up to the request limit made every request
+    // a way to park megabytes here for an hour.
     if (const auto auth = request->header.find("authorization"); auth != request->header.end()) {
-      return auth->second;
+      return util::hex(crypto::hash(auth->second)).to_string();
     }
     return net::addr_to_normalized_string(request->remote_endpoint().address());
   }
@@ -1279,6 +1285,13 @@ namespace confighttp {
     });
     if (const auto existing = csrf_tokens.find(client_id); existing != csrf_tokens.end()) {
       return existing->second.token;
+    }
+    // And a bound on how many: past it, the token closest to expiring makes room.
+    if (csrf_tokens.size() >= CSRF_TOKEN_LIMIT) {
+      const auto oldest = std::min_element(csrf_tokens.begin(), csrf_tokens.end(), [](const auto &a, const auto &b) {
+        return a.second.expiration < b.second.expiration;
+      });
+      csrf_tokens.erase(oldest);
     }
 
     std::string token = crypto::rand_alphabet(CSRF_TOKEN_SIZE);
@@ -1345,6 +1358,10 @@ namespace confighttp {
     // The browser needs a token before login. Issuing one does not grant any
     // authority: it is bound to the request's client identity and every API
     // handler still performs its own authentication and authorization checks.
+    // Still only for addresses the Web UI is open to at all.
+    if (!checkIPOrigin(response, request)) {
+      return;
+    }
     nlohmann::json output_tree;
     output_tree["csrf_token"] = generate_csrf_token(get_client_id(request));
     send_response(response, output_tree);
@@ -4451,6 +4468,12 @@ namespace confighttp {
               return;
             }
             sessionCookie.clear();  // force re-login
+            // Every signed-in browser too, including week-long "remember me" ones: a
+            // password is changed because the old one may be known, and a session
+            // made with it is as good as the old password.
+            for (const auto &session : session_token_manager.list_sessions()) {
+              session_token_manager.revoke_session_by_hash(session.hash);
+            }
             output_tree["status"] = true;
           }
         } else {

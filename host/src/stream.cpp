@@ -1751,7 +1751,8 @@ namespace stream {
         const auto &cmd = config::sunshine.server_cmds[*cmdIndex];
         BOOST_LOG(info) << "Executing server command: " << cmd.cmd_name;
 
-        auto exec_thread = std::thread([&cmd] {
+        // By value: the thread outlives this handler, and a config reload frees the list.
+        auto exec_thread = std::thread([cmd] {
           std::error_code ec;
           auto env = proc::proc.get_env();
           boost::filesystem::path working_dir = proc::find_working_directory(cmd.cmd_val, env);
@@ -1771,7 +1772,8 @@ namespace stream {
     });
 
     server->map(packetTypes[IDX_SET_CLIPBOARD], [server](session_t *session, const std::string_view &payload) {
-      BOOST_LOG(info) << "type [IDX_SET_CLIPBOARD]: "sv << payload << " size: " << payload.size();
+      // The size only: the payload is the user's clipboard.
+      BOOST_LOG(debug) << "type [IDX_SET_CLIPBOARD], size: "sv << payload.size();
 
       if (!(session->permission & crypto::PERM::clipboard_set)) {
         BOOST_LOG(debug) << "Permission Clipboard Set deined for [" << session->device_name << "]";
@@ -1780,7 +1782,7 @@ namespace stream {
     });
 
     server->map(packetTypes[IDX_FILE_TRANSFER_NONCE_REQUEST], [server](session_t *session, const std::string_view &payload) {
-      BOOST_LOG(info) << "type [IDX_FILE_TRANSFER_NONCE_REQUEST]: "sv << payload << " size: " << payload.size();
+      BOOST_LOG(debug) << "type [IDX_FILE_TRANSFER_NONCE_REQUEST], size: "sv << payload.size();
 
       if (!(session->permission & crypto::PERM::file_upload)) {
         BOOST_LOG(debug) << "Permission File Upload deined for [" << session->device_name << "]";

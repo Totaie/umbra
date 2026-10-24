@@ -1228,8 +1228,11 @@ namespace nvhttp {
     };
   }
 
-    // uniqueID, session
+    // uniqueID, session. Touched from the HTTP and HTTPS I/O threads and from the web
+    // UI's PIN entry, so only ever under map_id_sess_mutex (recursive: remove_session()
+    // runs inside pair(), which holds it already).
     std::unordered_map<std::string, pair_session_t> map_id_sess;
+    std::recursive_mutex map_id_sess_mutex;
     client_t client_root;
     std::mutex client_mutex;
     std::atomic<uint32_t> session_id_counter;
@@ -1424,6 +1427,9 @@ namespace nvhttp {
             named_cert_node["output_name_override"] = named_cert_p->output_name_override;
           }
           named_cert_node["perm"] = static_cast<uint32_t>(named_cert_p->perm);
+          // The full-permission migration below has run for this device, so whatever its
+          // permissions are from now on was decided by someone and must stay as it is.
+          named_cert_node["perm_settled"] = true;
           named_cert_node["enable_legacy_ordering"] = named_cert_p->enable_legacy_ordering;
           named_cert_node["allow_client_commands"] = named_cert_p->allow_client_commands;
           named_cert_node["always_use_virtual_display"] = named_cert_p->always_use_virtual_display;
@@ -1620,7 +1626,11 @@ namespace nvhttp {
           // writes an explicit mask the moment anyone changes a device - so this only
           // touches devices nobody has made a decision about. Anything deliberately
           // narrowed differs from _default and is left alone.
-          if (named_cert_p->perm == PERM::_default) {
+          //
+          // Once only, though: a device saved by this host carries perm_settled, and from
+          // then on even an explicit view|list - the web UI's "view only" - is kept.
+          const bool perm_settled = util::get_non_string_json_value<bool>(el, "perm_settled", false);
+          if (!perm_settled && named_cert_p->perm == PERM::_default) {
             BOOST_LOG(info) << "Granting full permission to previously paired device ["sv
                             << named_cert_p->name << "]; it had the shared-host default, "
                             << "which cannot launch apps or send input"sv;
@@ -1695,7 +1705,12 @@ namespace nvhttp {
     };
 
     std::mutex tls_client_identity_mutex;
-    std::unordered_map<std::string, resolved_client_identity_t> tls_client_identity_by_endpoint;
+    struct remembered_identity_t {
+      resolved_client_identity_t identity;
+      std::chrono::steady_clock::time_point used;
+    };
+
+    std::unordered_map<std::string, remembered_identity_t> tls_client_identity_by_endpoint;
 
     std::string endpoint_key(req_https_t request) {
       if (!request) {
@@ -1757,17 +1772,22 @@ namespace nvhttp {
       // reachable from the internet and reconnected to all day accumulates one per
       // connection and never gives any of them back.
       //
-      // The map is a lookaside for the connection being served right now, so it does
-      // not need history. Dropping it wholesale when it grows past anything plausible
-      // costs one certificate comparison on the next request of any connection that
-      // was in flight, which is the same work verification already did.
+      // It is also the only record of which device a connection belongs to: requests
+      // are attributed through it and nothing else (see get_verified_cert()). So when
+      // it is full, only the entry used least recently goes - a connection that has
+      // been idle longest - rather than every entry, and a connection whose entry went
+      // is refused rather than guessed at, and has to connect again.
       if (tls_client_identity_by_endpoint.size() >= 1024) {
-        BOOST_LOG(debug) << "Clearing the TLS client identity lookaside ("sv
-                         << tls_client_identity_by_endpoint.size() << " entries)"sv;
-        tls_client_identity_by_endpoint.clear();
+        auto oldest = tls_client_identity_by_endpoint.begin();
+        for (auto it = tls_client_identity_by_endpoint.begin(); it != tls_client_identity_by_endpoint.end(); ++it) {
+          if (it->second.used < oldest->second.used) {
+            oldest = it;
+          }
+        }
+        tls_client_identity_by_endpoint.erase(oldest);
       }
 
-      tls_client_identity_by_endpoint[key] = identity;
+      tls_client_identity_by_endpoint[key] = {identity, std::chrono::steady_clock::now()};
     }
 
     void forget_tls_client_identity(req_https_t request) {
@@ -1792,7 +1812,8 @@ namespace nvhttp {
         return std::nullopt;
       }
 
-      return it->second;
+      it->second.used = std::chrono::steady_clock::now();
+      return it->second.identity;
     }
 
     std::mutex launch_request_mutex;
@@ -1956,10 +1977,12 @@ namespace nvhttp {
         launch_session->rtsp_url_scheme = launch_session->rtsp_cipher ? "rtspenc://"s : "rtsp://"s;
 
         // Generate the unique identifiers for this connection that we will send later during RTSP handshake
-        unsigned char raw_payload[8];
-        RAND_bytes(raw_payload, sizeof(raw_payload));
+        // These tie the UDP and ENet peers to this session, so a failed RAND_bytes must
+        // not quietly hand back whatever was in the buffer; crypto::rand() refuses to.
+        const auto raw_payload = crypto::rand(8);
         launch_session->av_ping_payload = util::hex_vec(raw_payload);
-        RAND_bytes((unsigned char *) &launch_session->control_connect_data, sizeof(launch_session->control_connect_data));
+        const auto connect_data = crypto::rand(sizeof(launch_session->control_connect_data));
+        std::memcpy(&launch_session->control_connect_data, connect_data.data(), connect_data.size());
 
         launch_session->iv.resize(16);
         uint32_t prepend_iv = util::endian::big<uint32_t>(util::from_view(get_arg(args, "rikeyid")));
@@ -2488,21 +2511,9 @@ namespace nvhttp {
         }
       }
 
-      if (!tl_peer_certificate) {
-        return std::nullopt;
-      }
-
-      const auto peer_signature = crypto::signature(tl_peer_certificate.get());
-      std::lock_guard<std::mutex> lock(client_mutex);
-      for (const auto &named_cert_p : client_root.named_devices) {
-        if (!named_cert_p) {
-          continue;
-        }
-        auto stored_x509 = crypto::x509(named_cert_p->cert);
-        if (stored_x509 && crypto::signature(stored_x509.get()) == peer_signature) {
-          return *named_cert_p;
-        }
-      }
+      // Nothing else. The thread-local certificate this used to fall back on is the
+      // last handshake this I/O thread completed, which is not necessarily the one
+      // behind this request: one paired device could be taken for another.
       return std::nullopt;
     }
 
@@ -2549,7 +2560,7 @@ namespace nvhttp {
       if (!request->header.empty()) {
         BOOST_LOG(verbose) << "Headers:"sv;
         for (auto &[name, val] : request->header) {
-          BOOST_LOG(verbose) << name << " -- " << val;
+          BOOST_LOG(verbose) << name << " -- " << (http::is_secret_request_field(name) ? "REDACTED"sv : std::string_view(val));
         }
       }
 
@@ -2557,7 +2568,7 @@ namespace nvhttp {
       if (!query.empty()) {
         BOOST_LOG(verbose) << "Query Params:"sv;
         for (auto &[name, val] : query) {
-          BOOST_LOG(verbose) << name << " -- " << val;
+          BOOST_LOG(verbose) << name << " -- " << (http::is_secret_request_field(name) ? "REDACTED"sv : std::string_view(val));
         }
       }
     }
@@ -2580,6 +2591,7 @@ namespace nvhttp {
 
     template<class T>
     void unpair(std::shared_ptr<typename SimpleWeb::ServerBase<T>::Response> response, std::shared_ptr<typename SimpleWeb::ServerBase<T>::Request> request) {
+      std::lock_guard<std::recursive_mutex> pairing_lock(map_id_sess_mutex);
       print_req<T>(request);
 
       pt::ptree tree;
@@ -2614,6 +2626,7 @@ namespace nvhttp {
 
     template<class T>
     void pair(std::shared_ptr<typename SimpleWeb::ServerBase<T>::Response> response, std::shared_ptr<typename SimpleWeb::ServerBase<T>::Request> request) {
+      std::lock_guard<std::recursive_mutex> pairing_lock(map_id_sess_mutex);
       print_req<T>(request);
 
       pt::ptree tree;
@@ -2663,9 +2676,36 @@ namespace nvhttp {
             deviceName = "Legacy Moonlight Client";
           }
 
+          // Anyone can start a pairing, so what a pending one may hold is bounded: a
+          // real client certificate is about 1 KB, and nothing is kept for long.
+          const auto clientcert_hex = get_arg(args, "clientcert");
+          if (clientcert_hex.size() > 16 * 1024) {
+            tree.put("root.<xmlattr>.status_code", 400);
+            tree.put("root.<xmlattr>.status_message", "Client certificate too large");
+            return;
+          }
+          {
+            const auto now = std::chrono::steady_clock::now();
+            // One waiting for its PIN gets time for someone to walk to the host and
+            // type it; one part-way through the exchange should finish within seconds.
+            std::erase_if(map_id_sess, [now](const auto &entry) {
+              const auto limit = entry.second.last_phase == PAIR_PHASE::NONE ? std::chrono::minutes(10) : std::chrono::minutes(2);
+              return now - entry.second.created_at > limit;
+            });
+            while (map_id_sess.size() >= 64) {
+              auto oldest = map_id_sess.begin();
+              for (auto it = map_id_sess.begin(); it != map_id_sess.end(); ++it) {
+                if (it->second.created_at < oldest->second.created_at) {
+                  oldest = it;
+                }
+              }
+              map_id_sess.erase(oldest);
+            }
+          }
+
           sess.client.uniqueID = std::move(uniqID);
           sess.client.name = std::move(deviceName);
-          sess.client.cert = util::from_hex_vec(get_arg(args, "clientcert"), true);
+          sess.client.cert = util::from_hex_vec(clientcert_hex, true);
 
           BOOST_LOG(verbose) << sess.client.cert;
           auto session_id = sess.client.uniqueID;
@@ -2819,6 +2859,7 @@ namespace nvhttp {
     }
 
     bool pin(std::string pin, std::string name, std::string unique_id) {
+      std::lock_guard<std::recursive_mutex> pairing_lock(map_id_sess_mutex);
       pt::ptree tree;
       if (map_id_sess.empty()) {
         BOOST_LOG(warning) << "PIN submitted but no pending pairing session exists";
@@ -3386,6 +3427,9 @@ namespace nvhttp {
       }
       if (
         args.find("rikey"s) == std::end(args) ||
+        // The stream's AES-128 key: anything but 16 bytes leaves the cipher reading
+        // past it, or running with no key at all.
+        util::from_hex_vec(get_arg(args, "rikey"), true).size() != 16 ||
         args.find("rikeyid"s) == std::end(args) ||
         args.find("localAudioPlayMode"s) == std::end(args) ||
         (args.find("appid"s) == std::end(args) && args.find("appuuid"s) == std::end(args))
@@ -3554,6 +3598,7 @@ namespace nvhttp {
 #endif
       const bool allow_display_changes = true;
       auto launch_session = make_launch_session_from_snapshot(host_audio, is_input_only, args, verified_client, &request_client_identity);
+    launch_session->requester_address = net::addr_to_normalized_string(request->remote_endpoint().address());
       launch_timing.mark("permission checks and session setup");
       std::optional<std::string> pending_output_override;
       auto output_override_guard = util::fail_guard([&]() {
@@ -3897,6 +3942,7 @@ namespace nvhttp {
     auto args = request->parse_query_string();
     if (
       args.find("rikey"s) == std::end(args) ||
+      util::from_hex_vec(get_arg(args, "rikey"), true).size() != 16 ||
       args.find("rikeyid"s) == std::end(args)
     ) {
       tree.put("root.resume", 0);
@@ -4002,6 +4048,7 @@ namespace nvhttp {
     }
 
     auto launch_session = make_launch_session_from_snapshot(host_audio, is_input_only, args, verified_client, &request_client_identity);
+    launch_session->requester_address = net::addr_to_normalized_string(request->remote_endpoint().address());
     if (!proc::proc.allow_client_commands || !verified_client->allow_client_commands) {
       launch_session->client_do_cmds.clear();
       launch_session->client_undo_cmds.clear();
@@ -5155,7 +5202,10 @@ namespace nvhttp {
     // Wait for any event
     shutdown_event->view();
 
-    map_id_sess.clear();
+    {
+      std::lock_guard<std::recursive_mutex> pairing_lock(map_id_sess_mutex);
+      map_id_sess.clear();
+    }
 
     https_server.stop();
     http_server.stop();

@@ -2938,7 +2938,9 @@ static std::wstring getClipboardData() {
 
   HANDLE hData = GetClipboardData(CF_UNICODETEXT);
   if (hData == nullptr) {
-    BOOST_LOG(warning) << "No text data in clipboard or failed to get data.";
+    // Normal whenever the clipboard holds files or a picture, and a client sharing the
+    // clipboard asks about once a second: not worth a warning each time.
+    BOOST_LOG(debug) << "No text data in clipboard or failed to get data.";
     CloseClipboard();
     return L"";
   }

@@ -4,6 +4,11 @@
  */
 #pragma once
 
+// standard includes
+#include <algorithm>
+#include <cctype>
+#include <string_view>
+
 // lib includes
 #include <curl/curl.h>
 
@@ -13,6 +18,27 @@
 #include "uuid.h"
 
 namespace http {
+  /**
+   * @brief Whether a request header or query parameter carries a secret, so that the
+   *        request logs show that it was there and never what it was: stream keys
+   *        (rikey), pairing proofs and secrets, session cookies and credentials.
+   */
+  inline bool is_secret_request_field(std::string_view name) {
+    static constexpr std::string_view secrets[] {
+      "authorization", "cookie", "rikey", "rikeyid", "pskauth", "salt", "clientchallenge",
+      "serverchallengeresp", "clientpairingsecret", "clientcert", "otpauth", "otp", "pin", "x-csrf-token", "csrf_token",
+    };
+    for (const auto secret : secrets) {
+      if (name.size() == secret.size() &&
+          std::equal(name.begin(), name.end(), secret.begin(), [](char a, char b) {
+            return std::tolower(static_cast<unsigned char>(a)) == b;
+          })) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 
   enum class creds_state {
     missing_file,
