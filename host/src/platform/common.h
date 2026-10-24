@@ -1017,6 +1017,33 @@ namespace platf {
     set_clipboard(const std::string &content);
 
   /**
+   * @name Files on the clipboard (see src/clipboard_files.h)
+   * Only Windows has them; elsewhere clipboard_files_supported() is false and the
+   * rest do nothing.
+   * @{
+   */
+  bool clipboard_files_supported();
+
+  /// Runs @p fn with the access rights of the signed-in user. False if there is none.
+  bool as_desktop_user(const std::function<void()> &fn);
+
+  /// The signed-in user's folder for files pasted from a client.
+  std::optional<std::filesystem::path> clipboard_staging_root();
+
+  /// Changes whenever anything is put on the clipboard.
+  std::uint32_t clipboard_sequence();
+
+  /// The files and folders on the clipboard. False if there are none.
+  bool get_clipboard_files(std::vector<std::filesystem::path> &paths);
+
+  /// Puts files and folders on the clipboard, to be pasted as a copy.
+  bool set_clipboard_files(const std::vector<std::filesystem::path> &paths);
+
+  /// Marks a file as having come from another device, as a download from the internet is.
+  void mark_from_other_device(const std::filesystem::path &file);
+  /// @}
+
+  /**
    * @brief Snapshot of host system performance counters.
    *
    * Any field that cannot be sampled on the current platform is left at the

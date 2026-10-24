@@ -8,6 +8,7 @@
 // standard includes
 #include <algorithm>
 #include <atomic>
+#include <charconv>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -18,6 +19,7 @@
 #include <fstream>
 #include <future>
 #include <limits>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -41,6 +43,7 @@
 #include <Simple-Web-Server/server_http.hpp>
 
 // local includes
+#include "clipboard_files.h"
 #include "config.h"
 #include "display_device.h"
 #include "display_helper_integration.h"
@@ -4385,6 +4388,8 @@ namespace nvhttp {
     response->close_connection_after_response = true;
   }
 
+  void getClipboardFiles(resp_https_t response, req_https_t request);
+
   void getClipboard(resp_https_t response, req_https_t request) {
     print_req<SunshineHTTPS>(request);
 
@@ -4402,6 +4407,10 @@ namespace nvhttp {
 
     auto args = request->parse_query_string();
     auto clipboard_type = get_arg(args, "type");
+    if (clipboard_type == "files"sv) {
+      getClipboardFiles(std::move(response), std::move(request));
+      return;
+    }
     if (clipboard_type != "text"sv) {
       BOOST_LOG(debug) << "Clipboard type [" << clipboard_type << "] is not supported!";
 
@@ -4485,6 +4494,298 @@ namespace nvhttp {
 
     response->write();
     return;
+  }
+
+  namespace {
+    // Files on the clipboard (src/clipboard_files.h). The rules for who may are the
+    // clipboard's - a paired device with the permission, while it is streaming - plus
+    // the separate permissions to download from and upload to this host.
+    clipboard_files::uploads_t clipboard_uploads;
+    std::mutex clipboard_snapshots_mutex;
+    std::map<std::string, clipboard_files::snapshot_t> clipboard_snapshots;  // by client
+
+    void answer(resp_https_t &response, SimpleWeb::StatusCode code, std::string_view body = {}, const char *type = "text/plain; charset=utf-8") {
+      SimpleWeb::CaseInsensitiveMultimap headers;
+      headers.emplace("Content-Type", type);
+      headers.emplace("Cache-Control", "no-store");
+      response->write(code, body, headers);
+      if (code != SimpleWeb::StatusCode::success_ok) {
+        response->close_connection_after_response = true;
+      }
+    }
+
+    /// The client behind a clipboard-file request, or nothing once it has been answered.
+    verified_client_t clipboard_files_client(resp_https_t &response, req_https_t &request, PERM clipboard_perm, PERM files_perm, std::string_view action) {
+      auto verified_client = get_verified_cert(request);
+      if (!has_client_perm(verified_client, PERM::_allow_view) || !has_client_perm(verified_client, clipboard_perm) || !has_client_perm(verified_client, files_perm)) {
+        log_permission_denied(action, files_perm == PERM::file_upload ? "Upload files"sv : "Download files"sv, verified_client);
+        answer(response, SimpleWeb::StatusCode::client_error_unauthorized);
+        return std::nullopt;
+      }
+      if (!platf::clipboard_files_supported()) {
+        answer(response, SimpleWeb::StatusCode::server_error_not_implemented);
+        return std::nullopt;
+      }
+      const auto connected = rtsp_stream::get_all_session_uuids();
+      if (std::find(connected.begin(), connected.end(), verified_client->uuid) == connected.end()) {
+        answer(response, SimpleWeb::StatusCode::client_error_forbidden);
+        return std::nullopt;
+      }
+      return verified_client;
+    }
+
+    template<class T>
+    bool parse_number(const std::string &text, T &out) {
+      const auto *end = text.data() + text.size();
+      const auto [ptr, ec] = std::from_chars(text.data(), end, out);
+      return !text.empty() && ec == std::errc() && ptr == end;
+    }
+
+    bool parse_upload_id(const std::string &text) {
+      return text.size() == 32 && std::all_of(text.begin(), text.end(), [](char c) {
+               return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+             });
+    }
+  }  // namespace
+
+  /// GET /actions/clipboard?type=files: what files are on the clipboard, as a listing.
+  void getClipboardFiles(resp_https_t response, req_https_t request) {
+    const auto client = clipboard_files_client(response, request, PERM::clipboard_read, PERM::file_dwnload, "Read clipboard files"sv);
+    if (!client) {
+      return;
+    }
+
+    const auto sequence = platf::clipboard_sequence();
+    nlohmann::json listing;
+    {
+      std::lock_guard lock(clipboard_snapshots_mutex);
+      auto &snap = clipboard_snapshots[client->uuid];
+      if (snap.sequence != sequence || sequence == 0) {
+        snap = clipboard_files::snapshot_t {};
+        snap.sequence = sequence;
+        std::vector<std::filesystem::path> tops;
+        if (platf::get_clipboard_files(tops) &&
+            !platf::as_desktop_user([&]() {
+              snap = clipboard_files::make_snapshot(tops, sequence);
+            })) {
+          answer(response, SimpleWeb::StatusCode::server_error_service_unavailable);
+          return;
+        }
+        if (!snap.entries.empty()) {
+          BOOST_LOG(info) << "Clipboard files: listed "sv << snap.entries.size() << " entries for "sv << client->name << (snap.truncated ? " (over the limits, not offered)"sv : ""sv);
+        }
+      }
+
+      listing["seq"] = snap.sequence;
+      listing["truncated"] = snap.truncated;
+      listing["files"] = nlohmann::json::array();
+      if (!snap.truncated) {
+        for (const auto &e : snap.entries) {
+          listing["files"].push_back({{"p", e.path}, {"s", e.size}, {"d", e.directory}});
+        }
+      }
+    }
+    answer(response, SimpleWeb::StatusCode::success_ok, listing.dump(), "application/json");
+  }
+
+  /// GET /actions/clipboard/file?seq=&i=&offset=: part of a file from the listing.
+  void getClipboardFile(resp_https_t response, req_https_t request) {
+    print_req<SunshineHTTPS>(request);
+    const auto client = clipboard_files_client(response, request, PERM::clipboard_read, PERM::file_dwnload, "Read clipboard files"sv);
+    if (!client) {
+      return;
+    }
+
+    const auto args = request->parse_query_string();
+    std::uint32_t sequence = 0;
+    std::size_t index = 0;
+    std::uint64_t offset = 0;
+    if (!parse_number(get_arg(args, "seq", ""), sequence) || !parse_number(get_arg(args, "i", ""), index) || !parse_number(get_arg(args, "offset", ""), offset)) {
+      answer(response, SimpleWeb::StatusCode::client_error_bad_request);
+      return;
+    }
+
+    // Only from the listing this client was given, and only while the clipboard
+    // still holds what was listed.
+    clipboard_files::snapshot_t one;
+    {
+      std::lock_guard lock(clipboard_snapshots_mutex);
+      const auto it = clipboard_snapshots.find(client->uuid);
+      if (it == clipboard_snapshots.end() || it->second.sequence != sequence || platf::clipboard_sequence() != sequence ||
+          it->second.truncated || index >= it->second.entries.size()) {
+        answer(response, SimpleWeb::StatusCode::client_error_conflict);
+        return;
+      }
+      one.sequence = sequence;
+      one.entries.push_back(it->second.entries[index]);
+      one.sources.push_back(it->second.sources[index]);
+      one.ids.push_back(it->second.ids[index]);
+    }
+
+    std::string data;
+    std::string why;
+    bool read = false;
+    if (!platf::as_desktop_user([&]() {
+          read = clipboard_files::read_chunk(one, 0, offset, data, &why);
+        })) {
+      answer(response, SimpleWeb::StatusCode::server_error_service_unavailable);
+      return;
+    }
+    if (!read) {
+      BOOST_LOG(warning) << "Clipboard files: not serving a file to "sv << client->name << ": "sv << why;
+      answer(response, SimpleWeb::StatusCode::client_error_conflict);
+      return;
+    }
+    answer(response, SimpleWeb::StatusCode::success_ok, data, "application/octet-stream");
+  }
+
+  /// POST /actions/clipboard/files/begin: {"files":[{"p":path,"s":size,"d":folder}]}.
+  void beginClipboardUpload(resp_https_t response, req_https_t request) {
+    print_req<SunshineHTTPS>(request);
+    const auto client = clipboard_files_client(response, request, PERM::clipboard_set, PERM::file_upload, "Paste files"sv);
+    if (!client) {
+      return;
+    }
+
+    std::vector<clipboard_files::entry_t> entries;
+    try {
+      const auto body = nlohmann::json::parse(request->content.string());
+      for (const auto &f : body.at("files")) {
+        clipboard_files::entry_t e;
+        e.path = f.at("p").get<std::string>();
+        e.size = f.at("s").get<std::uint64_t>();
+        e.directory = f.at("d").get<bool>();
+        entries.push_back(std::move(e));
+        if (entries.size() > clipboard_files::max_entries) {
+          break;
+        }
+      }
+    } catch (const std::exception &) {
+      answer(response, SimpleWeb::StatusCode::client_error_bad_request, "the listing is not valid JSON of the expected shape"sv);
+      return;
+    }
+
+    const auto root = platf::clipboard_staging_root();
+    if (!root) {
+      answer(response, SimpleWeb::StatusCode::server_error_service_unavailable, "nobody is signed in on the host"sv);
+      return;
+    }
+
+    clipboard_files::uploads_t::begin_result_t result;
+    if (!platf::as_desktop_user([&]() {
+          clipboard_uploads.sweep(*root);
+          std::error_code ec;
+          auto probe = *root;
+          while (!std::filesystem::exists(probe, ec) && probe.has_parent_path() && probe != probe.parent_path()) {
+            probe = probe.parent_path();
+          }
+          const auto space = std::filesystem::space(probe, ec);
+          result = clipboard_uploads.begin(client->uuid, entries, *root, ec ? 0 : space.available);
+        })) {
+      answer(response, SimpleWeb::StatusCode::server_error_service_unavailable, "nobody is signed in on the host"sv);
+      return;
+    }
+    if (result.id.empty()) {
+      BOOST_LOG(warning) << "Clipboard files: refused an upload from "sv << client->name << ": "sv << result.error;
+      answer(response, SimpleWeb::StatusCode::client_error_bad_request, result.error);
+      return;
+    }
+
+    std::uint64_t total = 0;
+    for (const auto &e : entries) {
+      total += e.size;
+    }
+    BOOST_LOG(info) << "Clipboard files: "sv << client->name << " is pasting "sv << entries.size() << " entries, "sv << total << " bytes"sv;
+    const nlohmann::json reply {{"id", result.id}, {"chunk", clipboard_files::chunk_bytes}};
+    answer(response, SimpleWeb::StatusCode::success_ok, reply.dump(), "application/json");
+  }
+
+  /// POST /actions/clipboard/files/chunk?id=&i=&offset=: the next bytes of one file.
+  void writeClipboardUpload(resp_https_t response, req_https_t request) {
+    const auto client = clipboard_files_client(response, request, PERM::clipboard_set, PERM::file_upload, "Paste files"sv);
+    if (!client) {
+      return;
+    }
+
+    const auto args = request->parse_query_string();
+    const auto id = get_arg(args, "id", "");
+    std::size_t index = 0;
+    std::uint64_t offset = 0;
+    if (!parse_upload_id(id) || !parse_number(get_arg(args, "i", ""), index) || !parse_number(get_arg(args, "offset", ""), offset)) {
+      answer(response, SimpleWeb::StatusCode::client_error_bad_request);
+      return;
+    }
+
+    const auto data = request->content.string();
+    std::string why;
+    bool wrote = false;
+    if (!platf::as_desktop_user([&]() {
+          wrote = clipboard_uploads.write(client->uuid, id, index, offset, data, &why);
+        })) {
+      answer(response, SimpleWeb::StatusCode::server_error_service_unavailable);
+      return;
+    }
+    if (!wrote) {
+      answer(response, SimpleWeb::StatusCode::client_error_bad_request, why);
+      return;
+    }
+    answer(response, SimpleWeb::StatusCode::success_ok);
+  }
+
+  /// POST /actions/clipboard/files/commit?id=: puts the uploaded files on the clipboard.
+  void commitClipboardUpload(resp_https_t response, req_https_t request) {
+    print_req<SunshineHTTPS>(request);
+    const auto client = clipboard_files_client(response, request, PERM::clipboard_set, PERM::file_upload, "Paste files"sv);
+    if (!client) {
+      return;
+    }
+
+    const auto id = get_arg(request->parse_query_string(), "id", "");
+    if (!parse_upload_id(id)) {
+      answer(response, SimpleWeb::StatusCode::client_error_bad_request);
+      return;
+    }
+
+    std::vector<std::filesystem::path> tops;
+    std::vector<std::filesystem::path> files;
+    std::string why;
+    bool committed = false;
+    if (!platf::as_desktop_user([&]() {
+          committed = clipboard_uploads.commit(client->uuid, id, tops, files, &why);
+          if (committed) {
+            for (const auto &f : files) {
+              platf::mark_from_other_device(f);
+            }
+          }
+        })) {
+      answer(response, SimpleWeb::StatusCode::server_error_service_unavailable);
+      return;
+    }
+    if (!committed) {
+      answer(response, SimpleWeb::StatusCode::client_error_bad_request, why);
+      return;
+    }
+    if (!platf::set_clipboard_files(tops)) {
+      answer(response, SimpleWeb::StatusCode::server_error_internal_server_error, "the files arrived but could not be put on the clipboard"sv);
+      return;
+    }
+    BOOST_LOG(info) << "Clipboard files: "sv << files.size() << " files from "sv << client->name << " are on the clipboard"sv;
+    answer(response, SimpleWeb::StatusCode::success_ok);
+  }
+
+  /// POST /actions/clipboard/files/abort?id=: drops an upload and what it wrote.
+  void abortClipboardUpload(resp_https_t response, req_https_t request) {
+    const auto client = clipboard_files_client(response, request, PERM::clipboard_set, PERM::file_upload, "Paste files"sv);
+    if (!client) {
+      return;
+    }
+    const auto id = get_arg(request->parse_query_string(), "id", "");
+    if (parse_upload_id(id)) {
+      platf::as_desktop_user([&]() {
+        clipboard_uploads.abort(client->uuid, id);
+      });
+    }
+    answer(response, SimpleWeb::StatusCode::success_ok);
   }
 
   void setBitrate(resp_https_t response, req_https_t request) {
@@ -4794,6 +5095,11 @@ namespace nvhttp {
     };
     https_server.resource["^/actions/clipboard$"]["GET"] = getClipboard;
     https_server.resource["^/actions/clipboard$"]["POST"] = setClipboard;
+    https_server.resource["^/actions/clipboard/file$"]["GET"] = getClipboardFile;
+    https_server.resource["^/actions/clipboard/files/begin$"]["POST"] = beginClipboardUpload;
+    https_server.resource["^/actions/clipboard/files/chunk$"]["POST"] = writeClipboardUpload;
+    https_server.resource["^/actions/clipboard/files/commit$"]["POST"] = commitClipboardUpload;
+    https_server.resource["^/actions/clipboard/files/abort$"]["POST"] = abortClipboardUpload;
     https_server.resource["^/bitrate$"]["GET"] = setBitrate;
     https_server.resource["^/api/abr/capabilities$"]["GET"] = getAbrCapabilities;
     https_server.resource["^/actions/displays$"]["GET"] = getDisplays;

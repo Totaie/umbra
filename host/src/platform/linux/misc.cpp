@@ -1375,6 +1375,35 @@ namespace platf {
     return false;
   }
 
+  // Files on the clipboard are Windows-only so far.
+  bool clipboard_files_supported() {
+    return false;
+  }
+
+  bool as_desktop_user(const std::function<void()> &) {
+    return false;
+  }
+
+  std::optional<std::filesystem::path> clipboard_staging_root() {
+    return std::nullopt;
+  }
+
+  std::uint32_t clipboard_sequence() {
+    return 0;
+  }
+
+  bool get_clipboard_files(std::vector<std::filesystem::path> &paths) {
+    paths.clear();
+    return false;
+  }
+
+  bool set_clipboard_files(const std::vector<std::filesystem::path> &) {
+    return false;
+  }
+
+  void mark_from_other_device(const std::filesystem::path &) {
+  }
+
   std::string find_render_node_with_display() {
 #ifdef SUNSHINE_BUILD_DRM
     auto *dir = opendir("/dev/dri");
