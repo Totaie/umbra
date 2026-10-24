@@ -72,6 +72,9 @@ public:
     // True while an answer or a keystroke is due, so the loop should not sleep long.
     bool hasPendingWork() const;
 
+    // Messages for the user (a large copy's progress, why something did not cross).
+    QStringList takeNotices();
+
 private:
     static constexpr int MAX_QUEUED_HOST_FRAMES = 32;
     static constexpr int MAX_PENDING_STDIN_BYTES = 4 * 1024 * 1024;
@@ -104,9 +107,13 @@ private:
     quint32 nextSequence();
     static bool mainProcessOwnsLocalText();
     static QByteArray readLocalText();
+    static QStringList readLocalFiles();
+    void setLocalFiles(const QStringList& paths);
+    void startPasteFiles(const QStringList& paths);
     bool hostUsesActionsApi() const;
     bool mirrorsLocalText() const;
-    bool takeLocalChange(QByteArray& outText);
+    enum class LocalChange { None, Text, Files };
+    LocalChange takeLocalChange(QByteArray& outText, QStringList& outFiles);
     void sendInitialLocalText();
     void setLocalText(const QByteArray& textUtf8);
     void startPaste(const QByteArray& text);
@@ -148,4 +155,11 @@ private:
     QByteArray m_LastLocalText;
     bool m_HavePendingHostText;      // arrived while the stream window had no focus
     QByteArray m_PendingHostText;
+    // Files work the same way, except that what this machine copies is only sent
+    // when it is pasted on the host: copying a folder must not start an upload.
+    QString m_LastLocalFiles;        // the copied files the two sides last agreed on
+    QStringList m_UnsentLocalFiles;  // copied here, not yet pasted on the host
+    QStringList m_PendingHostFiles;  // arrived while the stream window had no focus
+    bool m_PasteAlwaysPresses;       // a plain Ctrl+V: pressed on the host whatever happens
+    QStringList m_Notices;
 };

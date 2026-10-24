@@ -4045,6 +4045,9 @@ void Session::exec()
         }
 
         m_ClipboardHelper->processPendingMessages();
+        for (const QString& notice : m_ClipboardHelper->takeNotices()) {
+            showStreamingToast(notice, 4000);
+        }
 
         // A paste finishes here: the clipboard has reached the host (or cannot), and
         // only now does the host get the keystroke that uses it.

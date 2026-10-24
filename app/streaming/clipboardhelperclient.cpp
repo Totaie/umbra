@@ -2,6 +2,7 @@
 
 #include "backend/identitymanager.h"
 #include "backend/nvcomputer.h"
+#include "clipboardfiles.h"
 #include "clipboardipc.h"
 
 #include <QCoreApplication>
@@ -9,7 +10,13 @@
 #include <QFileInfo>
 #include <QMutexLocker>
 #include <QProcess>
+#include <QFileInfo>
 #include <QProcessEnvironment>
+#include <QUrl>
+
+#ifdef Q_OS_LINUX
+#include <dlfcn.h>
+#endif
 
 #include <SDL.h>
 
@@ -38,7 +45,8 @@ ClipboardHelperClient::ClipboardHelperClient(NvComputer* computer, bool shortcut
       m_PasteActionTicks(0),
       m_InitialLocalSent(false),
       m_HaveLastLocal(false),
-      m_HavePendingHostText(false)
+      m_HavePendingHostText(false),
+      m_PasteAlwaysPresses(false)
 {
 }
 
@@ -50,6 +58,58 @@ QByteArray comparable(QByteArray text)
     text.replace("\r\n", "\n");
     return text;
 }
+
+#ifdef Q_OS_LINUX
+// Files on the Wayland clipboard need SDL3's clipboard-data calls, which the SDL2
+// API does not have. Umbra runs on sdl2-compat, which has SDL3 loaded already, so
+// the calls are looked up in that same library; without it, files do not cross.
+using Sdl3DataCallback = const void* (*)(void* userdata, const char* mimeType, size_t* size);
+using Sdl3CleanupCallback = void (*)(void* userdata);
+struct Sdl3Clipboard {
+    bool (*hasData)(const char* mimeType) = nullptr;
+    void* (*getData)(const char* mimeType, size_t* size) = nullptr;
+    bool (*setData)(Sdl3DataCallback, Sdl3CleanupCallback, void*, const char* const*, size_t) = nullptr;
+    void (*free)(void*) = nullptr;
+
+    bool usable() const { return hasData && getData && setData && free; }
+};
+
+const Sdl3Clipboard& sdl3Clipboard()
+{
+    static const Sdl3Clipboard clipboard = []() {
+        Sdl3Clipboard c;
+        // RTLD_NOLOAD: only the copy already in the process, never a second one.
+        void* sdl3 = dlopen("libSDL3.so.0", RTLD_NOW | RTLD_NOLOAD);
+        if (sdl3 != nullptr) {
+            c.hasData = reinterpret_cast<decltype(c.hasData)>(dlsym(sdl3, "SDL_HasClipboardData"));
+            c.getData = reinterpret_cast<decltype(c.getData)>(dlsym(sdl3, "SDL_GetClipboardData"));
+            c.setData = reinterpret_cast<decltype(c.setData)>(dlsym(sdl3, "SDL_SetClipboardData"));
+            c.free = reinterpret_cast<decltype(c.free)>(dlsym(sdl3, "SDL_free"));
+        }
+        return c;
+    }();
+    return clipboard;
+}
+
+struct OfferedFiles {
+    QByteArray uriList;
+    QByteArray gnomeCopiedFiles;
+};
+
+const void* offerFiles(void* userdata, const char* mimeType, size_t* size)
+{
+    const auto* offer = static_cast<const OfferedFiles*>(userdata);
+    const QByteArray* data = qstrcmp(mimeType, "x-special/gnome-copied-files") == 0 ? &offer->gnomeCopiedFiles
+                                                                                     : &offer->uriList;
+    *size = static_cast<size_t>(data->size());
+    return data->constData();
+}
+
+void releaseOfferedFiles(void* userdata)
+{
+    delete static_cast<OfferedFiles*>(userdata);
+}
+#endif
 }
 
 ClipboardHelperClient::~ClipboardHelperClient()
@@ -270,17 +330,84 @@ bool ClipboardHelperClient::mirrorsLocalText() const
     return !m_ShortcutMode && mainProcessOwnsLocalText() && m_HelperReady && isRunning();
 }
 
-bool ClipboardHelperClient::takeLocalChange(QByteArray& outText)
+QStringList ClipboardHelperClient::readLocalFiles()
 {
+#ifdef Q_OS_LINUX
+    const Sdl3Clipboard& sdl3 = sdl3Clipboard();
+    if (!sdl3.usable() || !sdl3.hasData("text/uri-list")) {
+        return {};
+    }
+    size_t size = 0;
+    void* data = sdl3.getData("text/uri-list", &size);
+    if (data == nullptr) {
+        return {};
+    }
+    const QStringList files = ClipboardFiles::localFilesFromUriList(
+                QByteArray(static_cast<const char*>(data), static_cast<int>(qMin<size_t>(size, 4 * 1024 * 1024))));
+    sdl3.free(data);
+    return files;
+#else
+    return {};
+#endif
+}
+
+ClipboardHelperClient::LocalChange ClipboardHelperClient::takeLocalChange(QByteArray& outText, QStringList& outFiles)
+{
+    // Copied files first: the file manager also offers their names as text, and
+    // those are not what the user means to paste.
+    const QStringList files = readLocalFiles();
+    if (!files.isEmpty()) {
+        const QString key = files.join(QLatin1Char('\n'));
+        if (key == m_LastLocalFiles) {
+            return LocalChange::None;
+        }
+        m_LastLocalFiles = key;
+        outFiles = files;
+        return LocalChange::Files;
+    }
+
     const QByteArray text = readLocalText();
     if (text.isEmpty() || (m_HaveLastLocal && comparable(text) == m_LastLocalText)) {
-        return false;
+        return LocalChange::None;
     }
 
     m_LastLocalText = comparable(text);
     m_HaveLastLocal = true;
+    m_LastLocalFiles.clear();
     outText = text;
-    return true;
+    return LocalChange::Text;
+}
+
+void ClipboardHelperClient::setLocalFiles(const QStringList& paths)
+{
+    if (SDL_GetKeyboardFocus() == nullptr) {
+        // As with text: only with focus, and only if nothing newer was copied here.
+        m_PendingHostFiles = paths;
+        return;
+    }
+
+#ifdef Q_OS_LINUX
+    const Sdl3Clipboard& sdl3 = sdl3Clipboard();
+    if (sdl3.usable()) {
+        auto* offer = new OfferedFiles;
+        offer->uriList = ClipboardFiles::uriListFor(paths);
+        offer->gnomeCopiedFiles = "copy";
+        for (const QString& p : paths) {
+            offer->gnomeCopiedFiles += "\n" + QUrl::fromLocalFile(p).toEncoded();
+        }
+        // No text type: the names as text would come straight back as a "new copy".
+        static const char* const types[] = { "text/uri-list", "x-special/gnome-copied-files" };
+        if (sdl3.setData(offerFiles, releaseOfferedFiles, offer, types, 2)) {
+            m_LastLocalFiles = paths.join(QLatin1Char('\n'));
+            m_UnsentLocalFiles.clear();
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                        "Clipboard: copied %d items from the host", static_cast<int>(paths.size()));
+            return;
+        }
+        delete offer;
+    }
+#endif
+    m_Notices.append(QStringLiteral("Files from the host are in %1").arg(QFileInfo(paths.first()).absolutePath()));
 }
 
 void ClipboardHelperClient::setLocalText(const QByteArray& textUtf8)
@@ -335,9 +462,16 @@ void ClipboardHelperClient::localClipboardMayHaveChanged()
     }
 
     QByteArray text;
-    if (!takeLocalChange(text)) {
-        if (m_HavePendingHostText) {
-            // Nothing new here, so what the host copied meanwhile stands.
+    QStringList files;
+    const LocalChange change = takeLocalChange(text, files);
+    if (change == LocalChange::None) {
+        // Nothing new here, so what the host copied meanwhile stands.
+        if (!m_PendingHostFiles.isEmpty()) {
+            const QStringList pending = m_PendingHostFiles;
+            m_PendingHostFiles.clear();
+            setLocalFiles(pending);
+        }
+        else if (m_HavePendingHostText) {
             m_HavePendingHostText = false;
             setLocalText(m_PendingHostText);
         }
@@ -346,6 +480,13 @@ void ClipboardHelperClient::localClipboardMayHaveChanged()
 
     // What this machine has goes first.
     m_HavePendingHostText = false;
+    m_PendingHostFiles.clear();
+    if (change == LocalChange::Files) {
+        // Kept for the next paste on the host; a copy alone sends nothing.
+        m_UnsentLocalFiles = files;
+        return;
+    }
+    m_UnsentLocalFiles.clear();
     if (text.size() > ClipboardIpc::MAX_TEXT_BYTES) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "Clipboard: %d bytes of text is too much to share with the host",
@@ -361,22 +502,77 @@ void ClipboardHelperClient::localClipboardMayHaveChanged()
 
 bool ClipboardHelperClient::syncBeforePaste()
 {
-    if (!mirrorsLocalText() || !m_InitialLocalSent) {
+    if (m_ShortcutMode || !m_HelperReady || !isRunning()) {
+        return false;
+    }
+
+    if (!mainProcessOwnsLocalText()) {
+        // The helper sees the clipboard itself; it says whether anything has to go
+        // first, which for copied files means sending them, and Ctrl+V follows.
+        m_PasteAlwaysPresses = true;
+        startPaste(QByteArray());
+        // The helper answers every request, a stalled upload included, in its own time.
+        if (m_PasteSequence != 0) {
+            m_PasteDeadlineTicks = SDL_GetTicks() + 24 * 3600 * 1000;
+        }
+        return true;
+    }
+
+    if (!m_InitialLocalSent) {
         return false;
     }
 
     QByteArray text;
-    if (!takeLocalChange(text) || text.size() > ClipboardIpc::MAX_TEXT_BYTES) {
+    QStringList files;
+    const LocalChange change = takeLocalChange(text, files);
+    if (change == LocalChange::Files) {
+        m_UnsentLocalFiles = files;
+    }
+    if (!m_UnsentLocalFiles.isEmpty() && change != LocalChange::Text) {
+        m_HavePendingHostText = false;
+        m_PendingHostFiles.clear();
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Clipboard: sending %d copied items to the host before pasting",
+                    static_cast<int>(m_UnsentLocalFiles.size()));
+        m_PasteAlwaysPresses = true;
+        startPasteFiles(m_UnsentLocalFiles);
+        return true;
+    }
+    if (change != LocalChange::Text || text.size() > ClipboardIpc::MAX_TEXT_BYTES) {
         // The host has what this machine has; the key can go straight through.
         return false;
     }
 
     m_HavePendingHostText = false;
+    m_PendingHostFiles.clear();
+    m_UnsentLocalFiles.clear();
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "Clipboard: sharing %d bytes of text with the host before pasting",
                 static_cast<int>(text.size()));
+    m_PasteAlwaysPresses = true;
     startPaste(text);
     return true;
+}
+
+void ClipboardHelperClient::startPasteFiles(const QStringList& paths)
+{
+    m_PasteAction = PasteAction::None;
+    m_PasteFrameFailed = false;
+    m_PasteText.clear();
+    m_PasteSequence = nextSequence();
+    // An upload can take a while; its progress shows as notices meanwhile.
+    m_PasteDeadlineTicks = SDL_GetTicks() + 24 * 3600 * 1000;
+    if (!writeLine(ClipboardIpc::encodePasteFilesToHost(m_PasteSequence, paths))) {
+        m_PasteSequence = 0;
+        finishPaste(false, false, false, QStringLiteral("the clipboard helper stopped"));
+    }
+}
+
+QStringList ClipboardHelperClient::takeNotices()
+{
+    QStringList notices;
+    qSwap(notices, m_Notices);
+    return notices;
 }
 
 void ClipboardHelperClient::hostMayHaveCopied()
@@ -413,6 +609,7 @@ void ClipboardHelperClient::startPaste(const QByteArray& text)
     m_PasteSequence = 0;
     m_PasteFrameFailed = false;
     m_PasteText = text;
+    m_PasteDeadlineTicks = SDL_GetTicks() + PASTE_ANSWER_TIMEOUT_MS;
 
     const bool ownsText = mainProcessOwnsLocalText();
     if (m_HostRejectedClipboard || !m_HelperReady || !isRunning() ||
@@ -437,6 +634,8 @@ void ClipboardHelperClient::startPaste(const QByteArray& text)
 void ClipboardHelperClient::finishPaste(bool ok, bool outOfBand, bool confirmed, const QString& detail)
 {
     m_PasteSequence = 0;
+    const bool alwaysPress = m_PasteAlwaysPresses;
+    m_PasteAlwaysPresses = false;
 
     if (ok) {
         m_PasteAction = PasteAction::SendPasteChord;
@@ -460,6 +659,11 @@ void ClipboardHelperClient::finishPaste(bool ok, bool outOfBand, bool confirmed,
     SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                 "Clipboard: nothing pasted to the host: %s",
                 detail.toUtf8().constData());
+    if (alwaysPress) {
+        // It was the user's Ctrl+V: the host pastes what it has.
+        m_PasteAction = PasteAction::SendPasteChord;
+        m_PasteActionTicks = SDL_GetTicks();
+    }
 }
 
 void ClipboardHelperClient::checkPasteTimeout()
@@ -734,6 +938,17 @@ void ClipboardHelperClient::processProtocolLine(const QByteArray& line)
 
     if (message.type == ClipboardIpc::MessageType::SetLocalText) {
         setLocalText(message.clipboardText);
+        return;
+    }
+
+    if (message.type == ClipboardIpc::MessageType::SetLocalFiles) {
+        setLocalFiles(message.paths);
+        return;
+    }
+
+    if (message.type == ClipboardIpc::MessageType::Notice) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Clipboard: %s", message.text.toUtf8().constData());
+        m_Notices.append(message.text);
         return;
     }
 

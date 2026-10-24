@@ -86,6 +86,16 @@ public slots:
             return;
         }
 
+        if (message.type == ClipboardIpc::MessageType::PasteFilesToHost) {
+            if (m_ClipboardEngine == nullptr) {
+                writeProtocolLine(ClipboardIpc::encodePasteResult(message.sequence, false, false, false,
+                                                                  QStringLiteral("clipboard sync is not configured")));
+                return;
+            }
+            m_ClipboardEngine->pasteFilesToHost(message.sequence, message.paths);
+            return;
+        }
+
         if (message.type == ClipboardIpc::MessageType::LocalText) {
             if (m_ClipboardEngine != nullptr) {
                 m_ClipboardEngine->localTextChanged(message.clipboardText);
@@ -151,6 +161,12 @@ private:
                     this, &ClipboardHelperController::sendLocalText);
             connect(m_ClipboardEngine, &ClipboardSync::pasteFinished,
                     this, &ClipboardHelperController::sendPasteResult);
+            connect(m_ClipboardEngine, &ClipboardSync::localFilesRequested, this, [this](const QStringList& paths) {
+                writeProtocolLine(ClipboardIpc::encodeSetLocalFiles(m_NextSequence++, paths));
+            });
+            connect(m_ClipboardEngine, &ClipboardSync::notice, this, [this](const QString& text) {
+                writeProtocolLine(ClipboardIpc::encodeNotice(m_NextSequence++, text));
+            });
             m_ClipboardEngine->start();
         }
         else {

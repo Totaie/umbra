@@ -235,6 +235,7 @@ SOURCES += \
     streaming/filemappingux.cpp \
     streaming/clipboardhelperclient.cpp \
     streaming/clipboardipc.cpp \
+    streaming/clipboardfiles.cpp \
     streaming/audio/audio.cpp \
     streaming/audio/renderers/sdlaud.cpp \
     streaming/network/bandwidth.cpp \
@@ -287,6 +288,7 @@ HEADERS += \
     streaming/filemappingux.h \
     streaming/clipboardhelperclient.h \
     streaming/clipboardipc.h \
+    streaming/clipboardfiles.h \
     streaming/audio/renderers/renderer.h \
     streaming/audio/renderers/sdl.h \
     gui/computermodel.h \

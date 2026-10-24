@@ -1,5 +1,6 @@
 #include "clipboardipc.h"
 
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
@@ -32,6 +33,12 @@ QString typeToString(MessageType type)
         return QStringLiteral("setLocalText");
     case MessageType::PasteResult:
         return QStringLiteral("pasteResult");
+    case MessageType::PasteFilesToHost:
+        return QStringLiteral("pasteFilesToHost");
+    case MessageType::SetLocalFiles:
+        return QStringLiteral("setLocalFiles");
+    case MessageType::Notice:
+        return QStringLiteral("notice");
     case MessageType::Unknown:
         break;
     }
@@ -72,6 +79,15 @@ MessageType stringToType(const QString& type)
     }
     if (type == QStringLiteral("pasteResult")) {
         return MessageType::PasteResult;
+    }
+    if (type == QStringLiteral("pasteFilesToHost")) {
+        return MessageType::PasteFilesToHost;
+    }
+    if (type == QStringLiteral("setLocalFiles")) {
+        return MessageType::SetLocalFiles;
+    }
+    if (type == QStringLiteral("notice")) {
+        return MessageType::Notice;
     }
     return MessageType::Unknown;
 }
@@ -179,6 +195,32 @@ QByteArray encodeLocalText(quint32 sequence, const QByteArray& textUtf8)
     return encodeObject(obj);
 }
 
+namespace {
+QByteArray encodePaths(MessageType type, quint32 sequence, const QStringList& paths)
+{
+    QJsonObject obj = baseMessage(type, sequence);
+    obj.insert(QStringLiteral("paths"), QJsonArray::fromStringList(paths));
+    return encodeObject(obj);
+}
+}
+
+QByteArray encodePasteFilesToHost(quint32 sequence, const QStringList& paths)
+{
+    return encodePaths(MessageType::PasteFilesToHost, sequence, paths);
+}
+
+QByteArray encodeSetLocalFiles(quint32 sequence, const QStringList& paths)
+{
+    return encodePaths(MessageType::SetLocalFiles, sequence, paths);
+}
+
+QByteArray encodeNotice(quint32 sequence, const QString& text)
+{
+    QJsonObject obj = baseMessage(MessageType::Notice, sequence);
+    obj.insert(QStringLiteral("text"), text);
+    return encodeObject(obj);
+}
+
 QByteArray encodeSetLocalText(quint32 sequence, const QByteArray& textUtf8)
 {
     QJsonObject obj = baseMessage(MessageType::SetLocalText, sequence);
@@ -279,6 +321,23 @@ bool decodeLine(const QByteArray& line, Message& outMessage, QString& outError)
         outMessage.outOfBand = obj.value(QStringLiteral("outOfBand")).toBool(false);
         outMessage.confirmed = obj.value(QStringLiteral("confirmed")).toBool(false);
         outMessage.text = obj.value(QStringLiteral("detail")).toString();
+        return true;
+    case MessageType::PasteFilesToHost:
+    case MessageType::SetLocalFiles:
+        for (const QJsonValue& v : obj.value(QStringLiteral("paths")).toArray()) {
+            if (!v.isString() || v.toString().isEmpty()) {
+                outError = QStringLiteral("invalid path list");
+                return false;
+            }
+            outMessage.paths.append(v.toString());
+        }
+        if (outMessage.paths.isEmpty()) {
+            outError = QStringLiteral("empty path list");
+            return false;
+        }
+        return true;
+    case MessageType::Notice:
+        outMessage.text = obj.value(QStringLiteral("text")).toString().left(500);
         return true;
     case MessageType::Ready:
     case MessageType::Stop:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QPointer>
 #include <QByteArray>
 #include <QElapsedTimer>
 #include <QMutex>
@@ -15,6 +16,7 @@
 #include <functional>
 
 class QImage;
+namespace ClipboardFiles { class Transfer; }
 class QMimeData;
 class QNetworkAccessManager;
 class QNetworkRequest;
@@ -152,6 +154,10 @@ public:
     // this is its text (empty for none). In automatic mode a change goes to the host.
     void localTextChanged(const QByteArray& textUtf8);
 
+    // Sends local files to a host with the actions API, which puts them on its
+    // clipboard. Answered by pasteFinished(). Only on request: never automatically.
+    void pasteFilesToHost(quint32 requestId, const QStringList& paths);
+
     // Start watching the local clipboard and accepting inbound payloads.
     // Must be called on the GUI thread.
     void start();
@@ -171,6 +177,12 @@ signals:
 
     // Only with setDelegateLocalText(true): put this UTF-8 text on the clipboard.
     void localTextRequested(QByteArray textUtf8);
+
+    // Only with setDelegateLocalText(true): put these downloaded files on the clipboard.
+    void localFilesRequested(QStringList paths);
+
+    // Something the user should see: progress of a large copy, or why it did not happen.
+    void notice(QString text);
 
     // The answer to pasteToHost(). `ok` means the payload is on its way; with
     // `outOfBand` the host still has to fetch it, so pasting has to wait longer, and
@@ -214,11 +226,14 @@ private:
     void probeHost();
     void resolveHostKind(HostKind kind);
     void whenHostKindKnown(const std::function<void()>& resume);
-    void pollHost(bool report);
+    void pollHost(bool report, bool requested);
     void pushTextToHost(const QByteArray& utf8,
                         const std::function<void(bool ok, int status, const QString& error)>& done);
     void mirrorLocalText(const QByteArray& utf8);
     void pushMirroredText();
+    void pollHostFiles(bool requested);
+    void applyDownloadedFiles(const QStringList& paths);
+    bool fileRequest(const QString& pathAndQuery, QNetworkRequest& out) const;
     bool buildHostUrl(const QString& path, QUrl& outUrl) const;
     QNetworkRequest hostRequest(const QUrl& url) const;
     void sendLocalText(const QByteArray& utf8, bool force,
@@ -299,6 +314,12 @@ private:
     int m_TickCount = 0;
     bool m_WarnedReadDenied = false;
     bool m_WarnedSetDenied = false;
+
+    // Files, with a host that has the actions API. One transfer at a time.
+    QPointer<ClipboardFiles::Transfer> m_FileTransfer;
+    bool m_HostTakesFiles = true;      // until it says otherwise
+    quint32 m_FilesSequenceSeen = 0;   // the host listing last acted on
+    QStringList m_LastUploadedFiles;   // what this machine's clipboard last sent
     QQueue<QPair<uint64_t, qint64>> m_EchoCache; // (hash, timestamp_ms)
 
 #ifdef Q_OS_MACOS

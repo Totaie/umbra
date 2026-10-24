@@ -12,14 +12,16 @@ INCLUDEPATH += $$PWD/../app
 SOURCES += \
     main.cpp \
     ../app/streaming/clipboardipc.cpp \
-    ../app/streaming/clipboardsync.cpp
+    ../app/streaming/clipboardsync.cpp \
+    ../app/streaming/clipboardfiles.cpp
 
 macx:SOURCES += macos.mm
 
 HEADERS += \
     ../app/streaming/clipboardipc.h \
     ../app/streaming/clipboardlogging.h \
-    ../app/streaming/clipboardsync.h
+    ../app/streaming/clipboardsync.h \
+    ../app/streaming/clipboardfiles.h
 
 unix:!macx {
     isEmpty(PREFIX) {

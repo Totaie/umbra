@@ -1,4 +1,5 @@
 #include "clipboardsync.h"
+#include "clipboardfiles.h"
 #include "clipboardlogging.h"
 
 #include <QBuffer>
@@ -6,6 +7,7 @@
 #include <QDateTime>
 #include <QGuiApplication>
 #include <QImage>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMetaObject>
@@ -181,13 +183,14 @@ void ClipboardSync::copyFromHostOverActions()
     for (int delay : ACTIONS_COPY_DELAYS_MS) {
         QTimer::singleShot(delay, this, [this, generation, delay, lastDelay]() {
             if (m_Active && generation == m_CopyGeneration) {
-                pollHost(delay == lastDelay);
+                // Asked for with the shortcut, files come over whatever their size.
+                pollHost(delay == lastDelay, m_Mode == Mode::Manual);
             }
         });
     }
 }
 
-void ClipboardSync::pollHost(bool report)
+void ClipboardSync::pollHost(bool report, bool requested)
 {
     QUrl url;
     if (!buildHostUrl(QStringLiteral("/actions/clipboard?type=text"), url)) {
@@ -196,7 +199,7 @@ void ClipboardSync::pollHost(bool report)
 
     const quint32 generation = m_SyncGeneration;
     QNetworkReply* reply = nam()->get(hostRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, generation, report]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, generation, report, requested]() {
         reply->deleteLater();
         if (!m_Active) {
             return;
@@ -228,7 +231,11 @@ void ClipboardSync::pollHost(bool report)
         m_LastHostTextBytes = raw.size();
         const QByteArray text = withLocalLineEnds(raw);
         if (text.isEmpty()) {
-            if (report && !m_HaveShared) {
+            // No text: perhaps files, which is the other thing the host can hand over.
+            if (m_Mode == Mode::Automatic || requested) {
+                pollHostFiles(requested);
+            }
+            else if (report && !m_HaveShared) {
                 ClipboardLog::info("ClipboardSync: the host's clipboard has no text");
             }
             return;
@@ -339,6 +346,158 @@ void ClipboardSync::pushMirroredText()
     });
 }
 
+bool ClipboardSync::fileRequest(const QString& pathAndQuery, QNetworkRequest& out) const
+{
+    QUrl url;
+    if (!buildHostUrl(pathAndQuery, url)) {
+        return false;
+    }
+    out = hostRequest(url);
+    return true;
+}
+
+void ClipboardSync::pollHostFiles(bool requested)
+{
+    if (!m_HostTakesFiles || m_HostKind != HostKind::Actions || m_FileTransfer != nullptr) {
+        return;
+    }
+
+    QNetworkRequest req;
+    if (!fileRequest(QStringLiteral("/actions/clipboard?type=files"), req)) {
+        return;
+    }
+    QNetworkReply* reply = nam()->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, requested]() {
+        reply->deleteLater();
+        if (!m_Active || m_FileTransfer != nullptr) {
+            return;
+        }
+
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() != QNetworkReply::NoError) {
+            if (status == 400 || status == 404 || status == 501) {
+                // A host from before files, or one that cannot do them: stop asking.
+                m_HostTakesFiles = false;
+            }
+            return;
+        }
+
+        const QJsonObject listing = QJsonDocument::fromJson(reply->read(4 * 1024 * 1024)).object();
+        const quint32 sequence = static_cast<quint32>(listing.value(QStringLiteral("seq")).toDouble(0));
+        const QJsonArray files = listing.value(QStringLiteral("files")).toArray();
+        const bool truncated = listing.value(QStringLiteral("truncated")).toBool(false);
+        if ((files.isEmpty() && !truncated) || (sequence == m_FilesSequenceSeen && !requested)) {
+            return;
+        }
+        m_FilesSequenceSeen = sequence;
+
+        if (truncated) {
+            emit notice(QStringLiteral("The host copied more files than can come across (over %1 files or %2 GB)")
+                        .arg(ClipboardFiles::MAX_ENTRIES).arg(ClipboardFiles::MAX_TOTAL_BYTES >> 30));
+            return;
+        }
+
+        QList<ClipboardFiles::Entry> entries;
+        qint64 total = 0;
+        for (const QJsonValue& v : files) {
+            const QJsonObject f = v.toObject();
+            ClipboardFiles::Entry e;
+            e.path = f.value(QStringLiteral("p")).toString();
+            e.size = static_cast<qint64>(f.value(QStringLiteral("s")).toDouble(-1));
+            e.directory = f.value(QStringLiteral("d")).toBool(false);
+            total += qMax<qint64>(0, e.size);
+            entries.append(e);
+        }
+        if (!requested && total > ClipboardFiles::AUTO_DOWNLOAD_BYTES) {
+            emit notice(QStringLiteral("The host copied %1 GB of files, more than is brought over by itself (%2 GB)")
+                        .arg(total / double(1LL << 30), 0, 'f', 1).arg(ClipboardFiles::AUTO_DOWNLOAD_BYTES >> 30));
+            return;
+        }
+
+        ClipboardLog::info("ClipboardSync: fetching %d files and folders from the host", static_cast<int>(entries.size()));
+        m_FileTransfer = new ClipboardFiles::Transfer(nam(), [this](const QString& path, QNetworkRequest& out) {
+            return fileRequest(path, out);
+        }, this);
+        connect(m_FileTransfer, &ClipboardFiles::Transfer::progress, this, &ClipboardSync::notice);
+        connect(m_FileTransfer, &ClipboardFiles::Transfer::finished, this,
+                [this, transfer = m_FileTransfer.data()](bool ok, QString detail, QStringList paths) {
+            transfer->deleteLater();
+            if (!ok) {
+                emit notice(QStringLiteral("Files from the host did not come across: %1").arg(detail));
+                return;
+            }
+            applyDownloadedFiles(paths);
+        });
+        m_FileTransfer->download(sequence, entries);
+    });
+}
+
+void ClipboardSync::applyDownloadedFiles(const QStringList& paths)
+{
+    // Pasting these straight back to the host needs no trip: it has them already.
+    m_LastUploadedFiles = paths;
+
+    if (m_DelegateLocalText) {
+        emit localFilesRequested(paths);
+        return;
+    }
+
+    QClipboard* cb = QGuiApplication::clipboard();
+    if (cb == nullptr) {
+        return;
+    }
+    QList<QUrl> urls;
+    for (const QString& p : paths) {
+        urls.append(QUrl::fromLocalFile(p));
+    }
+    QMimeData* mime = new QMimeData();
+    mime->setUrls(urls);
+    ++m_PendingSelfWrites;
+    cb->setMimeData(mime);
+    ClipboardLog::info("ClipboardSync: %d copied items from the host are on the clipboard", static_cast<int>(paths.size()));
+}
+
+void ClipboardSync::pasteFilesToHost(quint32 requestId, const QStringList& paths)
+{
+    auto finish = [this, requestId](bool ok, const QString& detail) {
+        emit pasteFinished(requestId, ok, false, ok, detail);
+    };
+
+    if (!m_Active || m_HostKind != HostKind::Actions || !m_HostTakesFiles) {
+        finish(false, QStringLiteral("this host cannot take files"));
+        return;
+    }
+    if (paths == m_LastUploadedFiles) {
+        // Already on the host's clipboard (or came from it), unless it copied something since.
+        finish(true, QString());
+        return;
+    }
+    if (m_FileTransfer != nullptr) {
+        // What this machine pastes now matters more than what it was fetching.
+        m_FileTransfer->cancel();
+        m_FileTransfer->deleteLater();
+        m_FileTransfer = nullptr;
+    }
+
+    m_FileTransfer = new ClipboardFiles::Transfer(nam(), [this](const QString& path, QNetworkRequest& out) {
+        return fileRequest(path, out);
+    }, this);
+    connect(m_FileTransfer, &ClipboardFiles::Transfer::progress, this, &ClipboardSync::notice);
+    connect(m_FileTransfer, &ClipboardFiles::Transfer::finished, this,
+            [this, transfer = m_FileTransfer.data(), paths, finish](bool ok, QString detail, QStringList) {
+        transfer->deleteLater();
+        if (ok) {
+            m_LastUploadedFiles = paths;
+            ClipboardLog::info("ClipboardSync: %d copied items are on the host's clipboard", static_cast<int>(paths.size()));
+        }
+        else {
+            emit notice(QStringLiteral("The files did not go to the host: %1").arg(detail));
+        }
+        finish(ok, detail);
+    });
+    m_FileTransfer->upload(paths);
+}
+
 void ClipboardSync::localTextChanged(const QByteArray& utf8)
 {
     m_LocalStateKnown = true;
@@ -404,7 +563,7 @@ void ClipboardSync::onSyncTick()
     if (m_LastHostTextBytes > LARGE_TEXT_BYTES && (++m_TickCount % LARGE_TEXT_TICKS) != 0) {
         return;
     }
-    pollHost(false);
+    pollHost(false, false);
 }
 
 void ClipboardSync::probeHost()
@@ -487,6 +646,13 @@ void ClipboardSync::pasteToHostOverActions(quint32 requestId, const QByteArray* 
     }
     else {
         QClipboard* cb = QGuiApplication::clipboard();
+        const QMimeData* mime = cb != nullptr ? cb->mimeData() : nullptr;
+        // Copied files go as files; their names as text would be no use to anyone.
+        const QStringList files = mime != nullptr && mime->hasUrls() ? ClipboardFiles::localFilesFromUrls(mime->urls()) : QStringList();
+        if (!files.isEmpty()) {
+            pasteFilesToHost(requestId, files);
+            return;
+        }
         utf8 = cb != nullptr ? cb->text().toUtf8() : QByteArray();
     }
     if (utf8.isEmpty()) {
@@ -608,6 +774,7 @@ void ClipboardSync::start()
     m_Active = true;
     ClipboardLog::info("ClipboardSync: started (text + PNG, bidirectional)");
 
+    ClipboardFiles::sweepDownloads();
     m_HostKind = HostKind::Unknown;
     m_ProbeFailures = 0;
     m_LocalStateKnown = false;
@@ -647,6 +814,11 @@ void ClipboardSync::stop()
     m_PendingSelfWrites = 0;
     if (m_SyncTimer != nullptr) {
         m_SyncTimer->stop();
+    }
+    if (m_FileTransfer != nullptr) {
+        m_FileTransfer->cancel();
+        m_FileTransfer->deleteLater();
+        m_FileTransfer = nullptr;
     }
     m_WhenHostKindKnown.clear();
     m_RetryText.clear();
@@ -1226,10 +1398,15 @@ void ClipboardSync::onLocalClipboardChanged()
     }
 
     if (m_HostKind == HostKind::Actions) {
-        // Text is all this host takes, and where the owner of the local clipboard
-        // reports its text itself (localTextChanged()), what Qt sees here is stale.
+        // Where the owner of the local clipboard reports its text itself
+        // (localTextChanged()), what Qt sees here is stale. Copied files wait for
+        // a paste on the host, which is when they are worth sending.
         if (!m_DelegateLocalText) {
             m_LocalStateKnown = true;
+            const QMimeData* local = cb->mimeData();
+            if (local != nullptr && local->hasUrls() && !ClipboardFiles::localFilesFromUrls(local->urls()).isEmpty()) {
+                return;
+            }
             mirrorLocalText(cb->text().toUtf8());
         }
         return;

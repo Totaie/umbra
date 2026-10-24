@@ -2,6 +2,7 @@
 
 #include <QByteArray>
 #include <QString>
+#include <QStringList>
 
 namespace ClipboardIpc {
 
@@ -25,6 +26,10 @@ enum class MessageType {
     // Helper -> main:
     SetLocalText,   // the main process owns the local text clipboard and must set `text`
     PasteResult,    // answer to PasteToHost: `ok`, `outOfBand`, and `text` saying why not
+    // Files (actions-API hosts only):
+    PasteFilesToHost,  // main -> helper: send these local `paths`; answered by PasteResult
+    SetLocalFiles,     // helper -> main: put these downloaded `paths` on the clipboard
+    Notice,            // helper -> main: `text` worth showing the user (progress, refusals)
 };
 
 struct HostConfig {
@@ -55,6 +60,7 @@ struct Message {
     bool ok = false;            // PasteResult
     bool outOfBand = false;     // PasteResult: the host still has to fetch the blob
     bool confirmed = false;     // PasteResult: the host has said it holds the clipboard
+    QStringList paths;          // PasteFilesToHost, SetLocalFiles
 };
 
 QByteArray encodeConfigure(quint32 sequence, const HostConfig& config);
@@ -68,6 +74,9 @@ QByteArray encodePasteToHost(quint32 sequence, const QByteArray* textUtf8);
 QByteArray encodeLocalText(quint32 sequence, const QByteArray& textUtf8);
 QByteArray encodeSetLocalText(quint32 sequence, const QByteArray& textUtf8);
 QByteArray encodePasteResult(quint32 sequence, bool ok, bool outOfBand, bool confirmed, const QString& detail);
+QByteArray encodePasteFilesToHost(quint32 sequence, const QStringList& paths);
+QByteArray encodeSetLocalFiles(quint32 sequence, const QStringList& paths);
+QByteArray encodeNotice(quint32 sequence, const QString& text);
 
 bool decodeLine(const QByteArray& line, Message& outMessage, QString& outError);
 
