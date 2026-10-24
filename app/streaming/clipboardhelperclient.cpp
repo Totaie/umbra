@@ -752,7 +752,11 @@ QString ClipboardHelperClient::findHelperExecutable() const
         QDir(appDir).filePath(QStringLiteral("../../clipboard-helper/release/") + helperName),
         QDir(appDir).filePath(QStringLiteral("../../clipboard-helper/debug/") + helperName),
         QDir(appDir).filePath(QStringLiteral("../../clipboard-helper/") + helperName),
+#ifndef QT_NO_DEBUG
+        // Debug builds only: the helper is handed the client's private key, so a
+        // release never runs one from whatever directory it was started in.
         QDir(QDir::currentPath()).filePath(helperName)
+#endif
     };
 
     for (const QString& candidate : candidates) {

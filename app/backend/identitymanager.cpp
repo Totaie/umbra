@@ -2,6 +2,8 @@
 #include "utils.h"
 
 #include <QDebug>
+#include <QFile>
+#include <QFileInfo>
 
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -102,8 +104,25 @@ void IdentityManager::createCredentials(QSettings& settings)
 
     settings.setValue(SER_CERT, m_CachedPemCert);
     settings.setValue(SER_KEY, m_CachedPrivateKey);
+    keepSettingsPrivate(settings);
 
     qInfo() << "Wrote new identity credentials to settings";
+}
+
+void IdentityManager::keepSettingsPrivate(QSettings& settings)
+{
+#ifdef Q_OS_UNIX
+    // The settings file holds this client's private key and each host's pairing
+    // passphrase, and QSettings creates it readable by everyone. Rewrites keep the
+    // mode it has, so making it owner-only once is enough.
+    settings.sync();
+    const QFileInfo file(settings.fileName());
+    if (file.isAbsolute() && file.exists()) {
+        QFile::setPermissions(file.absoluteFilePath(), QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    }
+#else
+    Q_UNUSED(settings);
+#endif
 }
 
 IdentityManager::IdentityManager()
@@ -125,6 +144,9 @@ IdentityManager::IdentityManager()
         qWarning() << "Private key is unreadable";
         createCredentials(settings);
     }
+
+    // Every start, so that a settings file written by an older build is fixed too.
+    keepSettingsPrivate(settings);
 
     // We should have valid credentials now. If not, we're screwed
     if (getSslCertificate().isNull()) {

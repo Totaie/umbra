@@ -1,0 +1,58 @@
+--- a/src/RtspConnection.c	2026-10-24 11:54:57.649547056 -0600
++++ b/src/RtspConnection.c	2026-10-24 11:54:57.713469409 -0600
+@@ -1344,7 +1344,15 @@
+             // resolves any 454 session not found errors on
+             // standard RTSP server implementations.
+             // (i.e - sessionId = "DEADBEEFCAFE;timeout = 90")
+-            sessionIdString = strdup(strtok_r(sessionId, ";", &strtokCtx));
++            // A host's "Session: ;" leaves no token, and strdup(NULL) crashes.
++            sessionToken = strtok_r(sessionId, ";", &strtokCtx);
++            if (sessionToken == NULL || sessionToken[0] == '\0') {
++                Limelog("RTSP SETUP response has an empty Session header\n");
++                ret = -1;
++                freeMessage(&response);
++                goto Exit;
++            }
++            sessionIdString = strdup(sessionToken);
+             if (sessionIdString == NULL) {
+                 Limelog("Failed to duplicate session ID string\n");
+                 ret = -1;
+@@ -1505,7 +1513,15 @@
+             // resolves any 454 session not found errors on
+             // standard RTSP server implementations.
+             // (i.e - sessionId = "DEADBEEFCAFE;timeout = 90") 
+-            sessionIdString = strdup(strtok_r(sessionId, ";", &strtokCtx));
++            // A host's "Session: ;" leaves no token, and strdup(NULL) crashes.
++            char* controlSessionToken = strtok_r(sessionId, ";", &strtokCtx);
++            if (controlSessionToken == NULL || controlSessionToken[0] == '\0') {
++                Limelog("RTSP SETUP response has an empty Session header\n");
++                ret = -1;
++                freeMessage(&response);
++                goto Exit;
++            }
++            sessionIdString = strdup(controlSessionToken);
+             if (sessionIdString == NULL) {
+                 Limelog("Failed to duplicate session ID string\n");
+                 ret = -1;
+--- a/src/RtspParser.c	2026-10-24 11:54:57.641165874 -0600
++++ b/src/RtspParser.c	2026-10-24 11:54:57.713523474 -0600
+@@ -79,15 +79,16 @@
+     char typeFlag = TOKEN_OPTION;
+ 
+     // Put the raw message into a string we can use
+-    char* messageBuffer = malloc(length + 1);
++    char* messageBuffer = malloc(length + 4);
+     if (messageBuffer == NULL) {
+         exitCode = RTSP_ERROR_NO_MEMORY;
+         goto ExitFailure;
+     }
+     memcpy(messageBuffer, rtspMessage, length);
+ 
+-    // The payload logic depends on a null-terminator at the end
+-    messageBuffer[length] = 0;
++    // The payload logic depends on a null-terminator at the end, and the end-of-message
++    // checks below look up to three bytes past a token, so they must all be there.
++    memset(messageBuffer + length, 0, 4);
+ 
+     // Get the first token of the message
+     token = strtok_r(messageBuffer, delim, &strtokCtx);

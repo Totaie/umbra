@@ -1669,7 +1669,8 @@ void ClipboardSync::uploadAndSendRef(const QByteArray& payload, const QString& m
 void ClipboardSync::fetchRefAndApply(const QString& id, const QString& mime, qint64 advertisedSize)
 {
     QUrl url;
-    if (!buildBlobUrl(QStringLiteral("/blob/") + id, url)) {
+    // The id comes from the host; it names a blob, it does not get to shape the URL.
+    if (!buildBlobUrl(QStringLiteral("/blob/") + QString::fromLatin1(QUrl::toPercentEncoding(id)), url)) {
         ClipboardLog::warn("ClipboardSync: cannot fetch blob (no host context)");
         return;
     }
@@ -1681,6 +1682,14 @@ void ClipboardSync::fetchRefAndApply(const QString& id, const QString& mime, qin
     req.setSslConfiguration(sslConfig);
 
     QNetworkReply* reply = nam()->get(req);
+    // Checked as it arrives, not after: readAll() at the end would already have held
+    // whatever the host chose to send.
+    connect(reply, &QNetworkReply::downloadProgress, this, [reply, advertisedSize](qint64 received, qint64) {
+        if (received > MAX_BLOB_BYTES || (advertisedSize > 0 && received > advertisedSize)) {
+            ClipboardLog::warn("ClipboardSync: blob from the host is larger than it said, stopping");
+            reply->abort();
+        }
+    });
     connect(reply, &QNetworkReply::finished, this, [this, reply, mime, advertisedSize]() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {

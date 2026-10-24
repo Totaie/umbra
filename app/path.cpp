@@ -94,12 +94,16 @@ QString Path::getDataFilePath(QString fileName)
         return candidatePath;
     }
 
-    // Check the current directory for developer/local overrides.
+#ifndef QT_NO_DEBUG
+    // Check the current directory for developer/local overrides. Debug builds only:
+    // in a release, whatever directory Umbra happens to be started from would get to
+    // supply its font, shaders and controller mappings.
     candidatePath = QDir(QDir::currentPath()).absoluteFilePath(fileName);
     if (QFile::exists(candidatePath)) {
         qInfo() << "Found" << fileName << "at" << candidatePath;
         return candidatePath;
     }
+#endif
 
     // Now check the data directories (for Linux, in particular)
     candidatePath = QStandardPaths::locate(QStandardPaths::AppDataLocation, fileName);

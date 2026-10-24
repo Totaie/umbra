@@ -397,11 +397,14 @@ QString ComputerModel::launchAdditionalDisplays(int computerIndex, QString appNa
     int launched = 0;
     for (int screen = 2; screen <= screenCount; screen++) {
         QStringList args;
+        // The host and app names come from the host, so they go after "--", where a
+        // name starting with "--" is still a name and not an option.
         args << QStringLiteral("stream")
-             << uuid
-             << appName
              << QStringLiteral("--host-display") << QString::number(screen)
-             << QStringLiteral("--client-screen") << QString::number(screen);
+             << QStringLiteral("--client-screen") << QString::number(screen)
+             << QStringLiteral("--")
+             << uuid
+             << appName;
 
         if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args)) {
             qWarning() << "Failed to launch Umbra for client screen" << screen;

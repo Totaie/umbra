@@ -1,4 +1,5 @@
 #include "portableupdateinstaller.h"
+#include "autoupdatechecker.h"
 #include "umbraversion.h"
 #include "path.h"
 
@@ -58,7 +59,8 @@ void PortableUpdateInstaller::installUpdate(const QString& url, const QString& e
     }
 
     QUrl downloadUrl = QUrl::fromUserInput(url.trimmed());
-    if (!downloadUrl.isValid() || downloadUrl.scheme().isEmpty()) {
+    // The same places the installer path trusts, and no others: this replaces Umbra.exe.
+    if (!downloadUrl.isValid() || !AutoUpdateChecker::isTrustedReleaseHost(downloadUrl)) {
         emit onPortableUpdateFailed(tr("The update URL is invalid."));
         return;
     }
@@ -74,17 +76,12 @@ void PortableUpdateInstaller::installUpdate(const QString& url, const QString& e
     }
 
     static const QRegularExpression sha256Pattern(QStringLiteral("^[0-9a-fA-F]{64}$"));
-#if defined(Q_OS_DARWIN)
+    // Required everywhere now, as the installer path already required it: without it
+    // nothing checks the archive that replaces the program.
     if (!sha256Pattern.match(normalizedDigest).hasMatch()) {
         emit onPortableUpdateFailed(tr("The update package has no valid integrity information. Please install the update manually."));
         return;
     }
-#else
-    if (!normalizedDigest.isEmpty() && !sha256Pattern.match(normalizedDigest).hasMatch()) {
-        emit onPortableUpdateFailed(tr("The update package has invalid integrity information."));
-        return;
-    }
-#endif
 
     QString errorMessage;
     if (!ensureWritableInstallDir(errorMessage)) {
@@ -123,6 +120,7 @@ void PortableUpdateInstaller::installUpdate(const QString& url, const QString& e
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       QString("Umbra/%1").arg(VERSION_STR));
     request.setRawHeader("Accept", "application/octet-stream");
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
@@ -595,6 +593,11 @@ void PortableUpdateInstaller::handlePortableUpdateDownloadFinished()
         if (failureMessage.isEmpty()) {
             failureMessage = tr("Failed to download the update: %1").arg(m_UpdateReply->errorString());
         }
+    }
+    // Where the redirects ended up, too: somewhere we did not choose to go.
+    if (failureMessage.isEmpty() && m_UpdateReply != nullptr &&
+            !AutoUpdateChecker::isTrustedReleaseHost(m_UpdateReply->url())) {
+        failureMessage = tr("The update was redirected somewhere untrusted.");
     }
 
     if (m_UpdateFile != nullptr) {

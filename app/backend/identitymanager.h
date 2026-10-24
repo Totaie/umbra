@@ -36,6 +36,9 @@ private:
     void
     createCredentials(QSettings& settings);
 
+    static void
+    keepSettingsPrivate(QSettings& settings);
+
     // Initialized in constructor
     QByteArray m_CachedPrivateKey;
     QByteArray m_CachedPemCert;

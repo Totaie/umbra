@@ -140,6 +140,9 @@ static QMutex s_SyncLoggerMutex;
 static bool s_SuppressVerboseOutput;
 static QRegularExpression k_RikeyRegex("&rikey=\\w+");
 static QRegularExpression k_RikeyIdRegex("&rikeyid=[\\d-]+");
+// Pairing: the passphrase proof and salt can be guessed against offline, and the
+// rest of the exchange is no business of a log someone may attach to a bug report.
+static QRegularExpression k_PairingSecretRegex("([?&](?:pskauth|salt|clientchallenge|serverchallengeresp|clientpairingsecret|clientcert))=[^&\\s\"]*");
 #ifdef LOG_TO_FILE
 // Max log file size of 10 MB
 static const uint64_t k_MaxLogSizeBytes = 10 * 1024 * 1024;
@@ -191,6 +194,7 @@ void logToLoggerStream(QString& message)
     // Strip session encryption keys and IVs from the logs
     message.replace(k_RikeyRegex, "&rikey=REDACTED");
     message.replace(k_RikeyIdRegex, "&rikeyid=REDACTED");
+    message.replace(k_PairingSecretRegex, "\\1=REDACTED");
 
 #ifdef LOG_TO_FILE
     auto oldLogSize = s_LogBytesWritten.fetchAndAddRelaxed(message.size());

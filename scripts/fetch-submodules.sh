@@ -40,4 +40,12 @@ if ! git submodule update --init "$common"; then
     fi
 fi
 
+# Security fixes for moonlight-common-c that its upstream does not have yet, applied
+# whichever commit the tree ended up on. Applied already if they come back out cleanly.
+for fix in "$PWD"/packaging/patches/moonlight-common-c-rtsp-hardening.patch; do
+    if ! git -C "$common" apply --reverse --check "$fix" 2>/dev/null; then
+        git -C "$common" apply "$fix"
+    fi
+done
+
 git -C "$common" submodule update --init --recursive

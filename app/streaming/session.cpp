@@ -2406,11 +2406,14 @@ QString Session::launchAdditionalDisplays()
     int launched = 0;
     for (int screen = 2; screen <= screenCount; screen++) {
         QStringList args;
+        // The host and app names come from the host, so they go after "--", where a
+        // name starting with "--" is still a name and not an option.
         args << QStringLiteral("stream")
-             << m_Computer->uuid
-             << m_App.name
              << QStringLiteral("--host-display") << QString::number(screen)
-             << QStringLiteral("--client-screen") << QString::number(screen);
+             << QStringLiteral("--client-screen") << QString::number(screen)
+             << QStringLiteral("--")
+             << m_Computer->uuid
+             << m_App.name;
 
         if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args)) {
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
@@ -3738,10 +3741,11 @@ void Session::exec()
                          "SDL_CreateWindow() failed: %s",
                          SDL_GetError());
 
+            // Stopped but not deleted: the connection is up, and its receive thread
+            // can still hand clClipboardData() a frame until the deferred cleanup
+            // stops it. ~Session() deletes the helper after that.
             if (m_ClipboardHelper != nullptr) {
                 m_ClipboardHelper->stop();
-                delete m_ClipboardHelper;
-                m_ClipboardHelper = nullptr;
             }
             delete m_InputHandler;
             m_InputHandler = nullptr;

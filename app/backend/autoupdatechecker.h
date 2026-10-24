@@ -53,6 +53,10 @@ private:
     // updated by PortableUpdateInstaller, which swaps files in place instead.
     void downloadAndRunSetup(const QString& url, const QString& expectedDigest);
     void finishSetupDownload();
+
+public:
+    // HTTPS to GitHub or its release storage, and nothing else. Shared with
+    // PortableUpdateInstaller so both ways of updating trust the same places.
     static bool isTrustedReleaseHost(const QUrl& url);
 
 private:
