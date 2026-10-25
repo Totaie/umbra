@@ -3,6 +3,7 @@
  * @brief Files on the Windows clipboard, for src/clipboard_files.h.
  */
 // clang-format off
+#include <winsock2.h>
 #include <windows.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -145,7 +146,8 @@ namespace platf {
       *effect = DROPEFFECT_COPY;
       GlobalUnlock(effect_memory);
     }
-    const UINT effect_format = RegisterClipboardFormatW(CFSTR_PREFERREDDROPEFFECT);
+    // Spelled out wide: CFSTR_PREFERREDDROPEFFECT follows UNICODE, which this build does not define.
+    const UINT effect_format = RegisterClipboardFormatW(L"Preferred DropEffect");
 
     if (!open_clipboard()) {
       release();
