@@ -492,6 +492,10 @@ void ClipboardSync::pasteFilesToHost(quint32 requestId, const QStringList& paths
         }
         else {
             emit notice(QStringLiteral("The files did not go to the host: %1").arg(detail));
+            if (detail.contains(QLatin1String("too old"))) {
+                // Not worth trying again on every Ctrl+V of this stream.
+                m_HostTakesFiles = false;
+            }
         }
         finish(ok, detail);
     });

@@ -471,6 +471,7 @@ void Transfer::sendBegin()
         const QByteArray answer = reply->readAll();
         if (reply->error() != QNetworkReply::NoError) {
             fail(status == 401 ? QStringLiteral("the host does not let this device paste files (device permissions in the host's web UI)")
+                 : status == 404 ? QStringLiteral("Umbra Host on that PC is too old to take files; update it to 0.2.23 or later")
                  : status == 501 ? QStringLiteral("the host cannot take files")
                  : status == 400 && !answer.isEmpty() ? QStringLiteral("the host refused the files: %1").arg(QString::fromUtf8(answer.left(200)))
                  : QStringLiteral("the host did not take the files: %1").arg(reply->errorString()));

@@ -4060,7 +4060,7 @@ void Session::exec()
         case ClipboardHelperClient::PasteAction::SendPasteChord:
             if (m_InputHandler != nullptr) {
                 SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                            "Clipboard: the host has it, pressing Ctrl+V there");
+                            "Clipboard: pressing Ctrl+V on the host");
                 m_InputHandler->sendHostCtrlChord(0x56 /* VK_V */);
             }
             break;
