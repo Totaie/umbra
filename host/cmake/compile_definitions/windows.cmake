@@ -157,6 +157,7 @@ set(PLATFORM_TARGET_FILES
         "${CMAKE_SOURCE_DIR}/src/platform/windows/misc.h"
         "${CMAKE_SOURCE_DIR}/src/platform/windows/misc.cpp"
         "${CMAKE_SOURCE_DIR}/src/platform/windows/clipboard_files.cpp"
+        "${CMAKE_SOURCE_DIR}/src/platform/windows/mingw_crt_compat.c"
         "${CMAKE_SOURCE_DIR}/src/platform/windows/host_stats.cpp"
         "${CMAKE_SOURCE_DIR}/src/platform/windows/ipc/pipes.h"
         "${CMAKE_SOURCE_DIR}/src/platform/windows/ipc/pipes.cpp"
@@ -289,4 +290,25 @@ list(PREPEND PLATFORM_LIBRARIES
 if(SUNSHINE_ENABLE_TRAY)
     list(APPEND PLATFORM_TARGET_FILES
             "${CMAKE_SOURCE_DIR}/third-party/tray/src/tray_windows.c")
+endif()
+
+# The prebuilt FFmpeg (x264, x265) in third-party/build-deps links against ftime64
+# and an imported fseeko64, which current UCRT64 runtimes no longer provide. Supply
+# them only when this toolchain lacks them; see src/platform/windows/mingw_crt_compat.c.
+include(CheckCSourceCompiles)
+check_c_source_compiles("
+struct __timeb64;
+void ftime64(struct __timeb64 *);
+int main(void) { char tb[64]; ftime64((struct __timeb64 *) tb); return 0; }" UMBRA_HAVE_FTIME64)
+check_c_source_compiles("
+struct _iobuf;
+extern int (*__imp_fseeko64)(struct _iobuf *, long long, int);
+int main(void) { return __imp_fseeko64 == 0; }" UMBRA_HAVE_IMP_FSEEKO64)
+if(NOT UMBRA_HAVE_FTIME64)
+    set_property(SOURCE "${CMAKE_SOURCE_DIR}/src/platform/windows/mingw_crt_compat.c"
+            APPEND PROPERTY COMPILE_DEFINITIONS UMBRA_NEED_FTIME64)
+endif()
+if(NOT UMBRA_HAVE_IMP_FSEEKO64)
+    set_property(SOURCE "${CMAKE_SOURCE_DIR}/src/platform/windows/mingw_crt_compat.c"
+            APPEND PROPERTY COMPILE_DEFINITIONS UMBRA_NEED_FSEEKO64)
 endif()
