@@ -570,7 +570,10 @@ ApplicationWindow {
                     if (AutoUpdateChecker.supportsInAppUpdate()) {
                         portableUpdateDialog.text = qsTr("Preparing update...")
                         portableUpdateDialog.open()
-                        AutoUpdateChecker.installUpdate(browserUrl)
+                        updateToast.visible = false
+                        // The installer refreshes this PC's host too, but only if it has one.
+                        AutoUpdateChecker.installUpdate(browserUrl,
+                                                        typeof HostManager !== "undefined" && HostManager.isHostInstalled())
                         return
                     }
 
@@ -584,12 +587,16 @@ ApplicationWindow {
                     }
                 }
 
+                property string clientVersion: ""
+
                 function updateAvailable(version, url)
                 {
                     updateButton.clientUpdatePending = true
+                    updateButton.clientVersion = version
                     updateButton.browserUrl = url
                     updateButton.visible = true
                     updateButton.refreshToolTip()
+                    updateToast.announce(qsTr("Umbra %1 is ready to install").arg(version.replace(/^v/, "")))
                 }
 
                 function hostUpdateAvailable(version, url)
@@ -598,6 +605,9 @@ ApplicationWindow {
                     updateButton.hostReleaseUrl = url
                     updateButton.visible = true
                     updateButton.refreshToolTip()
+                    if (!updateButton.clientUpdatePending) {
+                        updateToast.announce(qsTr("Umbra Host %1 is ready to install on this PC").arg(version.replace(/^v/, "")))
+                    }
                 }
 
                 function refreshToolTip()
@@ -880,6 +890,69 @@ ApplicationWindow {
     ErrorMessageDialog {
         id: portableUpdateErrorDialog
         text: ""
+    }
+
+    // A new version, said where it can't be missed and one click from installed. The
+    // toolbar button stays for whoever closes this.
+    Rectangle {
+        id: updateToast
+        visible: false
+        z: 1000
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 18
+        width: Math.min(toastRow.implicitWidth + 28, parent.width - 36)
+        height: toastRow.implicitHeight + 20
+        radius: 12
+        color: Qt.rgba(0.10, 0.10, 0.12, 0.96)
+        border.color: Qt.rgba(1, 1, 1, 0.12)
+        border.width: 1
+        opacity: visible ? 1 : 0
+
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+
+        property bool dismissed: false
+
+        function announce(message) {
+            if (dismissed) {
+                return
+            }
+            toastText.text = message
+            visible = true
+        }
+
+        Row {
+            id: toastRow
+            anchors.centerIn: parent
+            spacing: 12
+
+            Label {
+                id: toastText
+                anchors.verticalCenter: parent.verticalCenter
+                color: "white"
+                font.pointSize: 11
+                elide: Text.ElideRight
+            }
+
+            Button {
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("Update")
+                highlighted: true
+                onClicked: {
+                    updateToast.visible = false
+                    updateButton.clicked()
+                }
+            }
+
+            ToolButton {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "\u2715"
+                onClicked: {
+                    updateToast.dismissed = true
+                    updateToast.visible = false
+                }
+            }
+        }
     }
 
     ErrorMessageDialog {

@@ -183,6 +183,35 @@ if "%DRYRUN%"=="1" (
 )
 
 rem --- publish ---------------------------------------------------------------
+rem The release is tagged at the commit that was built, and that commit has to be on
+rem GitHub: the Arch package workflow builds the Linux package from the tag, so Umbra
+rem on Arch updates from the same release, and the same source, as Windows. Without
+rem --target, gh tags whatever the default branch happens to be - upstream's master.
+rem A bumped version.txt is committed first, so the tagged commit says the version.
+if not "%BUMP%"=="" (
+    git -C "%SOURCE_ROOT%" commit -m "Bump version to !VERSION!" -- app/version.txt
+    if !ERRORLEVEL! NEQ 0 (
+        echo Could not commit app\version.txt.
+        exit /b 1
+    )
+)
+git -C "%SOURCE_ROOT%" diff --quiet --ignore-submodules HEAD
+if !ERRORLEVEL! NEQ 0 (
+    echo.
+    echo REFUSING TO PUBLISH: this checkout has uncommitted changes, so the installer was
+    echo built from source no commit holds, and the Arch package built from the tag would
+    echo differ from it. Commit or stash them and run this again.
+    exit /b 1
+)
+for /f "usebackq tokens=*" %%c in (`git -C "%SOURCE_ROOT%" rev-parse HEAD`) do set COMMIT=%%c
+for /f "usebackq tokens=*" %%b in (`git -C "%SOURCE_ROOT%" rev-parse --abbrev-ref HEAD`) do set BRANCH=%%b
+echo Pushing !BRANCH! ^(!COMMIT!^) so the release can be tagged there...
+git -C "%SOURCE_ROOT%" push origin HEAD:refs/heads/!BRANCH!
+if !ERRORLEVEL! NEQ 0 (
+    echo Could not push !BRANCH! to GitHub.
+    exit /b 1
+)
+
 set NOTES=%TEMP%\umbra-release-notes-!VERSION!.md
 > "!NOTES!" echo Umbra !VERSION!
 >>"!NOTES!" echo.
@@ -191,13 +220,16 @@ set NOTES=%TEMP%\umbra-release-notes-!VERSION!.md
 >>"!NOTES!" echo.
 >>"!NOTES!" echo Existing installs offer this update automatically. Builds are unsigned,
 >>"!NOTES!" echo so Windows SmartScreen warns the first time you run the installer.
+>>"!NOTES!" echo.
+>>"!NOTES!" echo The Arch Linux package is attached a few minutes after publishing, by the
+>>"!NOTES!" echo Arch package workflow, built from this same commit.
 
 echo.
 echo Publishing !TAG!...
 if "%PRERELEASE%"=="1" (
-    gh release create "!TAG!" "!ASSET!" --repo %REPO% --title "Umbra !VERSION!" --notes-file "!NOTES!" --prerelease
+    gh release create "!TAG!" "!ASSET!" --repo %REPO% --target !COMMIT! --title "Umbra !VERSION!" --notes-file "!NOTES!" --prerelease
 ) else (
-    gh release create "!TAG!" "!ASSET!" --repo %REPO% --title "Umbra !VERSION!" --notes-file "!NOTES!"
+    gh release create "!TAG!" "!ASSET!" --repo %REPO% --target !COMMIT! --title "Umbra !VERSION!" --notes-file "!NOTES!"
 )
 if !ERRORLEVEL! NEQ 0 (
     del /q "!NOTES!" 2>nul
@@ -212,6 +244,6 @@ if "%PRERELEASE%"=="1" (
     echo Marked as a prerelease, so it will NOT be offered as an update until promoted.
 )
 if not "%BUMP%"=="" (
-    echo Remember to commit and push app\version.txt.
+    echo app\version.txt was committed and pushed with the release.
 )
 exit /b 0

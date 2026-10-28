@@ -20,6 +20,10 @@ on:
       - app/version.txt
       - packaging/**
       - .github/workflows/arch-package.yml
+  # Every published release also gets its Arch package, built from the release's own
+  # commit, so Umbra on Arch can update itself from the same release Windows does.
+  release:
+    types: [published]
 
 concurrency:
   group: arch-package-${{ github.ref }}
@@ -45,6 +49,21 @@ jobs:
 
     - name: Checkout code
       uses: actions/checkout@v4
+
+    # The package's version comes from app/version.txt. A release whose tag says
+    # something else was cut from the wrong commit, and its package would never be
+    # offered as the update it claims to be.
+    - name: Check the release matches its source
+      if: github.event_name == 'release'
+      env:
+        TAG: ${{ github.event.release.tag_name }}
+      run: |
+        version=$(tr -d '[:space:]' < app/version.txt)
+        if [ "v$version" != "$TAG" ] && [ "$version" != "$TAG" ]; then
+          echo "::error::Release $TAG was cut from a commit whose app/version.txt says $version."
+          echo "::error::scripts/publish-release.bat tags the commit it built; a release made by hand needs --target."
+          exit 1
+        fi
 
     - name: Build package
       run: |
@@ -115,8 +134,18 @@ jobs:
           dist/umbra.db
           dist/umbra.files
 
+    # What Umbra's own updater on Arch downloads: it looks for this file among the
+    # release's assets, with the checksum GitHub publishes for it.
+    - name: Attach to the release
+      if: github.event_name == 'release'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        TAG: ${{ github.event.release.tag_name }}
+      run: gh release upload "$TAG" dist/umbra-*.pkg.tar.zst --clobber
+
     - name: Publish to the pacman repository
-      if: github.ref == 'refs/heads/umbra-v2'
+      if: github.ref == 'refs/heads/umbra-v2' || github.event_name == 'release'
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}

@@ -23,7 +23,12 @@ public:
     // pressed has to say something back.
     Q_INVOKABLE void checkNow();
     Q_INVOKABLE bool supportsInAppUpdate() const;
-    Q_INVOKABLE void installUpdate(QString url);
+
+    // Downloads the update, checks it against GitHub's checksum, installs it without a
+    // wizard and starts the new Umbra. `includeHost` is Windows only: whether the
+    // installer should also bring this PC's Umbra Host up to date (only where the
+    // host is installed already - an update must not add a host to a client).
+    Q_INVOKABLE void installUpdate(QString url, bool includeHost = false);
 
     // Fetch and run an installer this class did not find itself - Umbra Host's.
     //
@@ -97,4 +102,12 @@ private:
     // service, Umbra's closes this program, and saying the wrong one is how a normal
     // update starts looking like a crash.
     bool m_SetupIsHostPackage = false;
+    bool m_SetupIncludesHost = false;
+
+    // Hands the verified package to the platform's installer.
+    void runVerifiedPackage();
+    // Arch: installed by pacman as the package "umbra", so pacman can update it.
+    static bool isPacmanPackageInstall();
+    // Whether this build and installation has a release feed to check at all.
+    static bool hasUpdateFeed();
 };

@@ -1,5 +1,7 @@
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QProcess>
+#include <QTimer>
 #include <QStandardPaths>
 #include <QRegularExpression>
 #include <QFileInfo>
@@ -51,10 +53,42 @@ AutoUpdateChecker::AutoUpdateChecker(QObject *parent) :
             this, &AutoUpdateChecker::onPortableUpdateFailed);
 }
 
+bool AutoUpdateChecker::isPacmanPackageInstall()
+{
+#if defined(Q_OS_LINUX) && !defined(APP_IMAGE) && !defined(STEAM_LINK)
+    // The packaged binary, and pacman's own record of the package. A build run from a
+    // source tree, or installed some other way, is left to whoever put it there.
+    if (QCoreApplication::applicationFilePath() != QStringLiteral("/usr/bin/umbra")) {
+        return false;
+    }
+    return !QDir(QStringLiteral("/var/lib/pacman/local"))
+                .entryList({QStringLiteral("umbra-[0-9]*")}, QDir::Dirs | QDir::NoDotAndDotDot)
+                .isEmpty();
+#else
+    return false;
+#endif
+}
+
+bool AutoUpdateChecker::hasUpdateFeed()
+{
+#if defined(Q_OS_WIN32) || defined(Q_OS_DARWIN) || defined(STEAM_LINK) || defined(APP_IMAGE)
+    return true;
+#else
+    return isPacmanPackageInstall();
+#endif
+}
+
 bool AutoUpdateChecker::supportsInAppUpdate() const
 {
     if (m_PortableUpdateInstaller->supportsInAppUpdate()) {
         return true;
+    }
+
+    if (isPacmanPackageInstall()) {
+        // Each release carries the Arch package built from the same source as the
+        // Windows installer (see .github/workflows/arch-package.yml).
+        return m_UpdateDownloadUrl.endsWith(QStringLiteral(".pkg.tar.zst"), Qt::CaseInsensitive) &&
+                !m_UpdateAssetDigest.isEmpty();
     }
 
 #if defined(Q_OS_WIN32)
@@ -69,7 +103,7 @@ bool AutoUpdateChecker::supportsInAppUpdate() const
 #endif
 }
 
-void AutoUpdateChecker::installUpdate(QString url)
+void AutoUpdateChecker::installUpdate(QString url, bool includeHost)
 {
     const QString expectedDigest = url == m_UpdateDownloadUrl ? m_UpdateAssetDigest : QString();
 
@@ -80,9 +114,15 @@ void AutoUpdateChecker::installUpdate(QString url)
 
 #if defined(Q_OS_WIN32)
     m_SetupIsHostPackage = false;
+    m_SetupIncludesHost = includeHost;
     downloadAndRunSetup(url, expectedDigest);
 #else
-    Q_UNUSED(expectedDigest);
+    Q_UNUSED(includeHost);
+    if (isPacmanPackageInstall()) {
+        m_SetupIsHostPackage = false;
+        downloadAndRunSetup(url, expectedDigest);
+        return;
+    }
     emit onPortableUpdateFailed(tr("In-app update is not supported for this installation."));
 #endif
 }
@@ -121,8 +161,13 @@ void AutoUpdateChecker::downloadAndRunSetup(const QString& url, const QString& e
     }
 
     const QUrl downloadUrl(url);
+#if defined(Q_OS_WIN32)
+    const QString packageSuffix = QStringLiteral(".exe");
+#else
+    const QString packageSuffix = QStringLiteral(".pkg.tar.zst");
+#endif
     if (!downloadUrl.isValid() || !isTrustedReleaseHost(downloadUrl) ||
-            !downloadUrl.path().endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
+            !downloadUrl.path().endsWith(packageSuffix, Qt::CaseInsensitive)) {
         emit onPortableUpdateFailed(tr("That update package didn't come from Umbra's releases."));
         return;
     }
@@ -144,8 +189,14 @@ void AutoUpdateChecker::downloadAndRunSetup(const QString& url, const QString& e
     m_SetupExpectedDigest = normalizedDigest.toLower();
 
     // Somewhere the installer can still be read after we exit, and that the running
-    // Umbra doesn't have open when the installer tries to replace it.
+    // Umbra doesn't have open when the installer tries to replace it. On Linux a
+    // folder of this user's own rather than the shared /tmp: pacman installs from it.
+#if defined(Q_OS_WIN32)
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+#else
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QStringLiteral("/updates");
+    QDir().mkpath(dir);
+#endif
     m_SetupPath = QDir(dir).filePath(QFileInfo(downloadUrl.path()).fileName());
 
     m_SetupFile = new QFile(m_SetupPath, this);
@@ -249,23 +300,86 @@ void AutoUpdateChecker::finishSetupDownload()
         return;
     }
 
-    // Detached on purpose: the installer closes this process as part of its own work,
-    // so it must outlive us. It elevates itself; nothing here needs administrator
-    // rights, which is what makes this work over a remote session.
-    if (!QProcess::startDetached(m_SetupPath, QStringList())) {
+    runVerifiedPackage();
+}
+
+void AutoUpdateChecker::runVerifiedPackage()
+{
+#if defined(Q_OS_WIN32)
+    if (m_SetupIsHostPackage) {
+        // /S: the host installer's own silent mode. It stops and restarts the host
+        // service by itself; Umbra stays open.
+        if (!QProcess::startDetached(m_SetupPath, {QStringLiteral("/S")})) {
+            emit onPortableUpdateFailed(tr("Umbra couldn't start the installer. It was saved to %1.")
+                                        .arg(QDir::toNativeSeparators(m_SetupPath)));
+            return;
+        }
+        emit onPortableUpdateStatusChanged(
+            tr("Updating Umbra Host. Windows asks for administrator permission once, then the host restarts by itself."));
+        return;
+    }
+
+    // The bundle without its wizard (/passive: a progress bar and nothing to click),
+    // and then this Umbra again. A small PowerShell script does the waiting, since
+    // this process has to be gone before the installer can replace it. Encoded, so no
+    // path can break out of the quoting.
+    auto quoted = [](const QString& text) {
+        return QStringLiteral("'") + QString(text).replace(QStringLiteral("'"), QStringLiteral("''")) + QStringLiteral("'");
+    };
+    const QString script =
+            QStringLiteral("$p = Start-Process -FilePath %1 -ArgumentList @('/passive','/norestart','InstallHostCheckbox=%2') -PassThru -Wait\n"
+                           "if ($p.ExitCode -eq 0 -or $p.ExitCode -eq 3010) { Start-Process -FilePath %3 }\n")
+            .arg(quoted(QDir::toNativeSeparators(m_SetupPath)),
+                 m_SetupIncludesHost ? QStringLiteral("1") : QStringLiteral("0"),
+                 quoted(QDir::toNativeSeparators(QCoreApplication::applicationFilePath())));
+    const QByteArray utf16(reinterpret_cast<const char*>(script.utf16()), script.size() * 2);
+
+    if (!QProcess::startDetached(QStringLiteral("powershell.exe"),
+                                 {QStringLiteral("-NoProfile"), QStringLiteral("-NonInteractive"),
+                                  QStringLiteral("-WindowStyle"), QStringLiteral("Hidden"),
+                                  QStringLiteral("-EncodedCommand"), QString::fromLatin1(utf16.toBase64())})) {
         emit onPortableUpdateFailed(tr("Umbra couldn't start the installer. It was saved to %1.")
                                     .arg(QDir::toNativeSeparators(m_SetupPath)));
         return;
     }
 
-    // Said last, because the installer takes over from here: it asks for administrator
-    // rights, and then either closes this copy of Umbra to replace it or restarts the
-    // host service, depending on which package this was.
-    emit onPortableUpdateStatusChanged(
-        m_SetupIsHostPackage
-            ? tr("The Umbra Host installer is starting. It will ask for administrator permission, "
-                 "then restart the host. Umbra itself stays open.")
-            : tr("The installer is starting. Umbra will close to finish updating."));
+    emit onPortableUpdateStatusChanged(tr("Installing the update. Umbra will restart by itself in a moment."));
+    // Long enough to read the message; the installer is waiting for this process.
+    QTimer::singleShot(1500, qApp, &QCoreApplication::quit);
+#elif defined(Q_OS_LINUX)
+    // pacman installs it, as root, after one password prompt from the desktop's own
+    // polkit agent. Nothing else needs privileges, and nothing asks twice.
+    auto* pacman = new QProcess(this);
+    pacman->setProcessChannelMode(QProcess::MergedChannels);
+    connect(pacman, &QProcess::finished, this, [this, pacman](int exitCode, QProcess::ExitStatus status) {
+        pacman->deleteLater();
+        const QString output = QString::fromLocal8Bit(pacman->readAll()).trimmed();
+        QFile::remove(m_SetupPath);
+
+        if (status != QProcess::NormalExit || exitCode != 0) {
+            // pkexec: 126 is a dismissed or failed password prompt, 127 not authorised.
+            if (exitCode == 126 || exitCode == 127) {
+                emit onPortableUpdateFailed(tr("The update needs your password to install. Nothing was changed."));
+            }
+            else {
+                const QString lastLine = output.section(QLatin1Char('\n'), -1);
+                emit onPortableUpdateFailed(tr("pacman couldn't install the update: %1").arg(lastLine.isEmpty() ? tr("unknown error") : lastLine));
+            }
+            return;
+        }
+
+        emit onPortableUpdateStatusChanged(tr("Updated. Restarting Umbra..."));
+        QProcess::startDetached(QCoreApplication::applicationFilePath(), {});
+        QTimer::singleShot(500, qApp, &QCoreApplication::quit);
+    });
+
+    emit onPortableUpdateStatusChanged(tr("Installing the update. Enter your password if asked."));
+    pacman->start(QStringLiteral("pkexec"),
+                  {QStringLiteral("/usr/bin/pacman"), QStringLiteral("-U"), QStringLiteral("--noconfirm"),
+                   QStringLiteral("--needed"), m_SetupPath});
+#else
+    emit onPortableUpdateFailed(tr("In-app update is not supported for this installation."));
+#endif
 }
 
 void AutoUpdateChecker::checkNow()
@@ -284,12 +398,12 @@ void AutoUpdateChecker::checkNow()
     m_ManualCheck = true;
     start();
 
-#if !defined(Q_OS_WIN32) && !defined(Q_OS_DARWIN) && !defined(STEAM_LINK) && !defined(APP_IMAGE)
-    // start() compiles to nothing on platforms without an update feed, so the button
-    // would otherwise spin forever.
-    m_ManualCheck = false;
-    emit onCheckFailed(tr("Update checking isn't available in this build of Umbra."));
-#endif
+    // start() does nothing where there is no update feed, so the button would
+    // otherwise spin forever.
+    if (!hasUpdateFeed()) {
+        m_ManualCheck = false;
+        emit onCheckFailed(tr("Update checking isn't available in this build of Umbra."));
+    }
 }
 
 void AutoUpdateChecker::start()
@@ -306,7 +420,10 @@ void AutoUpdateChecker::start()
                 this, &AutoUpdateChecker::handleUpdateCheckRequestFinished);
     }
 
-#if defined(Q_OS_WIN32) || defined(Q_OS_DARWIN) || defined(STEAM_LINK) || defined(APP_IMAGE)
+    if (!hasUpdateFeed()) {
+        return;
+    }
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0) && QT_VERSION < QT_VERSION_CHECK(5, 15, 1) && !defined(QT_NO_BEARERMANAGEMENT)
     // HACK: Set network accessibility to work around QTBUG-80947 (introduced in Qt 5.14.0 and fixed in Qt 5.15.1)
     QT_WARNING_PUSH
@@ -336,7 +453,6 @@ void AutoUpdateChecker::start()
     request.setAttribute(QNetworkRequest::HTTP2AllowedAttribute, true);
 #endif
     m_Nam->get(request);
-#endif
 }
 
 void AutoUpdateChecker::parseStringToVersionQuad(const QString& string, QVector<int>& version)
@@ -397,7 +513,10 @@ QString AutoUpdateChecker::getExpectedAssetSuffix() const
 #elif defined(APP_IMAGE)
     return QStringLiteral(".AppImage");
 #else
-    return QString();
+    // umbra-<version>-<pkgrel>-<arch>.pkg.tar.zst, from the Arch package workflow.
+    return isPacmanPackageInstall()
+            ? QStringLiteral("-") + QSysInfo::currentCpuArchitecture() + QStringLiteral(".pkg.tar.zst")
+            : QString();
 #endif
 }
 
@@ -422,7 +541,7 @@ QString AutoUpdateChecker::getExpectedAssetPrefix() const
     // release page in a browser.
     return QStringLiteral("UmbraSetup-");
 #else
-    return QString();
+    return isPacmanPackageInstall() ? QStringLiteral("umbra-") : QString();
 #endif
 }
 
