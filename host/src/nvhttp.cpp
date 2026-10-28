@@ -44,6 +44,7 @@
 
 // local includes
 #include "clipboard_files.h"
+#include "self_update.h"
 #include "config.h"
 #include "display_device.h"
 #include "display_helper_integration.h"
@@ -4835,6 +4836,52 @@ namespace nvhttp {
     answer(response, SimpleWeb::StatusCode::success_ok);
   }
 
+  /**
+   * POST /actions/host/update: install this host's newest release; GET: how that is going.
+   *
+   * It runs the release's installer as SYSTEM, so it takes the permission to run server
+   * commands, which already amounts to that. The request picks nothing: see self_update.h.
+   */
+  void hostUpdate(resp_https_t response, req_https_t request) {
+    print_req<SunshineHTTPS>(request);
+    const auto verified_client = get_verified_cert(request);
+    if (!has_client_perm(verified_client, PERM::server_cmd)) {
+      log_permission_denied("Update the host"sv, "Run server commands"sv, verified_client);
+      answer(response, SimpleWeb::StatusCode::client_error_unauthorized);
+      return;
+    }
+
+    nlohmann::json reply;
+    if (request->method == "GET") {
+      const auto status = self_update::status();
+      reply = {{"state", status.state}, {"version", status.version}, {"detail", status.detail}, {"installed", PROJECT_VERSION}};
+      answer(response, SimpleWeb::StatusCode::success_ok, reply.dump(), "application/json");
+      return;
+    }
+
+    std::string version;
+    std::string detail;
+    switch (self_update::start(version, detail)) {
+      case self_update::start_result_e::started:
+        BOOST_LOG(info) << "Self-update: "sv << verified_client->name << " asked this host to update to "sv << version;
+        reply = {{"state", "downloading"}, {"version", version}};
+        answer(response, SimpleWeb::StatusCode::success_accepted, reply.dump(), "application/json");
+        return;
+      case self_update::start_result_e::current:
+        reply = {{"state", "current"}, {"version", version}};
+        answer(response, SimpleWeb::StatusCode::success_ok, reply.dump(), "application/json");
+        return;
+      case self_update::start_result_e::busy:
+        reply = {{"state", "busy"}, {"version", version}};
+        answer(response, SimpleWeb::StatusCode::client_error_conflict, reply.dump(), "application/json");
+        return;
+      case self_update::start_result_e::unavailable:
+        reply = {{"state", "unavailable"}, {"detail", detail}};
+        answer(response, SimpleWeb::StatusCode::server_error_service_unavailable, reply.dump(), "application/json");
+        return;
+    }
+  }
+
   void setBitrate(resp_https_t response, req_https_t request) {
     print_req<SunshineHTTPS>(request);
 
@@ -5147,6 +5194,8 @@ namespace nvhttp {
     https_server.resource["^/actions/clipboard/files/chunk$"]["POST"] = writeClipboardUpload;
     https_server.resource["^/actions/clipboard/files/commit$"]["POST"] = commitClipboardUpload;
     https_server.resource["^/actions/clipboard/files/abort$"]["POST"] = abortClipboardUpload;
+    https_server.resource["^/actions/host/update$"]["GET"] = hostUpdate;
+    https_server.resource["^/actions/host/update$"]["POST"] = hostUpdate;
     https_server.resource["^/bitrate$"]["GET"] = setBitrate;
     https_server.resource["^/api/abr/capabilities$"]["GET"] = getAbrCapabilities;
     https_server.resource["^/actions/displays$"]["GET"] = getDisplays;

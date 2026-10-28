@@ -1404,6 +1404,14 @@ namespace platf {
   void mark_from_other_device(const std::filesystem::path &) {
   }
 
+  bool self_update_supported() {
+    return false;
+  }
+
+  bool launch_detached_installer(const std::filesystem::path &, const std::string &) {
+    return false;
+  }
+
   std::string find_render_node_with_display() {
 #ifdef SUNSHINE_BUILD_DRM
     auto *dir = opendir("/dev/dri");

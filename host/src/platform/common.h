@@ -1043,6 +1043,16 @@ namespace platf {
   void mark_from_other_device(const std::filesystem::path &file);
   /// @}
 
+  /// Whether this host can install a new release of itself (src/self_update.h).
+  bool self_update_supported();
+
+  /**
+   * @brief Starts an installer that must outlive this process.
+   * @details It is going to stop and replace this process, so it is started detached
+   *          and outside the service's job, which would otherwise end it too.
+   */
+  bool launch_detached_installer(const std::filesystem::path &installer, const std::string &arguments);
+
   /**
    * @brief Snapshot of host system performance counters.
    *
