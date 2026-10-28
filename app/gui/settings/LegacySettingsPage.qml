@@ -834,6 +834,24 @@ Column {
                 }
 
                 HardCheckBox {
+                    id: middleDragRelativeCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Send movement while the middle button is held (Blender, 3D apps)")
+                    font.pointSize: 12
+                    enabled: StreamingPreferences.absoluteMouseMode
+                    checked: StreamingPreferences.middleDragRelative
+                    onCheckedChanged: {
+                        StreamingPreferences.middleDragRelative = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Blender and other 3D apps orbit and pan the view while the middle button is held, moving the host's pointer as they go. Pointer positions from this PC would keep pulling it back, so for the length of the drag the mouse sends movement instead, and the pointer stays where the drag began.")
+                }
+
+                HardCheckBox {
                     id: autoGameMouseCheck
                     hoverEnabled: true
                     width: parent.width

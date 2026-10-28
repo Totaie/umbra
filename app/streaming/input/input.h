@@ -439,8 +439,21 @@ private:
     // Automatic game mouse (see evaluateAutoGameMouse()). Active means relative input
     // because the host hid its pointer; pinned means the user chose a mode by hand,
     // which holds until the host's pointer next comes back.
-    static constexpr Uint32 AUTO_GAME_MOUSE_DELAY_MS = 250;
+    // Into game mouse at once: every position sent to a game that has just taken the
+    // pointer is read as a jump, so even a quarter of a second of them spins the view.
+    // Out of it only once the pointer has stayed visible a moment, so that a pointer
+    // flashed for a frame mid-game does not hand the game a burst of positions either.
+    static constexpr Uint32 AUTO_GAME_MOUSE_RETURN_MS = 120;
     void setAutoGameMouse(bool active);
+    void scheduleAutoGameMouseCheck(Uint32 delayMs);
+    Uint32 m_RemoteCursorShownSince;
+
+    // Relative input while the middle button is held, in desktop mouse mode: 3D apps
+    // such as Blender orbit and pan on a middle-button drag and warp the pointer as
+    // they go, which positions from here would keep fighting. See handleMouseButtonEvent().
+    void setMiddleDragRelative(bool active);
+    bool m_MiddleDragRelativeEnabled;
+    bool m_MiddleDragActive;
     bool m_AutoGameMouse;
     bool m_AutoGameMouseActive;
     bool m_AutoGameMousePinned;

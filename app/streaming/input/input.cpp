@@ -56,6 +56,9 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
       m_StreamWidth(streamWidth),
       m_StreamHeight(streamHeight),
       m_AbsoluteMouseMode(prefs.absoluteMouseMode),
+      m_RemoteCursorShownSince(0),
+      m_MiddleDragRelativeEnabled(prefs.absoluteMouseMode && prefs.middleDragRelative),
+      m_MiddleDragActive(false),
       m_AutoGameMouse(prefs.absoluteMouseMode && prefs.autoGameMouse),
       m_AutoGameMouseActive(false),
       m_AutoGameMousePinned(false),
@@ -489,9 +492,26 @@ void SdlInputHandler::refreshRemoteCursorScale()
 #endif
 }
 
+void SdlInputHandler::scheduleAutoGameMouseCheck(Uint32 delayMs)
+{
+    if (m_AutoGameMouseTimer != 0) {
+        return;
+    }
+    m_AutoGameMouseTimer = SDL_AddTimer(delayMs, [](Uint32, void* param) -> Uint32 {
+        // Main thread only past this point, so hand it over.
+        auto me = reinterpret_cast<SdlInputHandler*>(param);
+        me->m_AutoGameMouseTimer = 0;
+        SDL_Event event = {};
+        event.type = SDL_USEREVENT;
+        event.user.code = SDL_CODE_AUTO_GAME_MOUSE;
+        SDL_PushEvent(&event);
+        return 0;
+    }, this);
+}
+
 void SdlInputHandler::evaluateAutoGameMouse()
 {
-    if (!m_AutoGameMouse || m_Window == nullptr) {
+    if (!m_AutoGameMouse || m_Window == nullptr || m_MiddleDragActive) {
         return;
     }
 
@@ -502,11 +522,17 @@ void SdlInputHandler::evaluateAutoGameMouse()
     }
 
     if (m_RemoteCursorVisible) {
-        SDL_RemoveTimer(m_AutoGameMouseTimer);
-        m_AutoGameMouseTimer = 0;
-        if (m_AutoGameMouseActive) {
-            setAutoGameMouse(false);
+        if (!m_AutoGameMouseActive) {
+            return;
         }
+        // Back to the desktop mouse once the pointer has stayed for a moment. Until then
+        // movement keeps going as movement, which in a menu still moves its pointer.
+        const Uint32 due = m_RemoteCursorShownSince + AUTO_GAME_MOUSE_RETURN_MS;
+        if (!SDL_TICKS_PASSED(SDL_GetTicks(), due)) {
+            scheduleAutoGameMouseCheck(AUTO_GAME_MOUSE_RETURN_MS + 10);
+            return;
+        }
+        setAutoGameMouse(false);
         return;
     }
 
@@ -519,25 +545,8 @@ void SdlInputHandler::evaluateAutoGameMouse()
         return;
     }
 
-    // A pointer hidden for a moment - a shape change, a loading screen - is not a game.
-    // Windows also hides it while you type, which only costs a switch and back.
-    const Uint32 due = m_RemoteCursorHiddenSince + AUTO_GAME_MOUSE_DELAY_MS;
-    if (!SDL_TICKS_PASSED(SDL_GetTicks(), due)) {
-        if (m_AutoGameMouseTimer == 0) {
-            m_AutoGameMouseTimer = SDL_AddTimer(AUTO_GAME_MOUSE_DELAY_MS + 10, [](Uint32, void* param) -> Uint32 {
-                // Main thread only past this point, so hand it over.
-                auto me = reinterpret_cast<SdlInputHandler*>(param);
-                me->m_AutoGameMouseTimer = 0;
-                SDL_Event event = {};
-                event.type = SDL_USEREVENT;
-                event.user.code = SDL_CODE_AUTO_GAME_MOUSE;
-                SDL_PushEvent(&event);
-                return 0;
-            }, this);
-        }
-        return;
-    }
-
+    // At once. Windows also hides the pointer while you type, which only costs a
+    // switch and back the next time the mouse moves.
     setAutoGameMouse(true);
 }
 
@@ -561,6 +570,31 @@ void SdlInputHandler::setAutoGameMouse(bool active)
     }
 }
 
+void SdlInputHandler::setMiddleDragRelative(bool active)
+{
+    if (active == m_MiddleDragActive) {
+        return;
+    }
+
+    // Same changeover as the automatic game mouse, for the length of one drag. The
+    // pointer is held where the drag began, which is also where Blender puts the host
+    // pointer back when the orbit ends, so the two agree again afterwards.
+    const bool captured = isCaptureActive();
+    if (captured) {
+        setCaptureActive(false);
+    }
+    m_MiddleDragActive = active;
+    m_AbsoluteMouseMode = !active;
+    if (captured) {
+        setCaptureActive(true);
+    }
+
+    if (!active) {
+        // A game may have taken the pointer while the button was down.
+        evaluateAutoGameMouse();
+    }
+}
+
 void SdlInputHandler::updateRemoteCursor(const RemoteCursorUpdate& update)
 {
     if (m_RemoteCursorVisible != update.visible && m_AutoGameMouse) {
@@ -572,6 +606,7 @@ void SdlInputHandler::updateRemoteCursor(const RemoteCursorUpdate& update)
         m_RemoteCursorHiddenSince = SDL_GetTicks();
     }
     else if (!m_RemoteCursorVisible && update.visible) {
+        m_RemoteCursorShownSince = SDL_GetTicks();
         // Whatever was chosen by hand was for whatever hid the pointer.
         m_AutoGameMousePinned = false;
     }
@@ -739,6 +774,12 @@ void SdlInputHandler::notifyFocusLost()
                 isCaptureActive() ? 1 : 0);
 
     cancelNativeTouchpadContacts();
+
+    // A middle-button drag cannot outlive the focus: the release will go elsewhere.
+    if (m_MiddleDragActive) {
+        LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, BUTTON_MIDDLE);
+        setMiddleDragRelative(false);
+    }
 
     // Release mouse cursor when another window is activated (e.g. by using ALT+TAB).
     // This lets user to interact with our window's title bar and with the buttons in it.

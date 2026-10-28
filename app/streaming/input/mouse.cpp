@@ -75,10 +75,22 @@ void SdlInputHandler::handleMouseButtonEvent(SDL_MouseButtonEvent* event)
             button = BUTTON_RIGHT;
     }
 
+    // A middle-button drag goes as movement rather than positions (see
+    // setMiddleDragRelative()): switched before the press, so the whole drag is relative,
+    // and back after the release.
+    const bool middle = event->button == SDL_BUTTON_MIDDLE;
+    if (middle && event->state == SDL_PRESSED && m_MiddleDragRelativeEnabled && m_AbsoluteMouseMode) {
+        setMiddleDragRelative(true);
+    }
+
     LiSendMouseButtonEvent(event->state == SDL_PRESSED ?
                                BUTTON_ACTION_PRESS :
                                BUTTON_ACTION_RELEASE,
                            button);
+
+    if (middle && event->state == SDL_RELEASED && m_MiddleDragActive) {
+        setMiddleDragRelative(false);
+    }
 }
 
 void SdlInputHandler::handleMouseMotionEvent(SDL_MouseMotionEvent* event)
@@ -319,10 +331,12 @@ void SdlInputHandler::updatePointerRegionLock()
     // toggled it themselves using the keyboard shortcut. If that's the case, they
     // have full control over it and we don't touch it anymore.
     if (!m_PointerRegionLockToggledByUser) {
-        // Lock the pointer in true full-screen mode or in any fullscreen mode when only a single monitor is present
+        // Lock the pointer to a full-screen stream only when there is no other screen to
+        // go to. With a second monitor, the desktop mouse has to be able to reach it;
+        // a game that wants the pointer kept takes it anyway (relative mode, above).
+        // Ctrl+Alt+Shift+L still locks it by hand.
         Uint32 fullscreenFlags = SDL_GetWindowFlags(m_Window) & SDL_WINDOW_FULLSCREEN_DESKTOP;
-        m_PointerRegionLockActive = (fullscreenFlags == SDL_WINDOW_FULLSCREEN) ||
-                                    (fullscreenFlags != 0 && SDL_GetNumVideoDisplays() == 1);
+        m_PointerRegionLockActive = fullscreenFlags != 0 && SDL_GetNumVideoDisplays() == 1;
     }
 
     // If region lock is enabled, grab the cursor so it can't accidentally leave our window.

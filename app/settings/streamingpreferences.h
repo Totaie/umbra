@@ -244,6 +244,7 @@ public:
     // see the note in reload().
     Q_PROPERTY(bool hideHostCursor MEMBER hideHostCursor NOTIFY umbraSettingsChanged)
     Q_PROPERTY(bool autoGameMouse MEMBER autoGameMouse NOTIFY umbraSettingsChanged)
+    Q_PROPERTY(bool middleDragRelative MEMBER middleDragRelative NOTIFY umbraSettingsChanged)
 
     // Where the user dragged the in-session button to, as a fraction of the stream
     // window: 0,0 is the top-left corner, 1,1 the bottom-right. Stored this way so it
@@ -332,6 +333,9 @@ public:
     // With the mouse optimized for remote desktop: switch to game (relative) input
     // while the host's pointer is hidden, which is what a game does with it.
     bool autoGameMouse;
+    // With the mouse optimized for remote desktop: send movement, not positions, while
+    // the middle button is held, for apps that orbit on a middle-button drag.
+    bool middleDragRelative;
     qreal overlayButtonFracX;
     qreal overlayButtonFracY;
     // Draw the cursor locally rather than letting the host composite it into video.

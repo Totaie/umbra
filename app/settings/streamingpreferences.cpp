@@ -69,6 +69,7 @@
 #define SER_STREAMALLSCREENS "streamallscreens"
 #define SER_HIDEHOSTCURSOR "hidehostcursor"
 #define SER_AUTOGAMEMOUSE "autogamemouse"
+#define SER_MIDDLEDRAGRELATIVE "middledragrelative"
 #define SER_UMBRADEFAULTSREV "umbradefaultsrev"
 #define SER_OVERLAYBTNX "overlaybuttonfracx"
 #define SER_OVERLAYBTNY "overlaybuttonfracy"
@@ -268,6 +269,7 @@ void StreamingPreferences::reload()
     // - so when it came out wrong there was nothing to look at and nothing to change.
     hideHostCursor = settings.value(SER_HIDEHOSTCURSOR, true).toBool();
     autoGameMouse = settings.value(SER_AUTOGAMEMOUSE, true).toBool();
+    middleDragRelative = settings.value(SER_MIDDLEDRAGRELATIVE, true).toBool();
 
     // Top-right by default, out of the way of a title bar and of anything centred.
     overlayButtonFracX = qBound(0.0, settings.value(SER_OVERLAYBTNX, 1.0).toDouble(), 1.0);
@@ -529,6 +531,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_STREAMALLSCREENS, streamAllScreens);
     settings.setValue(SER_HIDEHOSTCURSOR, hideHostCursor);
     settings.setValue(SER_AUTOGAMEMOUSE, autoGameMouse);
+    settings.setValue(SER_MIDDLEDRAGRELATIVE, middleDragRelative);
     settings.setValue(SER_UMBRADEFAULTSREV, UMBRA_DEFAULTS_REVISION);
     settings.setValue(SER_OVERLAYBTNX, overlayButtonFracX);
     settings.setValue(SER_OVERLAYBTNY, overlayButtonFracY);

@@ -233,6 +233,7 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
         // comes back rather than being switched straight back automatically.
         m_AbsoluteMouseMode = !m_AbsoluteMouseMode;
         m_AutoGameMouseActive = false;
+        m_MiddleDragActive = false;
         m_AutoGameMousePinned = m_AutoGameMouse;
         synchronizeLocalCursorMode();
 
