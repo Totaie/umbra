@@ -70,6 +70,9 @@ namespace rtsp_stream {
     // follow the host's own display selection. A client showing each host display in
     // its own window pins one per session; see video::config_t::pinned_display.
     int pinned_display = -1;
+    // The same display by name, which wins over the index when the display list has
+    // changed since the client read it. Empty when the client sent none.
+    std::string pinned_display_name;
     int width;
     int height;
     int fps;

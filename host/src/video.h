@@ -76,6 +76,9 @@ namespace video {
     // Pinned sessions get a capture of their own per display, so two sessions can show
     // two different displays at once.
     int pinned_display = -1;
+    // The pinned display's name as the client was given it; preferred over the index
+    // when both are known. Empty for unpinned sessions and older clients.
+    std::string pinned_display_name;
   };
 
   platf::mem_type_e map_base_dev_type(AVHWDeviceType type);

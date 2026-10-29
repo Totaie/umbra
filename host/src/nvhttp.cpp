@@ -2275,6 +2275,18 @@ namespace nvhttp {
           launch_session->pinned_display = index;
         }
       }
+      launch_session->pinned_display_name.clear();
+      if (launch_session->pinned_display >= 0) {
+        // umbraDisplayName: the same display by name, as /actions/displays named it.
+        // Only ever compared with display names, never used as a path or a command.
+        auto name = get_arg(args, "umbraDisplayName", "");
+        const bool printable = std::all_of(name.begin(), name.end(), [](unsigned char c) {
+          return c >= 0x20 && c != 0x7f;
+        });
+        if (!name.empty() && name.size() <= 128 && printable) {
+          launch_session->pinned_display_name = std::move(name);
+        }
+      }
 
       launch_session->iv.resize(16);
       uint32_t prepend_iv = util::endian::big<uint32_t>(util::from_view(get_arg(args, "rikeyid")));
@@ -3684,12 +3696,15 @@ namespace nvhttp {
 #endif
 
       // The display should be restored in case something fails as there are no other sessions.
-      // A pinned session changes no display, so there is nothing to apply or restore.
-      if (no_active_sessions && !launch_session->input_only && launch_session->pinned_display < 0) {
-        revert_display_configuration = true;
+      if (no_active_sessions && !launch_session->input_only) {
+        // A pinned session changes no display, so there is nothing to apply or restore.
+        // It still needs the encoder probe further down.
+        const bool change_displays = launch_session->pinned_display < 0;
+        revert_display_configuration = change_displays;
 
 
 #ifdef _WIN32
+        if (change_displays) {
         const bool helper_session_available = display_helper_session_available();
         (void) display_helper_integration::disarm_pending_restore(
           display_startup_cancelled,
@@ -3748,11 +3763,14 @@ namespace nvhttp {
             active_output.empty() ? nullptr : active_output.c_str()
           );
         }
+        }
 #else
+      if (change_displays) {
       display_helper_integration::DisplayApplyBuilder noop_builder;
       noop_builder.set_session(*launch_session);
       if (!display_helper_integration::apply(noop_builder.build())) {
         BOOST_LOG(warning) << "Display helper: failed to apply display configuration; continuing with existing display.";
+      }
       }
 #endif
 

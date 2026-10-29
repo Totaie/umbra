@@ -23,6 +23,7 @@
 #include <vector>
 
 // lib includes
+#include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/pointer_cast.hpp>
 
@@ -1560,8 +1561,10 @@ namespace video {
     safe::signal_t reinit_event;
     const encoder_t *encoder_p;
     sync_util::sync_t<std::weak_ptr<platf::display_t>> display_wp;
-    // config_t::pinned_display of every session on this capture, or -1 for the shared one.
+    // config_t::pinned_display of every session on this capture, or -1 for the shared one,
+    // and the display's name when the client gave it.
     int pinned_display = -1;
+    std::string pinned_name;
   };
 
   struct capture_thread_sync_ctx_t {
@@ -1578,24 +1581,31 @@ namespace video {
   auto capture_thread_sync = safe::make_shared<capture_thread_sync_ctx_t>(start_capture_sync, end_capture_sync);
 
   // One more capture per display that sessions are pinned to (config_t::pinned_display),
-  // reference counted the same way. Created on first use and never removed: a ptr_t
-  // points at its shared_t, and there are only ever as many as the host has displays.
+  // reference counted the same way, keyed by the display's name (or its index, from a
+  // client that sent no name). Created on first use and never removed: a ptr_t points
+  // at its shared_t, and there are only ever about as many as the host has displays.
   std::mutex pinned_captures_mutex;
-  std::map<int, std::unique_ptr<safe::shared_t<capture_thread_async_ctx_t>>> pinned_captures;
+  std::map<std::string, std::unique_ptr<safe::shared_t<capture_thread_async_ctx_t>>> pinned_captures;
 
-  safe::shared_t<capture_thread_async_ctx_t>::ptr_t capture_thread_for(int pinned_display) {
-    if (pinned_display < 0) {
+  safe::shared_t<capture_thread_async_ctx_t>::ptr_t capture_thread_for(const config_t &config) {
+    if (config.pinned_display < 0) {
       return capture_thread_async.ref();
     }
+
+    const int pinned_display = config.pinned_display;
+    const std::string pinned_name = config.pinned_display_name;
+    std::string key = pinned_name.empty() ? "#" + std::to_string(pinned_display) : pinned_name;
+    boost::algorithm::to_lower(key);
 
     safe::shared_t<capture_thread_async_ctx_t> *capture;
     {
       std::lock_guard lg {pinned_captures_mutex};
-      auto &slot = pinned_captures[pinned_display];
+      auto &slot = pinned_captures[key];
       if (!slot) {
         slot = std::make_unique<safe::shared_t<capture_thread_async_ctx_t>>(
-          [pinned_display](capture_thread_async_ctx_t &ctx) {
+          [pinned_display, pinned_name](capture_thread_async_ctx_t &ctx) {
             ctx.pinned_display = pinned_display;
+            ctx.pinned_name = pinned_name;
             return start_capture_async(ctx);
           },
           end_capture_async
@@ -2702,8 +2712,9 @@ namespace video {
 
   /**
    * @brief The display a pinned capture shows.
-   * @details The index the client asked for, the first time; after that the same display
-   * by name, wherever a reinitialisation puts it in the list. Unlike refresh_displays()
+   * @details By name when the client gave one (pinned_name starts as that), otherwise the
+   * index it asked for; from then on the same display by name, wherever a
+   * reinitialisation puts it in the list. Unlike refresh_displays()
    * this follows no configured output, runtime override or display switch: other
    * sessions' choices are exactly what a pinned session stays out of.
    * @return false when there are no displays to choose from right now.
@@ -2744,7 +2755,8 @@ namespace video {
     sync_util::sync_t<std::weak_ptr<platf::display_t>> &display_wp,
     safe::signal_t &reinit_event,
     const encoder_t &encoder,
-    int pinned_display
+    int pinned_display,
+    std::string pinned_name
   ) {
     std::vector<capture_ctx_t> capture_ctxs;
 
@@ -2771,7 +2783,6 @@ namespace video {
 
     std::vector<std::string> display_names;
     int display_p = -1;
-    std::string pinned_name;
     std::shared_ptr<platf::display_t> disp;
 
     while (capture_ctx_queue->running()) {
@@ -5641,7 +5652,7 @@ namespace video {
     auto shutdown_event = mail->event<bool>(mail::shutdown);
 
     auto images = std::make_shared<img_event_t::element_type>();
-    auto ref = capture_thread_for(config.pinned_display);
+    auto ref = capture_thread_for(config);
     auto lg = util::fail_guard([&]() {
       images->stop();
       shutdown_event->raise(true);
@@ -6733,7 +6744,8 @@ namespace video {
       std::ref(capture_thread_ctx.display_wp),
       std::ref(capture_thread_ctx.reinit_event),
       std::ref(*capture_thread_ctx.encoder_p),
-      capture_thread_ctx.pinned_display
+      capture_thread_ctx.pinned_display,
+      capture_thread_ctx.pinned_name
     };
 
     return 0;
