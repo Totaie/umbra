@@ -1,0 +1,161 @@
+/**
+ * @file tests/unit/test_httpcommon.cpp
+ * @brief Test src/httpcommon.*.
+ */
+// test imports
+#include "../tests_common.h"
+
+// lib imports
+#include <curl/curl.h>
+
+// standard includes
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include <string_view>
+#include <system_error>
+
+// local imports
+#include <src/httpcommon.h>
+
+namespace {
+  std::filesystem::path make_temp_credentials_path(const char *label) {
+    auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    return std::filesystem::temp_directory_path() /
+           ("umbra-creds-" + std::string(label) + "-" + std::to_string(stamp) + ".json");
+  }
+
+  void write_text_file(const std::filesystem::path &path, std::string_view contents) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    out << contents;
+  }
+}  // namespace
+
+TEST(UserCredsStateTest, MissingFile) {
+  const auto path = make_temp_credentials_path("missing");
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+
+  EXPECT_EQ(http::user_creds_state(path.string()), http::creds_state::missing_file);
+}
+
+TEST(UserCredsStateTest, MalformedJsonIsNotMissingCredentials) {
+  const auto path = make_temp_credentials_path("malformed");
+  write_text_file(path, "{not valid json");
+
+  EXPECT_EQ(http::user_creds_state(path.string()), http::creds_state::malformed);
+
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+}
+
+TEST(UserCredsStateTest, MissingRequiredFields) {
+  const auto path = make_temp_credentials_path("missing-fields");
+  write_text_file(path, R"({"username":"admin","password":"hash"})");
+
+  EXPECT_EQ(http::user_creds_state(path.string()), http::creds_state::missing_fields);
+
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+}
+
+TEST(UserCredsStateTest, Configured) {
+  const auto path = make_temp_credentials_path("configured");
+  write_text_file(path, R"({"username":"admin","password":"hash","salt":"salt"})");
+
+  EXPECT_EQ(http::user_creds_state(path.string()), http::creds_state::configured);
+
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+}
+
+struct UrlEscapeTest: testing::TestWithParam<std::tuple<std::string, std::string>> {};
+
+TEST_P(UrlEscapeTest, Run) {
+  const auto &[input, expected] = GetParam();
+  ASSERT_EQ(http::url_escape(input), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  UrlEscapeTests,
+  UrlEscapeTest,
+  testing::Values(
+    std::make_tuple("igdb_0123456789", "igdb_0123456789"),
+    std::make_tuple("../../../", "..%2F..%2F..%2F"),
+    std::make_tuple("..*\\", "..%2A%5C")
+  )
+);
+
+struct UrlGetHostTest: testing::TestWithParam<std::tuple<std::string, std::string>> {};
+
+TEST_P(UrlGetHostTest, Run) {
+  const auto &[input, expected] = GetParam();
+  ASSERT_EQ(http::url_get_host(input), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  UrlGetHostTests,
+  UrlGetHostTest,
+  testing::Values(
+    std::make_tuple("https://images.igdb.com/example.txt", "images.igdb.com"),
+    std::make_tuple("http://localhost:8080", "localhost"),
+    std::make_tuple("nonsense!!}{::", "")
+  )
+);
+
+struct DownloadFileTest: testing::TestWithParam<std::tuple<std::string, std::string>> {};
+
+TEST_P(DownloadFileTest, Run) {
+  const auto &[url, filename] = GetParam();
+  const std::string test_dir = platf::appdata().string() + "/tests/";
+  std::string path = test_dir + filename;
+  ASSERT_TRUE(http::download_file(url, path, CURL_SSLVERSION_TLSv1_0));
+}
+
+constexpr const char *URL_1 = "https://httpbin.org/base64/aGVsbG8h";
+constexpr const char *URL_2 = "https://httpbin.org/redirect-to?url=/base64/aGVsbG8h";
+
+INSTANTIATE_TEST_SUITE_P(
+  DownloadFileTests,
+  DownloadFileTest,
+  testing::Values(
+    std::make_tuple(URL_1, "hello.txt"),
+    std::make_tuple(URL_2, "hello-redirect.txt")
+  )
+);
+
+// Tests for cookie escaping and unescaping
+struct CookieEscapeTest: testing::TestWithParam<std::tuple<std::string, std::string>> {};
+
+TEST_P(CookieEscapeTest, Escape) {
+  const auto &[input, expected] = GetParam();
+  ASSERT_EQ(http::cookie_escape(input), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  CookieEscapeTests,
+  CookieEscapeTest,
+  testing::Values(
+    std::make_tuple("simpleToken123", "simpleToken123"),
+    std::make_tuple("token with spaces", "token%20with%20spaces"),
+    std::make_tuple("symbols&=%\"", "symbols%26%3D%25%22")
+  )
+);
+
+struct CookieUnescapeTest: testing::TestWithParam<std::tuple<std::string, std::string>> {};
+
+TEST_P(CookieUnescapeTest, Unescape) {
+  const auto &[expected, input] = GetParam();
+  ASSERT_EQ(http::cookie_unescape(input), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  CookieUnescapeTests,
+  CookieUnescapeTest,
+  testing::Values(
+    std::make_tuple("simpleToken123", "simpleToken123"),
+    std::make_tuple("token with spaces", "token%20with%20spaces"),
+    std::make_tuple("symbols&=%\"", "symbols%26%3D%25%22")
+  )
+);
