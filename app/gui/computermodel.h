@@ -17,7 +17,11 @@ class ComputerModel : public QAbstractListModel
         WakeableRole,
         StatusUnknownRole,
         ServerSupportedRole,
-        DetailsRole
+        DetailsRole,
+        // The Umbra Host version this PC can be updated to, or empty if it is current
+        HostUpdateRole,
+        // An update we asked this PC for is still on its way
+        HostUpdatingRole
     };
 
 public:
@@ -43,6 +47,9 @@ public:
     Q_INVOKABLE void wakeComputer(int computerIndex);
 
     Q_INVOKABLE void renameComputer(int computerIndex, QString name);
+
+    // Asks that PC to install the newest Umbra Host. How it went arrives as hostUpdateMessage().
+    Q_INVOKABLE void updateHost(int computerIndex);
 
     // Pairing passphrase: a long secret configured on the host that lets us pair
     // without anyone having to type a PIN at the other end.
@@ -84,6 +91,7 @@ public:
 signals:
     void pairingCompleted(QVariant error);
     void connectionTestCompleted(int result, QString blockedPorts);
+    void hostUpdateMessage(QString text);
 
 private slots:
     void handleComputerStateChanged(NvComputer* computer);

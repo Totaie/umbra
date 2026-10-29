@@ -5,6 +5,7 @@
 #include <QGuiApplication>
 #include "appmodel.h"
 #include "backend/nvcomputer.h"
+#include "backend/remotehostupdater.h"
 
 #include <QDebug>
 #include <QReadLocker>
@@ -24,6 +25,16 @@ void ComputerModel::initialize(ComputerManager* computerManager)
             this, &ComputerModel::handlePairingCompleted);
 
     m_Computers = m_ComputerManager->getComputers();
+
+    RemoteHostUpdater* updater = RemoteHostUpdater::get();
+    auto refreshAll = [this]() {
+        if (!m_Computers.isEmpty()) {
+            emit dataChanged(createIndex(0, 0), createIndex(m_Computers.count() - 1, 0), {HostUpdateRole, HostUpdatingRole});
+        }
+    };
+    connect(updater, &RemoteHostUpdater::latestVersionChanged, this, refreshAll);
+    connect(updater, &RemoteHostUpdater::updatingChanged, this, refreshAll);
+    connect(updater, &RemoteHostUpdater::message, this, &ComputerModel::hostUpdateMessage);
 }
 
 QVariant ComputerModel::data(const QModelIndex& index, int role) const
@@ -99,6 +110,15 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
                tr("Running Game ID: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->currentGameId) : tr("Unknown")) + '\n' +
                tr("HTTPS Port: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->activeHttpsPort) : tr("Unknown"));
     }
+    case HostUpdateRole: {
+        QString version = RemoteHostUpdater::get()->updateFor(computer);
+        if (version.startsWith(QLatin1Char('v'))) {
+            version.remove(0, 1);
+        }
+        return version;
+    }
+    case HostUpdatingRole:
+        return RemoteHostUpdater::get()->isUpdating(computer);
     default:
         return QVariant();
     }
@@ -127,6 +147,8 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     names[StatusUnknownRole] = "statusUnknown";
     names[ServerSupportedRole] = "serverSupported";
     names[DetailsRole] = "details";
+    names[HostUpdateRole] = "hostUpdate";
+    names[HostUpdatingRole] = "hostUpdating";
 
     return names;
 }
@@ -467,8 +489,17 @@ void ComputerModel::handlePairingCompleted(NvComputer*, QString error)
     emit pairingCompleted(error.isEmpty() ? QVariant() : error);
 }
 
+void ComputerModel::updateHost(int computerIndex)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+
+    RemoteHostUpdater::get()->requestUpdate(m_Computers[computerIndex]);
+}
+
 void ComputerModel::handleComputerStateChanged(NvComputer* computer)
 {
+    RemoteHostUpdater::get()->noteComputer(computer);
+
     QVector<NvComputer*> newComputerList = m_ComputerManager->getComputers();
 
     // Reset the model if the structural layout of the list has changed

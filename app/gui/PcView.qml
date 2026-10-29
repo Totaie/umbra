@@ -96,6 +96,7 @@ CenteredGridView {
         model.initialize(ComputerManager)
         model.pairingCompleted.connect(pairingComplete)
         model.connectionTestCompleted.connect(testConnectionDialog.connectionTestComplete)
+        model.hostUpdateMessage.connect(hostUpdateToast.show)
         return model
     }
 
@@ -298,10 +299,11 @@ CenteredGridView {
         // had to stand for offline, unpaired and unreachable all at once.
         readonly property color pcStateColor: !model.online ? Theme.lineStrong
                                                             : (!model.paired ? Theme.danger : Theme.accent)
-        readonly property string pcStateText: model.statusUnknown ? qsTr("Checking")
-                                                                  : (!model.online ? qsTr("Offline")
-                                                                                   : (!model.paired ? qsTr("Not paired")
-                                                                                                    : qsTr("Online")))
+        readonly property string pcStateText: model.hostUpdating ? qsTr("Updating host")
+                                                                 : (model.statusUnknown ? qsTr("Checking")
+                                                                                        : (!model.online ? qsTr("Offline")
+                                                                                                         : (!model.paired ? qsTr("Not paired")
+                                                                                                                          : qsTr("Online"))))
 
         Rectangle {
             id: pcIcon
@@ -380,6 +382,42 @@ CenteredGridView {
                         running: spinnerImage.visible
                     }
                 }
+
+                // This PC runs an older Umbra Host than the newest release
+                Rectangle {
+                    visible: model.hostUpdate !== "" && !model.hostUpdating
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.margins: 6
+                    width: hostUpdateLabel.implicitWidth + 14
+                    height: hostUpdateLabel.implicitHeight + 8
+                    color: hostUpdateMouse.containsMouse ? Theme.accent : Theme.surface
+                    border.width: 1
+                    border.color: Theme.accent
+
+                    Text {
+                        id: hostUpdateLabel
+                        anchors.centerIn: parent
+                        text: qsTr("Update")
+                        color: hostUpdateMouse.containsMouse ? Theme.surface : Theme.accent
+                        font.family: Theme.fontMono
+                        font.pointSize: Theme.fontCaption
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: Theme.trackingCaption
+                    }
+
+                    MouseArea {
+                        id: hostUpdateMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: computerModel.updateHost(index)
+                    }
+
+                    ToolTip.visible: hostUpdateMouse.containsMouse
+                    ToolTip.delay: 400
+                    ToolTip.text: qsTr("Update Umbra Host on this PC to %1").arg(model.hostUpdate)
+                }
             }
 
             Column {
@@ -454,6 +492,13 @@ CenteredGridView {
                     text: qsTr("Select Connection IP")
                     onTriggered: showAddressSelectionForComputer(index, model.name, false)
                     visible: model.online && model.paired && computerModel.hasMultipleConnectionAddresses(index)
+                }
+                NavigableMenuItem {
+                    text: model.hostUpdating ? qsTr("Updating Umbra Host…")
+                                             : qsTr("Update Umbra Host to %1").arg(model.hostUpdate)
+                    onTriggered: computerModel.updateHost(index)
+                    visible: model.hostUpdate !== "" || model.hostUpdating
+                    enabled: !model.hostUpdating
                 }
                 NavigableMenuItem {
                     text: qsTr("Wake PC")
@@ -573,6 +618,45 @@ CenteredGridView {
             deletePcDialog.pcIndex = index
             deletePcDialog.pcName = model.name
             deletePcDialog.open()
+        }
+    }
+
+    // How a remote host update went. A note rather than a dialog: nothing needs answering.
+    Popup {
+        id: hostUpdateToast
+        parent: Overlay.overlay
+        x: Math.round((parent.width - width) / 2)
+        y: parent.height - height - 24
+        width: Math.min(hostUpdateToastText.implicitWidth + 2 * padding, parent.width - 48)
+        modal: false
+        focus: false
+        closePolicy: Popup.NoAutoClose
+        padding: 14
+
+        background: Rectangle {
+            color: Theme.surface
+            border.width: 1
+            border.color: Theme.lineStrong
+        }
+
+        contentItem: Text {
+            id: hostUpdateToastText
+            color: Theme.text
+            font.family: Theme.fontUi
+            font.pointSize: Theme.fontBody
+            wrapMode: Text.Wrap
+        }
+
+        Timer {
+            id: hostUpdateToastTimer
+            interval: 8000
+            onTriggered: hostUpdateToast.close()
+        }
+
+        function show(text) {
+            hostUpdateToastText.text = text
+            open()
+            hostUpdateToastTimer.restart()
         }
     }
 

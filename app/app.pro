@@ -244,6 +244,7 @@ SOURCES += \
     streaming/bwtracker.cpp \
     streaming/streamutils.cpp \
     backend/autoupdatechecker.cpp \
+    backend/remotehostupdater.cpp \
     backend/hostmanager.cpp \
     backend/portableupdateinstaller.cpp \
     path.cpp \
@@ -298,6 +299,7 @@ HEADERS += \
     streaming/bwtracker.h \
     streaming/streamutils.h \
     backend/autoupdatechecker.h \
+    backend/remotehostupdater.h \
     backend/hostmanager.h \
     backend/portableupdateinstaller.h \
     path.h \
