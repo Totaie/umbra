@@ -19,6 +19,7 @@
 #include "video/overlaytoast.h"
 #ifndef STEAM_LINK
 #include "micstream.h"
+#include "spanscreens.h"
 #endif
 
 namespace FileMappingUx {
@@ -119,6 +120,10 @@ public:
     Q_INVOKABLE bool initialize(QQuickWindow* qtWindow);
     Q_INVOKABLE void start();
     Q_INVOKABLE void interrupt();
+
+    // Lay the host's displays out across this PC's screens for this session, whatever
+    // the "Stream to all screens" setting says. Call before start().
+    Q_INVOKABLE void streamToAllScreens() { m_SpanRequested = true; }
     Q_PROPERTY(QStringList launchWarnings MEMBER m_LaunchWarnings NOTIFY launchWarningsChanged);
 
     // Which machine this session is for, so the connect screen can say so. Fixed for
@@ -227,9 +232,16 @@ private:
     // where to wrap. Best effort - a host that doesn't answer just hides the submenu.
     void refreshHostDisplays();
 
-    // Spawn a sibling Umbra per additional client screen, each on its own host
-    // display. Returns an empty string on success or a message to show the user.
+    // Spread this stream across every screen, from the in-session menu: the other
+    // screens get a window each, pinned to the host display that matches. Returns an
+    // empty string on success or a message to show the user.
     QString launchAdditionalDisplays();
+
+    // Stream to all screens (see SpanScreens). The windows this one started, or this
+    // window is one of, and which host display it shows.
+    bool isSpanChild() const { return !m_Preferences->spanGroup.isEmpty(); }
+    void planSpanScreens(class NvHTTP& http);
+    QString startSpanWindows(const QVector<SpanScreens::Placement>& others);
     void showStreamingToast(const QString& message, int durationMs = 2000);
     void updateFileMappingMenuState();
     bool openFileMappingMountPath();
@@ -356,6 +368,21 @@ private:
     int m_FlushingWindowEventsRef;
     QStringList m_LaunchWarnings;
     bool m_ShouldExit;
+
+    // Stream to all screens. Screen bounds and the screen this window opens on are
+    // read on the GUI thread in initialize(); the plan is made with the host's layout
+    // just before launch.
+    QVector<QRect> m_ClientScreenBounds;
+    int m_StartDisplayIndex = 0;
+    bool m_SpanRequested = false;
+    bool m_SpanUnsupported = false;
+    bool m_SpanPlanned = false;
+    int m_PinnedHostDisplay = -1;
+    QString m_PinnedHostDisplayName;
+    QVector<SpanScreens::Placement> m_SpanOthers;
+    SpanScreens::Lifeline* m_SpanLifeline = nullptr;
+    SpanScreens::Tether* m_SpanTether = nullptr;
+    bool m_SpanQuitSent = false;
 
     // Graceful reconnect state
     bool m_ConnectionInterrupted;        // set by clConnectionTerminated for recoverable errors

@@ -134,7 +134,11 @@ int Session::arInit(int /* audioConfiguration */,
                     void* /* arContext */, int /* arFlags */)
 {
     SDL_memcpy(&s_ActiveSession->m_OriginalAudioConfig, opusConfig, sizeof(*opusConfig));
-    s_ActiveSession->initializeAudioRenderer();
+    // The host sends every window of a stream across all screens the same sound; only
+    // the first plays it, or it would come out once per screen.
+    if (!s_ActiveSession->isSpanChild()) {
+        s_ActiveSession->initializeAudioRenderer();
+    }
     return 0;
 }
 
@@ -207,8 +211,9 @@ void Session::arDecodeAndPlaySample(char* sampleData, int sampleLength)
 
     s_ActiveSession->m_AudioSampleCount++;
 
-    // If audio is muted, don't decode or play the audio
-    if (s_ActiveSession->m_AudioMuted) {
+    // If audio is muted, don't decode or play the audio. The extra windows of a stream
+    // across all screens never play it (see arInit()).
+    if (s_ActiveSession->m_AudioMuted || s_ActiveSession->isSpanChild()) {
         return;
     }
 

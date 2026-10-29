@@ -12,6 +12,11 @@ public:
     float maxBrightness;
     float minBrightness;
     float maxAverageBrightness;
+    // Umbra Host: the display this session shows whatever other sessions show, by its
+    // index in /actions/displays; -1 leaves it to the host. See SpanScreens.
+    int pinnedHostDisplay = -1;
+    // ...and its name, which the host prefers when its list has changed since.
+    QString pinnedHostDisplayName;
 
     RemoteStreamConfig(
         bool remoteResolution, int remoteResolutionWidth, int remoteResolutionHeight,

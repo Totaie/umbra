@@ -224,6 +224,13 @@ public:
     // wrap. Safe to never call - see cycleHostDisplay().
     void setHostDisplays(int count, int current);
 
+    // A window pinned to one host display (stream across all screens) switches none:
+    // the host's selection is what other sessions show.
+    void setHostDisplayPinned(bool pinned) { m_HostDisplayPinned = pinned; }
+
+    // The pointer came into the window, which may be what a waiting game mouse needs.
+    void notifyMouseEnter();
+
     // Move the stream to the host's next display, wrapping at the last one.
     void cycleHostDisplay();
 
@@ -462,6 +469,7 @@ private:
 
     int m_HostDisplayCount;
     int m_CurrentHostDisplay;
+    bool m_HostDisplayPinned = false;
     bool m_AbsoluteTouchMode;
     bool m_DisabledTouchFeedback;
 

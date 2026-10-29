@@ -4,6 +4,7 @@
 #include "nvapp.h"
 #include "nvaddress.h"
 #include "remotecomputer.h"
+#include "streaming/spanscreens.h"
 
 #include <Limelight.h>
 
@@ -152,6 +153,13 @@ public:
     // isn't streaming yet; currentIndex receives which one is live.
     QStringList
     getSwitchableDisplays(int* currentIndex = nullptr);
+
+    // The same displays with where each sits on the host's desktop, for laying them
+    // out across this PC's screens. pinnable receives whether the host can give each
+    // session a display of its own (umbraDisplay at launch); a host that can't shows
+    // every session the same display.
+    QVector<SpanScreens::HostDisplay>
+    getHostDisplayLayout(bool* pinnable);
 
     QJsonObject
     configureAbr(bool enabled,

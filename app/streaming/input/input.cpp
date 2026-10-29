@@ -545,6 +545,13 @@ void SdlInputHandler::evaluateAutoGameMouse()
         return;
     }
 
+    // Nor while the pointer is over some other window. With the stream across several
+    // screens that is the window for another host display, and grabbing the pointer
+    // here would stop it getting there. notifyMouseEnter() looks again.
+    if (SDL_GetMouseFocus() != m_Window) {
+        return;
+    }
+
     // At once. Windows also hides the pointer while you type, which only costs a
     // switch and back the next time the mouse moves.
     setAutoGameMouse(true);
@@ -739,6 +746,11 @@ void SdlInputHandler::raiseAllKeys(bool clearKeys)
                     "Keeping %d keys marked down for a later retry",
                     failedCount);
     }
+}
+
+void SdlInputHandler::notifyMouseEnter()
+{
+    evaluateAutoGameMouse();
 }
 
 void SdlInputHandler::notifyMouseLeave()

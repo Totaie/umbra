@@ -741,7 +741,7 @@ Column {
                     ToolTip.delay: 1000
                     ToolTip.timeout: 5000
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Connecting opens one Umbra window per screen on this PC, each showing a different display on the host. Also available from the in-session menu.")
+                    ToolTip.text: qsTr("When the host has several displays too, connecting opens an Umbra window on each of your screens, each showing the host display on the same side, so it looks like you're sitting at the host. Only the first window plays sound and takes controllers; closing it closes the rest. Needs the newest Umbra Host. Also available from the in-session menu, and from a PC's right-click menu as Connect to All Displays.")
                 }
 
                 Label {

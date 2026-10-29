@@ -392,57 +392,6 @@ int ComputerModel::getClientScreenCount() const
     return QGuiApplication::screens().count();
 }
 
-QString ComputerModel::launchAdditionalDisplays(int computerIndex, QString appName)
-{
-    if (computerIndex < 0 || computerIndex >= m_Computers.count()) {
-        qWarning() << "Invalid computer index for launchAdditionalDisplays:" << computerIndex;
-        return tr("That PC is no longer available.");
-    }
-
-    const int screenCount = getClientScreenCount();
-    if (screenCount < 2) {
-        return tr("This PC only has one screen, so there's nowhere to put a second display.");
-    }
-
-    QString uuid;
-    {
-        QReadLocker lock(&m_Computers[computerIndex]->lock);
-        uuid = m_Computers[computerIndex]->uuid;
-    }
-
-    // moonlight-common-c keeps its connection state in file-scope statics, so a
-    // process can only ever hold one stream open. Additional displays therefore have
-    // to be additional processes rather than additional sessions.
-    //
-    // Screen 1 keeps the session this process is about to start, so the children
-    // cover screens 2..n, each pulling the matching host display.
-    int launched = 0;
-    for (int screen = 2; screen <= screenCount; screen++) {
-        QStringList args;
-        // The host and app names come from the host, so they go after "--", where a
-        // name starting with "--" is still a name and not an option.
-        args << QStringLiteral("stream")
-             << QStringLiteral("--host-display") << QString::number(screen)
-             << QStringLiteral("--client-screen") << QString::number(screen)
-             << QStringLiteral("--")
-             << uuid
-             << appName;
-
-        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args)) {
-            qWarning() << "Failed to launch Umbra for client screen" << screen;
-            continue;
-        }
-
-        launched++;
-    }
-
-    if (launched == 0) {
-        return tr("Umbra couldn't start the extra display windows.");
-    }
-
-    return QString();
-}
-
 QString ComputerModel::generatePinString()
 {
     return m_ComputerManager->generatePinString();

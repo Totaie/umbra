@@ -122,6 +122,11 @@ void SdlInputHandler::showHostCursor()
 
 void SdlInputHandler::switchHostDisplay(int displayIndex)
 {
+    if (m_HostDisplayPinned) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Not switching host display: this window shows its own");
+        return;
+    }
     if (displayIndex < 0 || displayIndex >= HOST_MAX_SWITCHABLE_DISPLAYS) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "Ignoring out of range host display index: %d", displayIndex);

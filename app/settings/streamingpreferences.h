@@ -344,6 +344,12 @@ public:
     int preferredHostDisplay;
     // Which of this PC's screens to put the stream on. -1 follows the Umbra window.
     int clientScreenIndex;
+    // Set (never saved) in the extra windows of a stream across all screens: the
+    // lifeline of the window that started them, and the host display each shows.
+    // See SpanScreens.
+    QString spanGroup;
+    int spanHostDisplay = -1;
+    QString spanHostDisplayName;
     int customScreenMode;
     int customVddScreenMode;
     bool enableMicrophone;

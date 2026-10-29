@@ -229,6 +229,7 @@ SOURCES += \
     streaming/input/touchpad.cpp \
     streaming/input/reltouch.cpp \
     streaming/session.cpp \
+    streaming/spanscreens.cpp \
     streaming/filemappingclient.cpp \
     streaming/filemappingwebsocket.cpp \
     streaming/filemappingprotocoladapter.cpp \
@@ -283,6 +284,7 @@ HEADERS += \
     settings/streamingpreferences.h \
     streaming/input/input.h \
     streaming/session.h \
+    streaming/spanscreens.h \
     streaming/filemappingclient.h \
     streaming/filemappingwebsocket.h \
     streaming/filemappingprotocoladapter.h \

@@ -60,11 +60,6 @@ public:
     // How many screens this PC has. Used to size the multi-display launcher.
     Q_INVOKABLE int getClientScreenCount() const;
 
-    // Streams one host display onto each of this PC's screens after the first,
-    // by launching an extra Umbra process per screen. Returns an error message,
-    // or an empty string on success.
-    Q_INVOKABLE QString launchAdditionalDisplays(int computerIndex, QString appName);
-
     Q_INVOKABLE Session* createSessionForCurrentGame(int computerIndex);
 
     // A session for this PC's desktop, so clicking a tile can go straight to a stream

@@ -298,6 +298,9 @@ void StreamingPreferences::reload()
     // Runtime-only, set by --client-screen for multi-display children. Never persisted,
     // so a one-off launch can't strand the window on a monitor that isn't there.
     clientScreenIndex = -1;
+    spanGroup.clear();
+    spanHostDisplay = -1;
+    spanHostDisplayName.clear();
     audioConfig = static_cast<AudioConfig>(settings.value(SER_AUDIOCFG,
                                                   static_cast<int>(AudioConfig::AC_STEREO)).toInt());
     videoCodecConfig = static_cast<VideoCodecConfig>(settings.value(SER_VIDEOCFG,

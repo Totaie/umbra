@@ -354,6 +354,9 @@ void StreamCommandLineParser::parse(const QStringList &args, StreamingPreference
     parser.addValueOption("packet-size", "video packet size");
     parser.addValueOption("host-display", "host display to capture (1-based)");
     parser.addValueOption("client-screen", "screen on this PC to stream to (1-based)");
+    parser.addValueOption("span-group", "window of a stream across all screens (internal)");
+    parser.addValueOption("span-display", "host display index for --span-group (internal)");
+    parser.addValueOption("span-display-name", "host display name for --span-group (internal)");
     parser.addChoiceOption("display-mode", "display mode", m_WindowModeMap.keys());
     parser.addChoiceOption("audio-config", "audio config", m_AudioConfigMap.keys());
     parser.addToggleOption("multi-controller", "multiple controller support");
@@ -527,6 +530,11 @@ void StreamCommandLineParser::parse(const QStringList &args, StreamingPreference
     }
     if (parser.isSet("client-screen")) {
         preferences->clientScreenIndex = parser.getIntOption("client-screen") - 1;
+    }
+    if (parser.isSet("span-group")) {
+        preferences->spanGroup = parser.value("span-group");
+        preferences->spanHostDisplay = parser.isSet("span-display") ? parser.getIntOption("span-display") : 0;
+        preferences->spanHostDisplayName = parser.value("span-display-name");
     }
 
     // Resolve --video-decoder option

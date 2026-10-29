@@ -106,11 +106,19 @@ CenteredGridView {
     // built, transitioned to and rendered on the way to a stream that was already
     // decided - so Desktop and Steam Big Picture appeared every time no matter how
     // hard the grid was hidden. The session is built here instead.
-    function connectToDesktop(computerIndex, computerName)
+    function connectToDesktop(computerIndex, computerName, allScreens)
     {
         // A host that publishes no Desktop app is the only case with a real choice to
         // make, and that is what the app list is for.
         if (!computerModel.hasDesktopApp(computerIndex)) {
+            if (allScreens === true) {
+                // Asked for something the app list can't give: say so rather than
+                // quietly opening one window.
+                errorDialog.text = qsTr("%1 has no Desktop to spread across your screens. Turn on \"Stream to all screens\" in Settings to spread whichever app you connect to.").arg(computerName)
+                errorDialog.helpText = ""
+                errorDialog.open()
+                return
+            }
             openAppView(computerIndex, computerName, false)
             return
         }
@@ -119,6 +127,12 @@ CenteredGridView {
         // and the app list is where that conversation already lives.
         var running = computerModel.runningAppName(computerIndex)
         if (running !== "" && running.toLowerCase() !== "desktop") {
+            if (allScreens === true) {
+                errorDialog.text = qsTr("%1 is running %2. Quit it from the app list first, or turn on \"Stream to all screens\" in Settings to spread it across your screens.").arg(computerName).arg(running)
+                errorDialog.helpText = ""
+                errorDialog.open()
+                return
+            }
             openAppView(computerIndex, computerName, false)
             return
         }
@@ -127,6 +141,9 @@ CenteredGridView {
         if (!session) {
             openAppView(computerIndex, computerName, false)
             return
+        }
+        if (allScreens === true) {
+            session.streamToAllScreens()
         }
 
         var component = Qt.createComponent("StreamSegue.qml")
@@ -518,20 +535,20 @@ CenteredGridView {
 
                     // Shown whenever the PC can be streamed from, not only when this
                     // machine happens to have a second screen. Hiding it meant nobody
-                    // could find out the feature existed; launchAdditionalDisplays()
-                    // already explains itself when there is nowhere to put them.
+                    // could find out the feature existed, so it explains itself when
+                    // there is nowhere to put them.
                     visible: model.online && model.paired
 
                     onTriggered: {
-                        var error = computerModel.launchAdditionalDisplays(index, "Desktop")
-                        if (error) {
-                            errorDialog.text = error
+                        if (computerModel.getClientScreenCount() < 2) {
+                            errorDialog.text = qsTr("This PC only has one screen, so there's nowhere to put a second display.")
                             errorDialog.helpText = ""
                             errorDialog.open()
                         }
                         else {
-                            // The children cover screens 2..n; this process takes the first.
-                            connectToDesktop(index, model.name)
+                            // The session opens a window per screen once it is connected,
+                            // each showing the host display that matches.
+                            connectToDesktop(index, model.name, true)
                         }
                     }
                 }

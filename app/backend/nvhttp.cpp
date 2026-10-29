@@ -275,6 +275,11 @@ NvHTTP::startApp(QString verb,
                                    "&gcpersist="+QString::number(persistGameControllersOnDisconnect ? 1 : 0)+
                                    "&customScreenMode="+QString::number(customScreenMode)+
                                    "&customVddScreenMode="+QString::number(customVddScreenMode)+
+                                   ((remoteStreamConfig.pinnedHostDisplay >= 0) ?
+                                       "&umbraDisplay="+QString::number(remoteStreamConfig.pinnedHostDisplay)+
+                                       (remoteStreamConfig.pinnedHostDisplayName.isEmpty() ? QString() :
+                                            "&umbraDisplayName="+QString::fromLatin1(QUrl::toPercentEncoding(remoteStreamConfig.pinnedHostDisplayName))) :
+                                        QString())+
                                    ((remoteStreamConfig.maxBrightness > 0) ?
                                        "&maxBrightness="+QString::number(remoteStreamConfig.maxBrightness, 'f', 3)+
                                        "&minBrightness="+QString::number(remoteStreamConfig.minBrightness, 'f', 6)+
@@ -597,6 +602,35 @@ NvHTTP::getSwitchableDisplays(int* currentIndex)
     }
 
     return names;
+}
+
+QVector<SpanScreens::HostDisplay>
+NvHTTP::getHostDisplayLayout(bool* pinnable)
+{
+    QJsonObject response = openJsonConnectionToObject(m_BaseUrlHttps,
+                                                      "actions/displays",
+                                                      QJsonObject(),
+                                                      false,
+                                                      FAST_FAIL_TIMEOUT_MS,
+                                                      NvLogLevel::NVLL_ERROR);
+    if (pinnable != nullptr) {
+        *pinnable = response.value("pinnable").toBool(false);
+    }
+
+    QVector<SpanScreens::HostDisplay> layout;
+    const QJsonArray displays = response.value("displays").toArray();
+    for (const QJsonValue& value : displays) {
+        const QJsonObject entry = value.toObject();
+        SpanScreens::HostDisplay display;
+        display.index = entry.value("index").toInt(layout.size());
+        display.name = entry.value("name").toString();
+        if (entry.contains("width") && entry.contains("height")) {
+            display.bounds = QRect(entry.value("x").toInt(), entry.value("y").toInt(),
+                                   entry.value("width").toInt(), entry.value("height").toInt());
+        }
+        layout.append(display);
+    }
+    return layout;
 }
 
 bool

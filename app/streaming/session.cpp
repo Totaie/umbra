@@ -1144,7 +1144,9 @@ bool Session::initialize(QQuickWindow* qtWindow)
         break;
     }
 
-    m_StreamConfig.enableMic = m_Preferences->enableMicrophone;
+    // One microphone per stream: the extra windows of a stream across all screens
+    // leave it to the first.
+    m_StreamConfig.enableMic = m_Preferences->enableMicrophone && !isSpanChild();
 
     LiInitializeAudioCallbacks(&m_AudioCallbacks);
     m_AudioCallbacks.init = arInit;
@@ -1701,10 +1703,13 @@ private:
 
     void run() override
     {
-        // Only quit the running app if our session terminated gracefully
+        // Only quit the running app if our session terminated gracefully. Never from an
+        // extra window of a stream across all screens: the app is the first window's too,
+        // and quitting it would end that stream.
         bool shouldQuit =
                 !m_Session->m_UnexpectedTermination &&
-                m_Session->m_Preferences->quitAppAfter;
+                m_Session->m_Preferences->quitAppAfter &&
+                !m_Session->isSpanChild();
 
         // Notify the UI
         if (shouldQuit) {
@@ -1802,6 +1807,26 @@ void Session::getWindowDimensions(int& x, int& y,
                 SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                             "Qt window is not associated with a QScreen!");
             }
+        }
+    }
+
+    if (m_Window == nullptr && m_SpanPlanned && m_PinnedHostDisplay >= 0 && !isSpanChild() &&
+            m_StartDisplayIndex < SDL_GetNumVideoDisplays()) {
+        // The screens are planned: this window opens on the screen the plan gave it,
+        // even if the Umbra window has moved since, or it would cover another's.
+        displayIndex = m_StartDisplayIndex;
+    }
+    else if (m_Window == nullptr) {
+        // Where the window is going to open, and what else there is, for a stream
+        // across all screens. Read here because this runs on the GUI thread before
+        // the connection starts, and the plan is made on the connection's thread.
+        m_StartDisplayIndex = displayIndex;
+        m_ClientScreenBounds.clear();
+        for (int i = 0; i < SDL_GetNumVideoDisplays(); i++) {
+            SDL_Rect bounds;
+            m_ClientScreenBounds.append(SDL_GetDisplayBounds(i, &bounds) == 0
+                                            ? QRect(bounds.x, bounds.y, bounds.w, bounds.h)
+                                            : QRect());
         }
     }
 
@@ -2393,38 +2418,163 @@ QString Session::launchAdditionalDisplays()
     if (m_Computer == nullptr) {
         return tr("That PC is no longer available.");
     }
-
-    const int screenCount = QGuiApplication::screens().count();
-    if (screenCount < 2) {
+    if (isSpanChild() || m_SpanLifeline != nullptr) {
+        return tr("The stream is already on all your screens.");
+    }
+    if (SDL_GetNumVideoDisplays() < 2) {
         return tr("This PC only has one screen, so there's nowhere to put a second display.");
     }
 
+    QVector<QRect> screens;
+    for (int i = 0; i < SDL_GetNumVideoDisplays(); i++) {
+        SDL_Rect bounds;
+        screens.append(SDL_GetDisplayBounds(i, &bounds) == 0 ? QRect(bounds.x, bounds.y, bounds.w, bounds.h)
+                                                             : QRect());
+    }
+
+    bool pinnable = false;
+    QVector<SpanScreens::HostDisplay> layout;
+    try {
+        NvHTTP http(m_Computer);
+        layout = http.getHostDisplayLayout(&pinnable);
+    } catch (...) {
+        return tr("%1 didn't say which displays it has.").arg(m_Computer->name);
+    }
+    if (!pinnable) {
+        return tr("Update Umbra Host on %1 to spread the stream across your screens.").arg(m_Computer->name);
+    }
+
+    auto placements = SpanScreens::plan(screens, layout, SDL_GetWindowDisplayIndex(m_Window));
+    if (placements.isEmpty()) {
+        return tr("%1 only has one display.").arg(m_Computer->name);
+    }
+
+    if (m_PinnedHostDisplay >= 0) {
+        // Pinned already (its other windows didn't start): it keeps its display, and
+        // whichever window the plan gave that display gets this window's instead.
+        for (int i = 1; i < placements.size(); i++) {
+            if (placements[i].hostDisplay == m_PinnedHostDisplay) {
+                placements[i].hostDisplay = placements[0].hostDisplay;
+                placements[i].hostDisplayName = placements[0].hostDisplayName;
+            }
+        }
+    }
+    else if (m_InputHandler != nullptr) {
+        // This window shows the host's own selection; moving it to the matching
+        // display can't take the others', which are pinned. From then on it stays
+        // there, as theirs do.
+        m_InputHandler->switchHostDisplay(placements.first().hostDisplay);
+        m_InputHandler->setHostDisplayPinned(true);
+    }
+    const QString error = startSpanWindows(placements.mid(1));
+    refreshHostDisplays();
+    return error;
+}
+
+void Session::planSpanScreens(NvHTTP& http)
+{
+    // Once per session. A reconnect keeps whatever this window was given, pinned or
+    // not: the other windows, if any, are already open with the rest.
+    if (m_SpanPlanned) {
+        return;
+    }
+    m_SpanPlanned = true;
+
+    m_SpanOthers.clear();
+    m_SpanUnsupported = false;
+    m_PinnedHostDisplay = -1;
+    m_PinnedHostDisplayName.clear();
+
+    if (isSpanChild()) {
+        // Started by the first window, which already picked the display.
+        m_PinnedHostDisplay = m_Preferences->spanHostDisplay;
+        m_PinnedHostDisplayName = m_Preferences->spanHostDisplayName;
+        return;
+    }
+
+    if (!(m_Preferences->streamAllScreens || m_SpanRequested) ||
+            m_Preferences->clientScreenIndex >= 0 || m_ClientScreenBounds.size() < 2) {
+        return;
+    }
+
+    bool pinnable = false;
+    QVector<SpanScreens::HostDisplay> layout;
+    try {
+        layout = http.getHostDisplayLayout(&pinnable);
+    } catch (...) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Screens: the host didn't list its displays");
+        return;
+    }
+    if (!pinnable) {
+        // An older host shows every session the same display, so more windows would
+        // only be copies. Say so once the stream is up.
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Screens: this Umbra Host can't show a different display per window");
+        m_SpanUnsupported = true;
+        return;
+    }
+
+    const auto placements = SpanScreens::plan(m_ClientScreenBounds, layout, m_StartDisplayIndex);
+    if (placements.isEmpty()) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Screens: the host has %d display(s); nothing to spread",
+                    (int)layout.size());
+        return;
+    }
+
+    m_PinnedHostDisplay = placements.first().hostDisplay;
+    m_PinnedHostDisplayName = placements.first().hostDisplayName;
+    m_SpanOthers = placements.mid(1);
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Screens: this window shows host display %d on screen %d; %d more window(s) to open",
+                m_PinnedHostDisplay, m_StartDisplayIndex, (int)m_SpanOthers.size());
+}
+
+QString Session::startSpanWindows(const QVector<SpanScreens::Placement>& others)
+{
+    if (others.isEmpty()) {
+        return QString();
+    }
+
+    if (m_SpanLifeline == nullptr) {
+        m_SpanLifeline = new SpanScreens::Lifeline();
+    }
+    const QString group = m_SpanLifeline->open();
+    if (group.isEmpty()) {
+        delete m_SpanLifeline;
+        m_SpanLifeline = nullptr;
+        return tr("Umbra couldn't start the extra display windows.");
+    }
+
     // moonlight-common-c keeps its connection state in file-scope statics, so a
-    // process can only ever hold one stream open. Additional screens are therefore
-    // additional processes, each pulling a different host display onto a different
-    // client screen. This one keeps screen 1, so the children cover 2..n.
+    // process can only ever hold one stream open. The other screens are therefore
+    // other processes, each pinned to its host display, all tied to this window.
     int launched = 0;
-    for (int screen = 2; screen <= screenCount; screen++) {
+    for (const SpanScreens::Placement& placement : others) {
         QStringList args;
         // The host and app names come from the host, so they go after "--", where a
         // name starting with "--" is still a name and not an option.
         args << QStringLiteral("stream")
-             << QStringLiteral("--host-display") << QString::number(screen)
-             << QStringLiteral("--client-screen") << QString::number(screen)
+             << QStringLiteral("--client-screen") << QString::number(placement.clientScreen + 1)
+             << QStringLiteral("--span-group") << group
+             << QStringLiteral("--span-display") << QString::number(placement.hostDisplay)
+             << QStringLiteral("--span-display-name") << placement.hostDisplayName
              << QStringLiteral("--")
              << m_Computer->uuid
              << m_App.name;
 
         if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args)) {
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                        "Failed to launch Umbra for client screen %d", screen);
+                        "Failed to launch Umbra for client screen %d", placement.clientScreen + 1);
             continue;
         }
-
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Screens: opening host display %d on screen %d",
+                    placement.hostDisplay, placement.clientScreen);
         launched++;
     }
 
     if (launched == 0) {
+        delete m_SpanLifeline;
+        m_SpanLifeline = nullptr;
         return tr("Umbra couldn't start the extra display windows.");
     }
 
@@ -2469,6 +2619,14 @@ void Session::refreshHostDisplays()
 
     int current = 0;
     QStringList displays = http.getSwitchableDisplays(&current);
+
+    // A window pinned to its display (stream across all screens) has nothing to
+    // switch: the host's selection is what the other sessions show. Nor does one
+    // that spread itself across the screens from the menu, whose display is taken.
+    if (m_PinnedHostDisplay >= 0 || m_SpanLifeline != nullptr) {
+        displays.clear();
+        current = 0;
+    }
 
     if (m_InputHandler != nullptr) {
         m_InputHandler->setHostDisplays(displays.count(), current);
@@ -3016,6 +3174,16 @@ bool Session::tryReconnect()
         return false;
     };
 
+    // The tie between the windows of a stream across all screens keeps working while
+    // this one reconnects: the first window keeps taking connections, and the others
+    // stop trying once it has gone.
+    auto firstWindowGone = [this]() -> bool {
+        if (m_SpanLifeline != nullptr) {
+            m_SpanLifeline->poll();
+        }
+        return m_SpanTether != nullptr && m_SpanTether->firstWindowGone();
+    };
+
     while (!cancelled && SDL_GetTicks() - startTicks < graceMs) {
         // Update the on-screen indicator (re-shown each attempt so it stays up)
         Uint32 remainingMs = graceMs - (SDL_GetTicks() - startTicks);
@@ -3035,6 +3203,9 @@ bool Session::tryReconnect()
                 if (isCancelEvent(ev)) {
                     cancelled = true;
                 }
+            }
+            if (firstWindowGone()) {
+                cancelled = true;
             }
             if (cancelled) {
                 // Abort the in-progress connection attempt
@@ -3072,6 +3243,9 @@ bool Session::tryReconnect()
                     cancelled = true;
                     break;
                 }
+            }
+            if (firstWindowGone()) {
+                cancelled = true;
             }
             if (cancelled) {
                 break;
@@ -3297,17 +3471,37 @@ bool Session::startConnectionAsync()
             minBrightness,
             maxAverageBrightness
         );
-        http.startApp(resumingSession ? "resume" : "launch",
-                      m_Computer->isNvidiaServerSoftware,
-                      m_App.id, &m_StreamConfig,
-                      enableGameOptimizations,
-                      m_Preferences->playAudioOnHost,
-                      m_InputHandler->getAttachedGamepadMask(),
-                      !m_Preferences->multiController,
-                      rtspSessionUrl,
-                      m_Preferences->customScreenMode,
-                      m_Preferences->customVddScreenMode,
-                      remoteStreamConfig);
+
+        planSpanScreens(http);
+        remoteStreamConfig.pinnedHostDisplay = m_PinnedHostDisplay;
+        remoteStreamConfig.pinnedHostDisplayName = m_PinnedHostDisplayName;
+
+        // The host takes one launch at a time, and the windows of a stream across all
+        // screens start together, so theirs may have to wait a moment for a turn.
+        for (int attempt = 1;; attempt++) {
+            try {
+                http.startApp(resumingSession ? "resume" : "launch",
+                              m_Computer->isNvidiaServerSoftware,
+                              m_App.id, &m_StreamConfig,
+                              enableGameOptimizations,
+                              m_Preferences->playAudioOnHost,
+                              // The controllers belong to the first window.
+                              isSpanChild() ? 0 : m_InputHandler->getAttachedGamepadMask(),
+                              !m_Preferences->multiController,
+                              rtspSessionUrl,
+                              m_Preferences->customScreenMode,
+                              m_Preferences->customVddScreenMode,
+                              remoteStreamConfig);
+                break;
+            } catch (const GfeHttpResponseException& e) {
+                if (!isSpanChild() || attempt >= 10 ||
+                        !QString::fromUtf8(e.getStatusMessage()).contains(QStringLiteral("pending"), Qt::CaseInsensitive)) {
+                    throw;
+                }
+                SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Screens: another window is launching; trying again");
+                SDL_Delay(750);
+            }
+        }
 
         try {
             updateHostConnectionInfoFromServerInfo(http.getServerInfo(NvHTTP::NVLL_NONE, true),
@@ -3449,9 +3643,13 @@ bool Session::startConnectionAsync()
 
     emit connectionStarted();
     startSunshineAbr();
-    startFileMappingUxProbe();
-    startFileMappingSmokeProbe();
-    if (m_Preferences->enableMicrophone) {
+    // Host files, like the clipboard and the microphone, belong to the first window of
+    // a stream across all screens.
+    if (!isSpanChild()) {
+        startFileMappingUxProbe();
+        startFileMappingSmokeProbe();
+    }
+    if (m_Preferences->enableMicrophone && !isSpanChild()) {
         // Use the deferred mic toggle mechanism instead of QueuedConnection to avoid
         // heap corruption when creating QAudioSource within nested event loops (processEvents).
         m_PendingMicToggle = true;
@@ -3501,7 +3699,9 @@ void Session::start()
     // Construct the clipboard sync helper process before the control receive
     // thread can possibly invoke clClipboardData(). Host frames are queued by
     // ClipboardHelperClient and flushed from the SDL loop.
-    if (m_ClipboardHelper == nullptr) {
+    // One clipboard per stream: the other windows of a stream across all screens
+    // leave it to the first.
+    if (m_ClipboardHelper == nullptr && !isSpanChild()) {
         m_ClipboardHelper = new ClipboardHelperClient(m_Computer, m_Preferences->clipboardShortcuts, this);
         m_ClipboardHelper->start();
     }
@@ -3875,19 +4075,36 @@ void Session::exec()
 
     // Apply Umbra's host-side session preferences. Apollo/Sunshine-derived hosts expose
     // these only as Ctrl+Alt+Shift chords, so we drive them through the input channel.
-    if (m_Preferences->preferredHostDisplay > 0) {
+    if (m_PinnedHostDisplay >= 0) {
+        // This window has its display already. A switch would move the host's shared
+        // selection, which is nothing this window shows.
+        m_InputHandler->setHostDisplayPinned(true);
+    }
+    else if (m_Preferences->preferredHostDisplay > 0) {
         // The preference is 1-based so 0 can mean "leave the host alone".
         m_InputHandler->switchHostDisplay(m_Preferences->preferredHostDisplay - 1);
     }
 
-    // Open the other screens too, if that's what the user asked clicking a PC to do.
-    // Guarded on clientScreenIndex, which the parent leaves at -1 and sets on every
-    // child it spawns - without that, each child would spawn its own children.
-    if (m_Preferences->streamAllScreens && m_Preferences->clientScreenIndex < 0) {
-        QString error = launchAdditionalDisplays();
+    // Open the other screens too, if the plan made before launching has any. Only the
+    // first window plans: the others are started with --span-group and never do.
+    if (!m_SpanOthers.isEmpty()) {
+        QString error = startSpanWindows(m_SpanOthers);
+        m_SpanOthers.clear();
         if (!error.isEmpty()) {
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                         "Could not stream to all screens: %s", qPrintable(error));
+        }
+    }
+    if (isSpanChild() && m_SpanTether == nullptr) {
+        m_SpanTether = new SpanScreens::Tether();
+        if (!m_SpanTether->connect(m_Preferences->spanGroup)) {
+            // The first window closed before this one got going.
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Screens: the first window has gone; closing this one");
+            m_SpanQuitSent = true;
+            SDL_Event quit;
+            quit.type = SDL_QUIT;
+            quit.quit.timestamp = SDL_GetTicks();
+            SDL_PushEvent(&quit);
         }
     }
 
@@ -3895,7 +4112,9 @@ void Session::exec()
     // wherever it happened to be, which on a multi-monitor client is regularly a
     // different monitor - and in absolute mode that reads as a session ignoring you,
     // because a position is only sent while the pointer is inside the video.
-    {
+    // Not for the extra windows of a stream across all screens: the pointer is the
+    // user's, on whichever screen they are using, and stays there as they open.
+    if (!isSpanChild()) {
         int ww, wh;
         SDL_GetWindowSize(m_Window, &ww, &wh);
         SDL_WarpMouseInWindow(m_Window, ww / 2, wh / 2);
@@ -3959,7 +4178,13 @@ void Session::exec()
     // Nothing to offer on a single-screen client, and a child window covering
     // screen 2 shouldn't offer to spawn siblings of its own.
     m_MenuPanel->setHasMultipleScreens(QGuiApplication::screens().count() > 1 &&
-                                       m_Preferences->clientScreenIndex < 0);
+                                       m_Preferences->clientScreenIndex < 0 &&
+                                       !isSpanChild());
+
+    if (m_SpanUnsupported) {
+        showStreamingToast(tr("Update Umbra Host on %1 to spread the stream across your screens.")
+                               .arg(m_Computer->name), 6000);
+    }
 
     m_MenuPanel->setActionCallback([this](OverlayMenuPanel::MenuAction action) {
         dispatchQtMenuAction(action);
@@ -4099,9 +4324,26 @@ void Session::exec()
         }
     };
 
+    // Stream to all screens: the first window takes the others' connections, and the
+    // others close themselves once it has gone.
+    auto processSpanScreens = [this]() {
+        if (m_SpanLifeline != nullptr) {
+            m_SpanLifeline->poll();
+        }
+        if (m_SpanTether != nullptr && !m_SpanQuitSent && m_SpanTether->firstWindowGone()) {
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Screens: the first window has closed; closing this one");
+            m_SpanQuitSent = true;
+            SDL_Event quit;
+            quit.type = SDL_QUIT;
+            quit.quit.timestamp = SDL_GetTicks();
+            SDL_PushEvent(&quit);
+        }
+    };
+
     SDL_Event event;
     for (;;) {
         hideGuiWindowWhenSettled(false);
+        processSpanScreens();
         processSunshineAbrFeedback();
         processFileMappingUxProbeResult();
         processFileMappingMountResult();
@@ -4124,6 +4366,7 @@ void Session::exec()
         }
         if (!SDL_WaitEventTimeout(&event, waitTimeoutMs)) {
             presence.runCallbacks();
+            processSpanScreens();
             processClipboardHelperMessages();
             processFileMappingUxProbeResult();
             processFileMappingMountResult();
@@ -4264,6 +4507,9 @@ void Session::exec()
                 break;
             case SDL_WINDOWEVENT_LEAVE:
                 m_InputHandler->notifyMouseLeave();
+                break;
+            case SDL_WINDOWEVENT_ENTER:
+                m_InputHandler->notifyMouseEnter();
                 break;
             case SDL_WINDOWEVENT_HIDDEN:
             case SDL_WINDOWEVENT_MINIMIZED:
@@ -4575,10 +4821,16 @@ void Session::exec()
 #endif
         case SDL_CONTROLLERDEVICEADDED:
         case SDL_CONTROLLERDEVICEREMOVED:
-            m_InputHandler->handleControllerDeviceEvent(&event.cdevice);
+            // The controllers belong to the first window of a stream across all
+            // screens; opening them here too would give the host a second set.
+            if (!isSpanChild()) {
+                m_InputHandler->handleControllerDeviceEvent(&event.cdevice);
+            }
             break;
         case SDL_JOYDEVICEADDED:
-            m_InputHandler->handleJoystickArrivalEvent(&event.jdevice);
+            if (!isSpanChild()) {
+                m_InputHandler->handleJoystickArrivalEvent(&event.jdevice);
+            }
             break;
         case SDL_FINGERDOWN:
         case SDL_FINGERMOTION:
@@ -4623,6 +4875,12 @@ void Session::exec()
 DispatchDeferredCleanup:
     // Switch back to synchronous logging mode
     StreamUtils::exitAsyncLoggingMode();
+
+    // The other windows of a stream across all screens close with this one.
+    delete m_SpanLifeline;
+    m_SpanLifeline = nullptr;
+    delete m_SpanTether;
+    m_SpanTether = nullptr;
 
     if (m_ClipboardHelper != nullptr) {
         m_ClipboardHelper->processPendingMessages();
