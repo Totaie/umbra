@@ -1053,6 +1053,21 @@ namespace platf {
    */
   bool launch_detached_installer(const std::filesystem::path &installer, const std::string &arguments);
 
+  /// Where a display sits on the host's desktop, in desktop pixels.
+  struct display_bounds_t {
+    int x;
+    int y;
+    int width;
+    int height;
+  };
+
+  /**
+   * @brief The bounds of a display, named as display_names() names it.
+   * @details So a client showing several host displays can put each in the window
+   *          that sits the same way round on its own desk. Empty when unknown.
+   */
+  std::optional<display_bounds_t> display_bounds(const std::string &display_name);
+
   /**
    * @brief Snapshot of host system performance counters.
    *

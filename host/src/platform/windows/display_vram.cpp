@@ -59,6 +59,20 @@ static void free_frame(AVFrame *frame) {
 using frame_t = util::safe_ptr<AVFrame, free_frame>;
 
 namespace platf::dxgi {
+  namespace {
+    /**
+     * @brief Whether the pointer is showing on some display, as opposed to hidden.
+     * @details For when desktop duplication says it isn't on this one. A game that hides
+     * the pointer clears CURSOR_SHOWING or sets no cursor at all; a pointer that merely
+     * moved to another display keeps both.
+     */
+    bool pointer_shown_elsewhere() {
+      CURSORINFO info {};
+      info.cbSize = sizeof(info);
+      return GetCursorInfo(&info) && (info.flags & CURSOR_SHOWING) && info.hCursor != nullptr;
+    }
+  }  // namespace
+
 
   namespace {
     std::atomic<int> g_active_native_amf_encoders {0};
@@ -2612,7 +2626,7 @@ namespace platf::dxgi {
         auto client_cursor = make_client_cursor_shape(img_data, shape_info);
         if (client_cursor.has_shape) {
           client_cursor.shape_id = ++client_cursor_shape_id;
-          client_cursor.visible = cursor_alpha.visible || cursor_xor.visible;
+          client_cursor.visible = cursor_alpha.visible || cursor_xor.visible || pointer_shown_elsewhere();
           last_client_cursor = client_cursor;
           mail::man->event<platf::cursor_shape_t>(mail::cursor_shape)->raise(std::move(client_cursor));
         }
@@ -2632,7 +2646,11 @@ namespace platf::dxgi {
       // Only when it actually changed. The pointer position updates constantly and a
       // client drawing its own cursor doesn't care where the host thinks it is - it
       // knows, it put it there - but it does need to know when to stop drawing one.
-      const bool now_visible = frame_info.PointerPosition.Visible;
+      //
+      // Duplication only calls the pointer visible on the output it is on, so moving it
+      // to another display reads as hidden here - which is what tells a client that a
+      // game has taken the mouse. Ask Windows whether it is actually hidden instead.
+      const bool now_visible = frame_info.PointerPosition.Visible || pointer_shown_elsewhere();
       if (now_visible != last_client_cursor_visible) {
         last_client_cursor_visible = now_visible;
 

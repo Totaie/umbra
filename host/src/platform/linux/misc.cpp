@@ -1412,6 +1412,10 @@ namespace platf {
     return false;
   }
 
+  std::optional<display_bounds_t> display_bounds(const std::string &) {
+    return std::nullopt;
+  }
+
   std::string find_render_node_with_display() {
 #ifdef SUNSHINE_BUILD_DRM
     auto *dir = opendir("/dev/dri");

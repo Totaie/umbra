@@ -478,6 +478,23 @@ namespace nvhttp {
       }
     }
 
+    /**
+     * @brief What a pinned session gets instead of prepare_virtual_display_for_session().
+     * @details It shows one of this host's displays as it is - which is the point when a
+     * client lays the host's displays out across its own - so no virtual display is made
+     * for it and no display is reconfigured. Marked resolved so proc::execute does not
+     * make one later either.
+     */
+    void keep_displays_for_pinned_session(rtsp_stream::launch_session_t &launch_session) {
+      launch_session.virtual_display_request_resolved = true;
+      launch_session.virtual_display = false;
+      launch_session.virtual_display_failed = false;
+      launch_session.virtual_display_guid_bytes.fill(0);
+      launch_session.virtual_display_device_id.clear();
+      BOOST_LOG(info) << "Session pinned to display " << launch_session.pinned_display
+                      << ": leaving the displays as they are";
+    }
+
     void prepare_virtual_display_for_session(
       const std::shared_ptr<rtsp_stream::launch_session_t> &launch_session,
       bool no_active_sessions,
@@ -2247,6 +2264,18 @@ namespace nvhttp {
 
       launch_session->input_only = input_only;
 
+      // umbraDisplay=<index>: show that display, by its index in /actions/displays, and
+      // nothing else - see launch_session_t::pinned_display. Anything unreadable is the
+      // same as leaving it out.
+      launch_session->pinned_display = -1;
+      if (const auto pinned = get_arg(args, "umbraDisplay", ""); !pinned.empty()) {
+        int index = -1;
+        const auto [end, ec] = std::from_chars(pinned.data(), pinned.data() + pinned.size(), index);
+        if (ec == std::errc {} && end == pinned.data() + pinned.size() && index >= 0 && index < 16) {
+          launch_session->pinned_display = index;
+        }
+      }
+
       launch_session->iv.resize(16);
       uint32_t prepend_iv = util::endian::big<uint32_t>(util::from_view(get_arg(args, "rikeyid")));
       auto prepend_iv_p = (uint8_t *) &prepend_iv;
@@ -3620,16 +3649,20 @@ namespace nvhttp {
           (void) video::clear_pending_virtual_display_adapter_hint(*pending_adapter_hint);
         }
       });
-      prepare_virtual_display_for_session(
-        launch_session,
-        no_active_sessions,
-        allow_display_changes,
-        is_input_only,
-        pending_output_override,
-        pending_adapter_hint,
-        display_startup_cancelled,
-        display_startup_deadline
-      );
+      if (launch_session->pinned_display >= 0) {
+        keep_displays_for_pinned_session(*launch_session);
+      } else {
+        prepare_virtual_display_for_session(
+          launch_session,
+          no_active_sessions,
+          allow_display_changes,
+          is_input_only,
+          pending_output_override,
+          pending_adapter_hint,
+          display_startup_cancelled,
+          display_startup_deadline
+        );
+      }
       launch_timing.mark("virtual display preparation");
 
       auto virtual_display_teardown_guard = util::fail_guard([&]() {
@@ -3651,7 +3684,8 @@ namespace nvhttp {
 #endif
 
       // The display should be restored in case something fails as there are no other sessions.
-      if (no_active_sessions && !launch_session->input_only) {
+      // A pinned session changes no display, so there is nothing to apply or restore.
+      if (no_active_sessions && !launch_session->input_only && launch_session->pinned_display < 0) {
         revert_display_configuration = true;
 
 
@@ -4129,16 +4163,20 @@ namespace nvhttp {
         (void) video::clear_pending_virtual_display_adapter_hint(*pending_adapter_hint);
       }
     });
-    prepare_virtual_display_for_session(
-      launch_session,
-      no_active_sessions,
-      allow_display_changes,
-      is_input_only,
-      pending_output_override,
-      pending_adapter_hint,
-      display_startup_cancelled,
-      display_startup_deadline
-    );
+    if (launch_session->pinned_display >= 0) {
+      keep_displays_for_pinned_session(*launch_session);
+    } else {
+      prepare_virtual_display_for_session(
+        launch_session,
+        no_active_sessions,
+        allow_display_changes,
+        is_input_only,
+        pending_output_override,
+        pending_adapter_hint,
+        display_startup_cancelled,
+        display_startup_deadline
+      );
+    }
 
     auto virtual_display_teardown_guard = util::fail_guard([&]() {
       stream::session::cleanup_reservation_t cleanup_reservation;
@@ -4163,9 +4201,10 @@ namespace nvhttp {
       // the moment. This should be done before probing encoders as it could
       // change the active displays.
       const bool should_apply_display_request =
-        allow_display_changes ||
-        launch_session->virtual_display_recreated_on_demand ||
-        launch_session->virtual_display_needs_resume_apply;
+        launch_session->pinned_display < 0 &&
+        (allow_display_changes ||
+         launch_session->virtual_display_recreated_on_demand ||
+         launch_session->virtual_display_needs_resume_apply);
       if (should_apply_display_request) {
         BOOST_LOG(debug) << "Display helper: applying session display request on "
                          << (allow_display_changes ? "normal start/resume" :
@@ -4963,11 +5002,20 @@ namespace nvhttp {
 
     nlohmann::json body = nlohmann::json::object();
     body["current"] = listing.current;
+    // A session launched with umbraDisplay=<index> shows that display whatever the
+    // others show (see rtsp_stream::launch_session_t::pinned_display).
+    body["pinnable"] = true;
     body["displays"] = nlohmann::json::array();
     for (std::size_t i = 0; i < listing.names.size(); ++i) {
       nlohmann::json entry = nlohmann::json::object();
       entry["index"] = (int) i;
       entry["name"] = listing.names[i];
+      if (const auto bounds = platf::display_bounds(listing.names[i])) {
+        entry["x"] = bounds->x;
+        entry["y"] = bounds->y;
+        entry["width"] = bounds->width;
+        entry["height"] = bounds->height;
+      }
       body["displays"].push_back(std::move(entry));
     }
 

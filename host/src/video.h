@@ -71,6 +71,11 @@ namespace video {
     // subtracts FEC/audio/control overhead from `bitrate` for the encoder.
     // Same as `bitrate` for clients that don't send maximumBitrateKbps.
     int client_requested_bitrate;
+    // A display of this host's own, by its index in switchable_displays(), that this
+    // session shows whatever the others do; -1 follows the shared display selection.
+    // Pinned sessions get a capture of their own per display, so two sessions can show
+    // two different displays at once.
+    int pinned_display = -1;
   };
 
   platf::mem_type_e map_base_dev_type(AVHWDeviceType type);

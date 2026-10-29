@@ -1761,6 +1761,23 @@ namespace platf {
     return display_names;
   }
 
+  std::optional<display_bounds_t> display_bounds(const std::string &display_name) {
+    // display_names() gives GDI device names ("\\.\DISPLAY1"), which is what this takes.
+    const auto device = utf_utils::from_utf8(display_name);
+    DEVMODEW mode {};
+    mode.dmSize = sizeof(mode);
+    if (!EnumDisplaySettingsExW(device.c_str(), ENUM_CURRENT_SETTINGS, &mode, 0) ||
+        !(mode.dmFields & DM_POSITION) || mode.dmPelsWidth == 0 || mode.dmPelsHeight == 0) {
+      return std::nullopt;
+    }
+    return display_bounds_t {
+      (int) mode.dmPosition.x,
+      (int) mode.dmPosition.y,
+      (int) mode.dmPelsWidth,
+      (int) mode.dmPelsHeight,
+    };
+  }
+
   /**
    * @brief Returns if GPUs/drivers have changed since the last call to this function.
    * @return `true` if a change has occurred or if it is unknown whether a change occurred.

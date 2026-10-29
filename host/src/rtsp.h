@@ -66,6 +66,10 @@ namespace rtsp_stream {
 
     bool input_only;
     bool host_audio;
+    // The display this session shows, by its index in GET /actions/displays, or -1 to
+    // follow the host's own display selection. A client showing each host display in
+    // its own window pins one per session; see video::config_t::pinned_display.
+    int pinned_display = -1;
     int width;
     int height;
     int fps;

@@ -669,6 +669,10 @@ namespace platf {
     return false;
   }
 
+  std::optional<display_bounds_t> display_bounds(const std::string &) {
+    return std::nullopt;
+  }
+
   std::string resolve_render_device() {
     return {};
   }

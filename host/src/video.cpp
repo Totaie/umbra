@@ -1560,6 +1560,8 @@ namespace video {
     safe::signal_t reinit_event;
     const encoder_t *encoder_p;
     sync_util::sync_t<std::weak_ptr<platf::display_t>> display_wp;
+    // config_t::pinned_display of every session on this capture, or -1 for the shared one.
+    int pinned_display = -1;
   };
 
   struct capture_thread_sync_ctx_t {
@@ -1574,6 +1576,35 @@ namespace video {
   // Keep a reference counter to ensure the capture thread only runs when other threads have a reference to the capture thread
   auto capture_thread_async = safe::make_shared<capture_thread_async_ctx_t>(start_capture_async, end_capture_async);
   auto capture_thread_sync = safe::make_shared<capture_thread_sync_ctx_t>(start_capture_sync, end_capture_sync);
+
+  // One more capture per display that sessions are pinned to (config_t::pinned_display),
+  // reference counted the same way. Created on first use and never removed: a ptr_t
+  // points at its shared_t, and there are only ever as many as the host has displays.
+  std::mutex pinned_captures_mutex;
+  std::map<int, std::unique_ptr<safe::shared_t<capture_thread_async_ctx_t>>> pinned_captures;
+
+  safe::shared_t<capture_thread_async_ctx_t>::ptr_t capture_thread_for(int pinned_display) {
+    if (pinned_display < 0) {
+      return capture_thread_async.ref();
+    }
+
+    safe::shared_t<capture_thread_async_ctx_t> *capture;
+    {
+      std::lock_guard lg {pinned_captures_mutex};
+      auto &slot = pinned_captures[pinned_display];
+      if (!slot) {
+        slot = std::make_unique<safe::shared_t<capture_thread_async_ctx_t>>(
+          [pinned_display](capture_thread_async_ctx_t &ctx) {
+            ctx.pinned_display = pinned_display;
+            return start_capture_async(ctx);
+          },
+          end_capture_async
+        );
+      }
+      capture = slot.get();
+    }
+    return capture->ref();
+  }
 
 #ifdef _WIN32
   encoder_t nvenc {
@@ -2669,11 +2700,51 @@ namespace video {
     return listing;
   }
 
+  /**
+   * @brief The display a pinned capture shows.
+   * @details The index the client asked for, the first time; after that the same display
+   * by name, wherever a reinitialisation puts it in the list. Unlike refresh_displays()
+   * this follows no configured output, runtime override or display switch: other
+   * sessions' choices are exactly what a pinned session stays out of.
+   * @return false when there are no displays to choose from right now.
+   */
+  bool select_pinned_display(
+    platf::mem_type_e dev_type,
+    int pinned_display,
+    std::vector<std::string> &display_names,
+    int &display_p,
+    std::string &pinned_name
+  ) {
+    // The same enumeration as refresh_displays(), so the index means what
+    // switchable_displays() told the client it means.
+    auto names = platf::display_names(dev_type);
+    if (names.empty()) {
+      return false;
+    }
+    display_names = std::move(names);
+
+    if (!pinned_name.empty()) {
+      for (int x = 0; x < (int) display_names.size(); ++x) {
+        if (boost::iequals(display_names[x], pinned_name)) {
+          display_p = x;
+          return true;
+        }
+      }
+      BOOST_LOG(warning) << "Pinned display ["sv << pinned_name << "] is no longer present; using display "sv << pinned_display;
+    }
+
+    display_p = std::clamp(pinned_display, 0, (int) display_names.size() - 1);
+    pinned_name = display_names[display_p];
+    BOOST_LOG(info) << "Capturing display ["sv << pinned_name << "] for the sessions pinned to display "sv << pinned_display;
+    return true;
+  }
+
   void captureThread(
     std::shared_ptr<safe::queue_t<capture_ctx_t>> capture_ctx_queue,
     sync_util::sync_t<std::weak_ptr<platf::display_t>> &display_wp,
     safe::signal_t &reinit_event,
-    const encoder_t &encoder
+    const encoder_t &encoder,
+    int pinned_display
   ) {
     std::vector<capture_ctx_t> capture_ctxs;
 
@@ -2700,14 +2771,22 @@ namespace video {
 
     std::vector<std::string> display_names;
     int display_p = -1;
+    std::string pinned_name;
     std::shared_ptr<platf::display_t> disp;
 
     while (capture_ctx_queue->running()) {
-      refresh_displays(encoder.platform_formats->dev_type, display_names, display_p);
+      if (pinned_display >= 0) {
+        if (!select_pinned_display(encoder.platform_formats->dev_type, pinned_display, display_names, display_p, pinned_name)) {
+          std::this_thread::sleep_for(50ms);
+          continue;
+        }
+      } else {
+        refresh_displays(encoder.platform_formats->dev_type, display_names, display_p);
 
-      if (!ensure_virtual_display_ready(display_names, display_p)) {
-        std::this_thread::sleep_for(50ms);
-        continue;
+        if (!ensure_virtual_display_ready(display_names, display_p)) {
+          std::this_thread::sleep_for(50ms);
+          continue;
+        }
       }
 
       disp = platf::display(encoder.platform_formats->dev_type, display_names[display_p], capture_ctxs.front().config);
@@ -2907,7 +2986,8 @@ namespace video {
           capture_ctxs.emplace_back(std::move(*capture_ctx_queue->pop()));
         }
 
-        if (switch_display_event->peek()) {
+        // A display switch moves the shared capture; pinned ones stay where they are.
+        if (pinned_display < 0 && switch_display_event->peek()) {
           artificial_reinit = true;
           return false;
         }
@@ -3008,27 +3088,38 @@ namespace video {
               wait_for_recent_display_apply_stability();
 #endif
 
-              // Refresh display names since a display removal might have caused the reinitialization
-              refresh_displays(encoder.platform_formats->dev_type, display_names, display_p, proc::proc.display_name);
+              if (pinned_display >= 0) {
+                if (!select_pinned_display(encoder.platform_formats->dev_type, pinned_display, display_names, display_p, pinned_name)) {
+                  std::this_thread::sleep_for(50ms);
+                  continue;
+                }
+              } else {
+                // Refresh display names since a display removal might have caused the reinitialization
+                refresh_displays(encoder.platform_formats->dev_type, display_names, display_p, proc::proc.display_name);
 
-              if (!ensure_virtual_display_ready(display_names, display_p)) {
-                std::this_thread::sleep_for(50ms);
-                continue;
-              }
+                if (!ensure_virtual_display_ready(display_names, display_p)) {
+                  std::this_thread::sleep_for(50ms);
+                  continue;
+                }
 
-              // Process any pending display switch with the new list of displays.
-              // Negative values mean "reinit only; keep display selection logic intact".
-              if (switch_display_event->peek()) {
-                const int requested = *switch_display_event->pop();
-                if (requested >= 0) {
-                  display_p = std::clamp(requested, 0, (int) display_names.size() - 1);
+                // Process any pending display switch with the new list of displays.
+                // Negative values mean "reinit only; keep display selection logic intact".
+                if (switch_display_event->peek()) {
+                  const int requested = *switch_display_event->pop();
+                  if (requested >= 0) {
+                    display_p = std::clamp(requested, 0, (int) display_names.size() - 1);
+                  }
                 }
               }
 
               // reset_display() will sleep between retries
               reset_display(disp, encoder.platform_formats->dev_type, display_names[display_p], capture_ctxs.front().config);
               if (disp) {
-                proc::proc.display_name = display_names[display_p];
+                // The shared capture's display is the host's "current display"; a pinned
+                // one is only this capture's business.
+                if (pinned_display < 0) {
+                  proc::proc.display_name = display_names[display_p];
+                }
                 break;
               }
             }
@@ -5550,7 +5641,7 @@ namespace video {
     auto shutdown_event = mail->event<bool>(mail::shutdown);
 
     auto images = std::make_shared<img_event_t::element_type>();
-    auto ref = capture_thread_async.ref();
+    auto ref = capture_thread_for(config.pinned_display);
     auto lg = util::fail_guard([&]() {
       images->stop();
       shutdown_event->raise(true);
@@ -5752,6 +5843,10 @@ namespace video {
     auto idr_events = mail->event<bool>(mail::idr);
 
     idr_events->raise(true);
+    if (config.pinned_display >= 0 && !(encoder->flags & PARALLEL_ENCODING)) {
+      // The synchronous path captures one display for every session it encodes.
+      BOOST_LOG(warning) << "Encoder ["sv << encoder->name << "] can't give this session a display of its own; it shows the shared one"sv;
+    }
     if (encoder->flags & PARALLEL_ENCODING) {
       capture_async(std::move(mail), config, channel_data);
     } else {
@@ -6637,7 +6732,8 @@ namespace video {
       capture_thread_ctx.capture_ctx_queue,
       std::ref(capture_thread_ctx.display_wp),
       std::ref(capture_thread_ctx.reinit_event),
-      std::ref(*capture_thread_ctx.encoder_p)
+      std::ref(*capture_thread_ctx.encoder_p),
+      capture_thread_ctx.pinned_display
     };
 
     return 0;

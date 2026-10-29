@@ -199,6 +199,7 @@ namespace rtsp_stream {
     snapshot->client_vrr_requested = client_vrr_requested;
     snapshot->perm = perm;
     snapshot->fps = fps;
+    snapshot->pinned_display = pinned_display;
     // Copied, not moved: the io_context thread still owns the original session.
     // stream::session::alloc() moves these out of the clone on the startup worker.
     snapshot->client_do_cmds = client_do_cmds;
@@ -1723,6 +1724,7 @@ namespace rtsp_stream {
       }
 
       config.monitor.input_only = session->input_only;
+      config.monitor.pinned_display = session->pinned_display;
 
       // Validate that clientRefreshRateX100 is consistent with maxFPS.
       // Some clients send a stale or incorrect clientRefreshRateX100 (e.g. 6000 = 60fps)
