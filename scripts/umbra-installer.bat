@@ -77,9 +77,28 @@ if exist "%STAGE_FOLDER%\Umbra.exe" (
 )
 
 rem ---------------------------------------------------------------------------
-rem Fetch the host installer chained by the bundle
+rem The host installer chained by the bundle
+rem
+rem publish-release.bat builds it from host\ first and passes it in through
+rem UMBRA_LOCAL_HOST, so a release bundles its own host. Run on its own, this
+rem bundles the newest published host instead (fetch-host.bat).
 rem ---------------------------------------------------------------------------
-if "%WITH_HOST%"=="1" (
+if "%WITH_HOST%"=="1" if not "%UMBRA_LOCAL_HOST%"=="" (
+    if not exist "%UMBRA_LOCAL_HOST%" (
+        echo UMBRA_LOCAL_HOST points at %UMBRA_LOCAL_HOST%, which doesn't exist.
+        exit /b 1
+    )
+    if not exist "%BUILD_ROOT%\host" mkdir "%BUILD_ROOT%\host"
+    copy /y "%UMBRA_LOCAL_HOST%" "%BUILD_ROOT%\host\UmbraHostSetup.exe" >nul
+    if !ERRORLEVEL! NEQ 0 (
+        echo Could not copy the host installer from %UMBRA_LOCAL_HOST%.
+        exit /b 1
+    )
+    > "%BUILD_ROOT%\host\TAG.txt" echo v%UMBRA_LOCAL_HOST_VERSION%
+    echo Bundling the host built from host\ ^(%UMBRA_LOCAL_HOST_VERSION%^)
+)
+
+if "%WITH_HOST%"=="1" if "%UMBRA_LOCAL_HOST%"=="" (
     rem The cache is only usable if it holds the newest host release. Keying it on
     rem the file existing was enough to make a release ship a months-old host with
     rem no warning, so the tag that was downloaded is compared against the tag that
@@ -90,8 +109,10 @@ if "%WITH_HOST%"=="1" (
         for /f "usebackq delims=" %%t in ("%BUILD_ROOT%\host\TAG.txt") do set HOST_CACHE_TAG=%%t
     )
 
+    rem The newest release that carries a host installer: since the host moved into
+    rem this repository, every Umbra release does, and the ones before didn't.
     set HOST_LATEST_TAG=
-    for /f "usebackq delims=" %%t in (`gh release list --repo Totaie/umbra-host --limit 40 --json tagName --jq "[.[].tagName | select(test(\"^v[0-9]+[.][0-9]+[.][0-9]+$\"))] | sort_by(ltrimstr(\"v\") | split(\".\") | map(tonumber)) | last" 2^>nul`) do (
+    for /f "usebackq delims=" %%t in (`gh api "repos/Totaie/umbra/releases?per_page=40" --jq "[.[] | select(.draft | not) | select(any(.assets[]; .name | startswith(\"UmbraHostSetup-\"))) | .tag_name | select(test(\"^v[0-9]+[.][0-9]+[.][0-9]+$\"))] | sort_by(ltrimstr(\"v\") | split(\".\") | map(tonumber)) | last // empty" 2^>nul`) do (
         if not defined HOST_LATEST_TAG set HOST_LATEST_TAG=%%t
     )
 
@@ -111,7 +132,9 @@ if "%WITH_HOST%"=="1" (
     ) else (
         echo Using cached !HOST_CACHE_TAG! host installer at %BUILD_ROOT%\host\UmbraHostSetup.exe
     )
+)
 
+if "%WITH_HOST%"=="1" (
     rem Bundle.wxs compares this against the installed sunshine.exe's file version to
     rem decide whether the host needs upgrading, so it has to be the plain numeric
     rem version the host stamps into its binary - the tag without its leading "v".

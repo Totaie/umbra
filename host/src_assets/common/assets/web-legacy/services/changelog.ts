@@ -18,7 +18,7 @@ export interface LoadChangelogResult {
 }
 
 const CHANGELOG_ASSET_URL = './assets/changelog.json';
-const GITHUB_RELEASES_URL = 'https://api.github.com/repos/Totaie/umbra-host/releases';
+const GITHUB_RELEASES_URL = 'https://api.github.com/repos/Totaie/umbra/releases';
 
 function isChangelogEntry(value: unknown): value is ChangelogEntry {
   return !!value && typeof value === 'object' && typeof (value as ChangelogEntry).tag === 'string';

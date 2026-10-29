@@ -15,7 +15,7 @@ param(
 )
 
 # Constants
-$DocsUrl = "https://github.com/Totaie/umbra-host"
+$DocsUrl = "https://github.com/Totaie/umbra"
 
 # Set preference variables for output streams
 $InformationPreference = 'Continue'

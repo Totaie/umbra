@@ -112,6 +112,8 @@ private:
     QString m_HostUpdateAssetDigest;
 
     QString m_CachedExecutable;
+    void requestHostReleases(const QString& url);
+
     QNetworkAccessManager* m_Nam = nullptr;
     bool m_Busy = false;
     QTimer m_PollTimer;

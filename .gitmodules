@@ -10,3 +10,120 @@ url=https://github.com/qiin2333/moonlight-common-c.git
 [submodule "third-party/AMF"]
 	path = third-party/AMF
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/AMF.git
+
+# Umbra Host (host/). update = none keeps a plain "git submodule update --init
+# --recursive", and CI checkouts of the client, from fetching all of these:
+# the host build fetches them itself (scripts\fetch-host-submodules.bat).
+[submodule "host/packaging/linux/flatpak/deps/flatpak-builder-tools"]
+	path = host/packaging/linux/flatpak/deps/flatpak-builder-tools
+	url = https://github.com/flatpak/flatpak-builder-tools.git
+	branch = master
+	update = none
+[submodule "host/packaging/linux/flatpak/deps/shared-modules"]
+	path = host/packaging/linux/flatpak/deps/shared-modules
+	url = https://github.com/flathub/shared-modules.git
+	branch = master
+	update = none
+[submodule "host/third-party/build-deps"]
+	path = host/third-party/build-deps
+	url = https://github.com/LizardByte/build-deps.git
+	branch = master
+	update = none
+[submodule "host/third-party/doxyconfig"]
+	path = host/third-party/doxyconfig
+	url = https://github.com/LizardByte/doxyconfig.git
+	branch = master
+	update = none
+[submodule "host/third-party/glad"]
+	path = host/third-party/glad
+	url = https://github.com/Dav1dde/glad.git
+	update = none
+[submodule "host/third-party/googletest"]
+	path = host/third-party/googletest
+	url = https://github.com/google/googletest.git
+	branch = main
+	update = none
+[submodule "host/third-party/inputtino"]
+	path = host/third-party/inputtino
+	url = https://github.com/games-on-whales/inputtino.git
+	branch = stable
+	update = none
+[submodule "host/third-party/libdisplaydevice"]
+	path = host/third-party/libdisplaydevice
+	url = https://github.com/Nonary/libdisplaydevice.git
+	branch = display_rework_v2
+	update = none
+[submodule "host/third-party/nanors"]
+	path = host/third-party/nanors
+	url = https://github.com/sleepybishop/nanors.git
+	branch = master
+	update = none
+[submodule "host/third-party/nv-codec-headers"]
+	path = host/third-party/nv-codec-headers
+	url = https://github.com/FFmpeg/nv-codec-headers.git
+	branch = master
+	update = none
+[submodule "host/third-party/nvapi-open-source-sdk"]
+	path = host/third-party/nvapi-open-source-sdk
+	url = https://github.com/LizardByte/nvapi-open-source-sdk.git
+	branch = sdk
+	update = none
+[submodule "host/third-party/nvapi"]
+	path = host/third-party/nvapi
+	url = https://github.com/NVIDIA/nvapi.git
+	branch = main
+	update = none
+[submodule "host/third-party/plasma-wayland-protocols"]
+	path = host/third-party/plasma-wayland-protocols
+	url = https://github.com/KDE/plasma-wayland-protocols.git
+	branch = master
+	update = none
+[submodule "host/third-party/Simple-Web-Server"]
+	path = host/third-party/Simple-Web-Server
+	url = https://github.com/LizardByte-infrastructure/Simple-Web-Server.git
+	branch = master
+	update = none
+[submodule "host/third-party/TPCircularBuffer"]
+	path = host/third-party/TPCircularBuffer
+	url = https://github.com/michaeltyson/TPCircularBuffer.git
+	branch = master
+	update = none
+[submodule "host/third-party/ViGEmClient"]
+	path = host/third-party/ViGEmClient
+	url = https://github.com/LizardByte/Virtual-Gamepad-Emulation-Client.git
+	branch = master
+	update = none
+[submodule "host/third-party/wayland-protocols"]
+	path = host/third-party/wayland-protocols
+	url = https://github.com/LizardByte-infrastructure/wayland-protocols.git
+	branch = main
+	update = none
+[submodule "host/third-party/wlr-protocols"]
+	path = host/third-party/wlr-protocols
+	url = https://github.com/LizardByte-infrastructure/wlr-protocols.git
+	branch = master
+	update = none
+[submodule "host/third-party/moonlight-common-c"]
+	path = host/third-party/moonlight-common-c
+	url = https://github.com/moonlight-stream/moonlight-common-c.git
+	branch = master
+	update = none
+[submodule "host/third-party/tray"]
+	path = host/third-party/tray
+	url = https://github.com/Nonary/tray
+	branch = master
+	update = none
+[submodule "host/third-party/libwebrtc"]
+	path = host/third-party/libwebrtc
+	url = https://github.com/Nonary/libwebrtc
+	branch = feat/upgrade-to-m137
+	update = none
+[submodule "host/third-party/depot_tools"]
+	path = host/third-party/depot_tools
+	url = https://chromium.googlesource.com/chromium/tools/depot_tools.git
+	update = none
+[submodule "host/third-party/libvirtualdisplay"]
+	path = host/third-party/libvirtualdisplay
+	url = https://github.com/Nonary/libvirtualdisplay.git
+	branch = master
+	update = none

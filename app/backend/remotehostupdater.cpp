@@ -79,18 +79,29 @@ int RemoteHostUpdater::compareVersions(const QString& a, const QString& b)
 
 void RemoteHostUpdater::refreshLatest()
 {
-    // Same feed and same rule as the host itself uses (umbra-host src/self_update.cpp):
-    // the newest release that is not a draft or prerelease and carries an installer
-    // with a checksum. Anything else the host would refuse to install.
-    QNetworkRequest request(QUrl(QStringLiteral("https://api.github.com/repos/Totaie/umbra-host/releases?per_page=30")));
+    // The host is released with Umbra, from this repository. Hosts from before it moved
+    // here still read Totaie/umbra-host, where every release also gets a copy of the
+    // host installer (scripts\publish-release.bat), so the newest of the two is what a
+    // host can be updated to, whichever it reads.
+    for (const QString& repo : {QStringLiteral("Totaie/umbra"), QStringLiteral("Totaie/umbra-host")}) {
+        refreshLatestFrom(repo);
+    }
+}
+
+void RemoteHostUpdater::refreshLatestFrom(const QString& repo)
+{
+    // Same rule as the host itself uses (host/src/self_update.cpp): the newest release
+    // that is not a draft or prerelease and carries an installer with a checksum.
+    // Anything else the host would refuse to install.
+    QNetworkRequest request(QUrl(QStringLiteral("https://api.github.com/repos/%1/releases?per_page=30").arg(repo)));
     request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Umbra/%1").arg(VERSION_STR));
     request.setRawHeader("Accept", "application/vnd.github+json");
 
     QNetworkReply* reply = m_Nam->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, repo]() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
-            qWarning() << "Could not look up the newest Umbra Host release:" << reply->errorString();
+            qWarning() << "Could not look up the newest Umbra Host release in" << repo << ":" << reply->errorString();
             return;
         }
 
@@ -115,7 +126,7 @@ void RemoteHostUpdater::refreshLatest()
             }
         }
 
-        if (!best.isEmpty() && best != m_LatestVersion) {
+        if (!best.isEmpty() && (m_LatestVersion.isEmpty() || compareVersions(m_LatestVersion, best) < 0)) {
             m_LatestVersion = best;
             emit latestVersionChanged();
         }

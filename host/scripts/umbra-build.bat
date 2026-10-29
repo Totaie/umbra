@@ -64,6 +64,12 @@ rem PROJECT_VERSION from BUILD_VERSION (and requires BRANCH alongside it), and t
 rem is the value the host's update check compares against release tags. Letting it
 rem default while tagging a release something else makes every host believe it is
 rem perpetually out of date.
+rem The host is versioned with the client: unless told otherwise, it is whatever
+rem app\version.txt in the repository above says.
+if "%UMBRA_BUILD_VERSION%"=="" if exist "%SOURCE_ROOT%\..\app\version.txt" (
+    set /p UMBRA_BUILD_VERSION=<"%SOURCE_ROOT%\..\app\version.txt"
+)
+
 set VERSION_EXPORT=
 if not "%UMBRA_BUILD_VERSION%"=="" (
     set VERSION_EXPORT=export BRANCH=umbra-host-main; export BUILD_VERSION=%UMBRA_BUILD_VERSION%;

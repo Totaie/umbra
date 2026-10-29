@@ -13,15 +13,19 @@ rem
 rem Usage:
 rem   scripts\fetch-host.bat [owner/repo] [tag]
 rem
-rem Defaults to the latest release of Totaie/umbra-host, which is the host that
-rem supports passphrase pairing. Upstream Vibepollo does not.
+rem Defaults to the newest release of Totaie/umbra that carries a host installer.
+rem The host is built from host\ in this repository and released with Umbra;
+rem Totaie/umbra-host, where it used to live, still holds the older ones.
+rem
+rem scripts\publish-release.bat doesn't use this: it bundles the host it has just
+rem built. This is for building the installer on its own.
 rem
 rem GPLv3: redistributing this binary in the Umbra installer obliges us to offer
-rem the corresponding source. Totaie/umbra-host is the public fork satisfying that.
+rem the corresponding source, which is host\ in this public repository.
 rem ---------------------------------------------------------------------------
 
 set REPO=%~1
-if "%REPO%"=="" set REPO=Totaie/umbra-host
+if "%REPO%"=="" set REPO=Totaie/umbra
 
 set TAG=%~2
 
@@ -52,11 +56,15 @@ rem Sort by version rather than taking gh's first row. Our releases can share a
 rem creation timestamp, and when they do gh's order is arbitrary - it handed back
 rem v0.2.6 while v0.2.7 existed, and a client went out bundling the older host.
 if "%TAG%"=="" (
-    for /f "usebackq delims=" %%t in (`gh release list --repo "%REPO%" --limit 40 --json tagName --jq "[.[].tagName | select(test(\"^v[0-9]+[.][0-9]+[.][0-9]+$\"))] | sort_by(ltrimstr(\"v\") | split(\".\") | map(tonumber)) | last" 2^>nul`) do (
+    rem Only releases with a host installer: in Totaie/umbra, those from before the
+    rem host moved in have none.
+    for /f "usebackq delims=" %%t in (`gh api "repos/%REPO%/releases?per_page=40" --jq "[.[] | select(.draft | not) | select(any(.assets[]; .name | startswith(\"UmbraHostSetup-\"))) | .tag_name | select(test(\"^v[0-9]+[.][0-9]+[.][0-9]+$\"))] | sort_by(ltrimstr(\"v\") | split(\".\") | map(tonumber)) | last // empty" 2^>nul`) do (
         if not defined TAG set TAG=%%t
     )
     if "!TAG!"=="" (
-        echo No releases found in %REPO%.
+        echo No release in %REPO% has a host installer yet.
+        echo The ones from before the move are in Totaie/umbra-host:
+        echo   scripts\fetch-host.bat Totaie/umbra-host
         exit /b 1
     )
     echo Resolved newest release: !TAG!
@@ -64,10 +72,10 @@ if "%TAG%"=="" (
 
 if "%TAG%"=="" (
     echo Downloading the latest host installer from %REPO%...
-    gh release download --repo "%REPO%" --pattern "*Setup*.exe" --output "%OUT_FILE%" --clobber
+    gh release download --repo "%REPO%" --pattern "UmbraHostSetup-*.exe" --output "%OUT_FILE%" --clobber
 ) else (
     echo Downloading the !TAG! host installer from %REPO%...
-    gh release download "!TAG!" --repo "%REPO%" --pattern "*Setup*.exe" --output "%OUT_FILE%" --clobber
+    gh release download "!TAG!" --repo "%REPO%" --pattern "UmbraHostSetup-*.exe" --output "%OUT_FILE%" --clobber
 )
 if !ERRORLEVEL! NEQ 0 (
     echo Download failed. If %REPO% is private, check that 'gh auth status' shows an
@@ -76,7 +84,7 @@ if !ERRORLEVEL! NEQ 0 (
 )
 
 if not exist "%OUT_FILE%" (
-    echo No installer matching *Setup*.exe was found in that release.
+    echo No installer matching UmbraHostSetup-*.exe was found in that release.
     exit /b 1
 )
 

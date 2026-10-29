@@ -36,8 +36,11 @@
 // elapses if something is listening but not completing the handshake.
 #define HOST_PROBE_TIMEOUT_MS 500
 
-// The host publishes its own releases; the client reads the same feed.
-#define HOST_RELEASES_URL "https://api.github.com/repos/Totaie/umbra-host/releases?per_page=30"
+// The host is released with Umbra, from Totaie/umbra, and those releases carry its
+// installer too. Releases from before it moved there are in Totaie/umbra-host, which
+// is only read while Totaie/umbra has no host installer yet.
+#define HOST_RELEASES_URL "https://api.github.com/repos/Totaie/umbra/releases?per_page=30"
+#define OLD_HOST_RELEASES_URL "https://api.github.com/repos/Totaie/umbra-host/releases?per_page=30"
 
 HostManager::HostManager(QObject* parent)
     : QObject(parent)
@@ -285,7 +288,12 @@ void HostManager::checkHostForUpdate()
                 this, &HostManager::handleHostReleasesReply);
     }
 
-    QNetworkRequest request{QUrl(QStringLiteral(HOST_RELEASES_URL))};
+    requestHostReleases(QStringLiteral(HOST_RELEASES_URL));
+}
+
+void HostManager::requestHostReleases(const QString& url)
+{
+    QNetworkRequest request{QUrl(url)};
     request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("Umbra"));
     request.setRawHeader("Accept", "application/vnd.github+json");
     m_Nam->get(request);
@@ -359,6 +367,14 @@ void HostManager::handleHostReleasesReply(QNetworkReply* reply)
             continue;
         }
 
+        // Umbra's own releases from before the host moved in have no host installer,
+        // and their version numbers say nothing about the host's.
+        QString installerUrl, installerDigest;
+        findInstaller(release, installerUrl, installerDigest);
+        if (installerUrl.isEmpty()) {
+            continue;
+        }
+
         int suffix = 0;
         QVersionNumber candidate = QVersionNumber::fromString(
             tag.startsWith(QLatin1Char('v')) ? tag.mid(1) : tag, &suffix);
@@ -375,6 +391,11 @@ void HostManager::handleHostReleasesReply(QNetworkReply* reply)
     }
 
     if (best.isNull()) {
+        if (reply->url() == QUrl(QStringLiteral(HOST_RELEASES_URL))) {
+            // Nothing released from Totaie/umbra with a host yet: the old feed, then.
+            requestHostReleases(QStringLiteral(OLD_HOST_RELEASES_URL));
+            return;
+        }
         emit hostCheckFailed(tr("No Umbra Host releases were found to compare against."));
         return;
     }

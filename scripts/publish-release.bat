@@ -2,14 +2,16 @@
 setlocal enableDelayedExpansion
 
 rem ---------------------------------------------------------------------------
-rem Builds Umbra and publishes the installer to GitHub Releases.
+rem Builds Umbra and Umbra Host and publishes both to one GitHub release.
 rem
 rem Umbra updates itself from GitHub Releases: AutoUpdateChecker reads
 rem /releases/latest and looks for an installer asset whose name contains the
-rem running machine's architecture. This script produces exactly that.
+rem running machine's architecture. Umbra Host does the same for its own installer
+rem (host\src\self_update.cpp), and so does Umbra's Update button for other PCs.
 rem
-rem app\version.txt is the source of truth. The tag is v<version> and the asset is
-rem UmbraSetup-<arch>-<version>.exe, so one release can carry x64 and ARM64.
+rem app\version.txt is the source of truth for both. The tag is v<version>, and the
+rem assets are UmbraSetup-<arch>-<version>.exe (Umbra, with this same host bundled)
+rem and UmbraHostSetup-<arch>-<version>.exe (the host on its own).
 rem
 rem Usage:
 rem   scripts\publish-release.bat [options]
@@ -18,10 +20,12 @@ rem   bump-patch      bump the third version component before building
 rem   bump-minor      bump the second, resetting patch
 rem   bump-major      bump the first, resetting the rest
 rem   prerelease      publish as a prerelease, so it is NOT offered as an update
-rem   dry-run         build and stage the asset without touching GitHub
-rem   no-host         build a client-only installer
+rem   dry-run         build and stage the assets without touching GitHub
+rem   no-host         build a client-only installer, and no host
 rem
-rem Requires the GitHub CLI (gh), authenticated. Builds are unsigned, so Windows
+rem Requires the GitHub CLI (gh), authenticated, Visual Studio for Umbra and MSYS2
+rem for the host (host\scripts\umbra-build.bat lists its packages). The first run
+rem fetches the host's submodules, which takes a while. Builds are unsigned, so Windows
 rem SmartScreen will warn on first run; see SIGNTOOL_PARAMS in build-arch.bat for
 rem where signing plugs in.
 rem ---------------------------------------------------------------------------
@@ -102,6 +106,65 @@ if "%DRYRUN%"=="0" (
     )
 )
 
+rem --- host ------------------------------------------------------------------
+rem Built first, as this same version, so the installer below bundles exactly this
+rem host instead of whichever one was published last.
+set HOST_ASSET=
+set HOST_ASSET_NAME=
+if "%NOHOST%"=="1" goto host_done
+
+if not exist "%SOURCE_ROOT%\host\third-party\Simple-Web-Server\server_http.hpp" (
+    echo Fetching the host's submodules ^(only the first time; this takes a while^)...
+    call "%SOURCE_ROOT%\scripts\fetch-host-submodules.bat"
+    if !ERRORLEVEL! NEQ 0 exit /b 1
+)
+
+echo.
+echo Building Umbra Host !VERSION!...
+set UMBRA_BUILD_VERSION=!VERSION!
+call "%SOURCE_ROOT%\host\scripts\umbra-build.bat" package
+if !ERRORLEVEL! NEQ 0 (
+    echo Host build failed.
+    exit /b 1
+)
+
+rem cpack writes the installer as <CPACK_PACKAGE_FILE_NAME>.exe. Read that name from
+rem the generated config rather than scanning for the newest .exe, because sunshine.exe
+rem and uninstall.exe also live in host\build and would be picked instead.
+set HOST_BUILD=%SOURCE_ROOT%\host\build
+set PKG_BASE=
+for /f "usebackq tokens=2 delims= " %%v in (`findstr /c:"CPACK_PACKAGE_FILE_NAME " "!HOST_BUILD!\CPackConfig.cmake"`) do (
+    if not defined PKG_BASE set PKG_BASE=%%~v
+)
+set PKG_BASE=!PKG_BASE:"=!
+set PKG_BASE=!PKG_BASE:)=!
+set HOST_PACKAGE=!HOST_BUILD!\cpack_artifacts\!PKG_BASE!.exe
+if not exist "!HOST_PACKAGE!" set HOST_PACKAGE=!HOST_BUILD!\!PKG_BASE!.exe
+if not exist "!HOST_PACKAGE!" (
+    echo cpack completed but !PKG_BASE!.exe was not found in host\build\cpack_artifacts or host\build.
+    exit /b 1
+)
+
+rem An installer older than the binary means packaging didn't run this time and the
+rem file is a previous build's - which is how host v0.2.7 once shipped as v0.2.6.
+powershell -NoProfile -Command "exit [int]((Get-Item '!HOST_PACKAGE!').LastWriteTime -lt (Get-Item '!HOST_BUILD!\sunshine.exe').LastWriteTime)"
+if !ERRORLEVEL! EQU 1 (
+    echo.
+    echo REFUSING TO PUBLISH: the host installer is older than sunshine.exe, so packaging
+    echo did not run for this build. Re-run and check that cpack produced a new installer.
+    exit /b 1
+)
+
+set HOST_ASSET_NAME=UmbraHostSetup-%ARCH%-!VERSION!.exe
+if not exist "%SOURCE_ROOT%\build\host-release" mkdir "%SOURCE_ROOT%\build\host-release"
+set HOST_ASSET=%SOURCE_ROOT%\build\host-release\!HOST_ASSET_NAME!
+copy /y "!HOST_PACKAGE!" "!HOST_ASSET!" >nul
+
+rem umbra-installer.bat bundles this one instead of downloading a published host.
+set UMBRA_LOCAL_HOST=!HOST_ASSET!
+set UMBRA_LOCAL_HOST_VERSION=!VERSION!
+:host_done
+
 rem --- build -----------------------------------------------------------------
 echo.
 echo Building Umbra !VERSION!...
@@ -151,16 +214,18 @@ rem what happened with host v0.2.1. Catch it as a clear message instead.
 rem ---------------------------------------------------------------------------
 set MPCMDRUN=%ProgramFiles%\Windows Defender\MpCmdRun.exe
 if exist "!MPCMDRUN!" (
-    echo Scanning the installer before publishing...
-    "!MPCMDRUN!" -Scan -ScanType 3 -File "!ASSET!" -DisableRemediation >nul 2>&1
-    if !ERRORLEVEL! EQU 2 (
-        echo.
-        echo REFUSING TO PUBLISH: Windows Defender flags !ASSET_NAME!.
-        echo Run this to see the detection:
-        echo   "!MPCMDRUN!" -Scan -ScanType 3 -File "!ASSET!" -DisableRemediation
-        exit /b 1
+    for %%a in ("!ASSET!" "!HOST_ASSET!") do if not "%%~a"=="" (
+        echo Scanning %%~nxa before publishing...
+        "!MPCMDRUN!" -Scan -ScanType 3 -File "%%~a" -DisableRemediation >nul 2>&1
+        if !ERRORLEVEL! EQU 2 (
+            echo.
+            echo REFUSING TO PUBLISH: Windows Defender flags %%~nxa.
+            echo Run this to see the detection:
+            echo   "!MPCMDRUN!" -Scan -ScanType 3 -File "%%~a" -DisableRemediation
+            exit /b 1
+        )
+        echo   clean
     )
-    echo   clean
 ) else (
     echo Windows Defender not found; skipping the pre-publish scan.
 )
@@ -175,10 +240,22 @@ echo.
 echo Built !ASSET_NAME! ^(!ASSET_SIZE! bytes^)
 echo   sha256 !SHA!
 
+set HOST_ASSET_SIZE=
+set HOST_SHA=
+if defined HOST_ASSET (
+    for %%f in ("!HOST_ASSET!") do set HOST_ASSET_SIZE=%%~zf
+    for /f "usebackq skip=1 tokens=*" %%h in (`certutil -hashfile "!HOST_ASSET!" SHA256`) do (
+        if not defined HOST_SHA set HOST_SHA=%%h
+    )
+    echo Built !HOST_ASSET_NAME! ^(!HOST_ASSET_SIZE! bytes^)
+    echo   sha256 !HOST_SHA!
+)
+
 if "%DRYRUN%"=="1" (
     echo.
-    echo Dry run: not publishing. Asset staged at
+    echo Dry run: not publishing. Assets staged at
     echo   !ASSET!
+    if defined HOST_ASSET echo   !HOST_ASSET!
     exit /b 0
 )
 
@@ -218,25 +295,49 @@ set NOTES=%TEMP%\umbra-release-notes-!VERSION!.md
 >>"!NOTES!" echo Installer: `!ASSET_NAME!` ^(!ASSET_SIZE! bytes^)
 >>"!NOTES!" echo SHA256: `!SHA!`
 >>"!NOTES!" echo.
+if defined HOST_ASSET (
+    >>"!NOTES!" echo Umbra Host !VERSION! is bundled, and on its own as `!HOST_ASSET_NAME!` ^(!HOST_ASSET_SIZE! bytes^)
+    >>"!NOTES!" echo SHA256: `!HOST_SHA!`
+    >>"!NOTES!" echo.
+)
 >>"!NOTES!" echo Existing installs offer this update automatically. Builds are unsigned,
 >>"!NOTES!" echo so Windows SmartScreen warns the first time you run the installer.
 >>"!NOTES!" echo.
 >>"!NOTES!" echo The Arch Linux package is attached a few minutes after publishing, by the
 >>"!NOTES!" echo Arch package workflow, built from this same commit.
 
+set PRERELEASE_FLAG=
+if "%PRERELEASE%"=="1" set PRERELEASE_FLAG=--prerelease
+set ASSETS="!ASSET!"
+if defined HOST_ASSET set ASSETS=!ASSETS! "!HOST_ASSET!"
+
 echo.
 echo Publishing !TAG!...
-if "%PRERELEASE%"=="1" (
-    gh release create "!TAG!" "!ASSET!" --repo %REPO% --target !COMMIT! --title "Umbra !VERSION!" --notes-file "!NOTES!" --prerelease
-) else (
-    gh release create "!TAG!" "!ASSET!" --repo %REPO% --target !COMMIT! --title "Umbra !VERSION!" --notes-file "!NOTES!"
-)
+gh release create "!TAG!" !ASSETS! --repo %REPO% --target !COMMIT! --title "Umbra !VERSION!" --notes-file "!NOTES!" !PRERELEASE_FLAG!
 if !ERRORLEVEL! NEQ 0 (
     del /q "!NOTES!" 2>nul
     echo gh release create failed.
     exit /b 1
 )
 del /q "!NOTES!" 2>nul
+
+rem --- hosts still looking at Totaie/umbra-host ------------------------------
+rem Hosts from before the move check Totaie/umbra-host for updates, so each host
+rem installer goes there too, under the same tag. The host it installs looks here
+rem from then on. Archive that repository once no host needs it, and this stops.
+if not defined HOST_ASSET goto bridge_done
+set BRIDGE_REPO=Totaie/umbra-host
+set BRIDGE_ARCHIVED=
+for /f "usebackq tokens=*" %%a in (`gh repo view !BRIDGE_REPO! --json isArchived --jq .isArchived 2^>nul`) do set BRIDGE_ARCHIVED=%%a
+if not "!BRIDGE_ARCHIVED!"=="false" goto bridge_done
+echo.
+echo Copying the host installer to !BRIDGE_REPO! for hosts that still look there...
+gh release create "!TAG!" "!HOST_ASSET!" --repo !BRIDGE_REPO! --title "Umbra Host !VERSION!" --notes "Umbra Host is now released with Umbra, from https://github.com/Totaie/umbra. This copy is for hosts that still look here for updates; the one it installs looks there." !PRERELEASE_FLAG!
+if !ERRORLEVEL! NEQ 0 (
+    echo   That failed. The release on %REPO% is fine, but hosts older than this
+    echo   one won't be offered it until it is copied there.
+)
+:bridge_done
 
 echo.
 echo Published !TAG!

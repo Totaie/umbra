@@ -353,7 +353,7 @@ onBeforeUnmount(() => {
           </div>
           <a
             class="button button--secondary button--compact"
-            href="https://github.com/Totaie/umbra-host/issues/new/choose"
+            href="https://github.com/Totaie/umbra/issues/new"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -380,7 +380,7 @@ onBeforeUnmount(() => {
           </div>
           <a
             class="button button--secondary button--compact"
-            href="https://github.com/Totaie/umbra-host/releases/latest"
+            href="https://github.com/Totaie/umbra/releases/latest"
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -51,6 +51,8 @@ signals:
 private:
     explicit RemoteHostUpdater(QObject* parent = nullptr);
 
+    void refreshLatestFrom(const QString& repo);
+
     QNetworkAccessManager* m_Nam;
     QTimer* m_RefreshTimer;
     QString m_LatestVersion;
