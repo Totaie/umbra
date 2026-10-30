@@ -2432,16 +2432,16 @@ QString Session::launchAdditionalDisplays()
                                                              : QRect());
     }
 
-    bool pinnable = false;
+    QString problem;
     QVector<SpanScreens::HostDisplay> layout;
     try {
         NvHTTP http(m_Computer);
-        layout = http.getHostDisplayLayout(&pinnable);
+        layout = readHostDisplaysForSpan(http, problem);
     } catch (...) {
         return tr("%1 didn't say which displays it has.").arg(m_Computer->name);
     }
-    if (!pinnable) {
-        return tr("Update Umbra Host on %1 to spread the stream across your screens.").arg(m_Computer->name);
+    if (!problem.isEmpty()) {
+        return problem;
     }
 
     auto placements = SpanScreens::plan(screens, layout, SDL_GetWindowDisplayIndex(m_Window));
@@ -2471,6 +2471,50 @@ QString Session::launchAdditionalDisplays()
     return error;
 }
 
+QVector<SpanScreens::HostDisplay> Session::readHostDisplaysForSpan(NvHTTP& http, QString& problem)
+{
+    problem.clear();
+
+    bool pinnable = false;
+    bool restorable = false;
+    QVector<SpanScreens::HostDisplay> layout = http.getHostDisplayLayout(&pinnable, &restorable);
+    if (!pinnable) {
+        // An older host shows every session the same display, so more windows would
+        // only be copies.
+        problem = tr("Update Umbra Host on %1 to spread the stream across your screens.").arg(m_Computer->name);
+        return {};
+    }
+    if (layout.size() >= 2 || !restorable) {
+        return layout;
+    }
+
+    // One display can mean a stream before this one switched the others off and left
+    // them that way. The host puts them back if nothing is streaming.
+    QString state;
+    int inactive = -1;
+    layout = http.restoreHostDisplays(&state, &inactive);
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Screens: asked the host for its displays without a stream: %s, %d display(s), %d switched off",
+                qPrintable(state), (int)layout.size(), inactive);
+    if (layout.size() >= 2) {
+        return layout;
+    }
+
+    if (inactive > 0 && state == QLatin1String("busy")) {
+        problem = tr("%1 switches its other displays off while it streams. Disconnect, then use Connect to All Displays.")
+                      .arg(m_Computer->name);
+    }
+    else if (inactive > 0) {
+        problem = tr("%1 has another display switched off. Turn it on in its display settings to spread the stream across your screens.")
+                      .arg(m_Computer->name);
+    }
+    else {
+        problem = tr("%1 only has one display turned on, so there is nothing to spread across your screens.")
+                      .arg(m_Computer->name);
+    }
+    return layout;
+}
+
 void Session::planSpanScreens(NvHTTP& http)
 {
     // Once per session. A reconnect keeps whatever this window was given, pinned or
@@ -2481,7 +2525,7 @@ void Session::planSpanScreens(NvHTTP& http)
     m_SpanPlanned = true;
 
     m_SpanOthers.clear();
-    m_SpanUnsupported = false;
+    m_SpanNote.clear();
     m_PinnedHostDisplay = -1;
     m_PinnedHostDisplayName.clear();
 
@@ -2497,20 +2541,16 @@ void Session::planSpanScreens(NvHTTP& http)
         return;
     }
 
-    bool pinnable = false;
     QVector<SpanScreens::HostDisplay> layout;
     try {
-        layout = http.getHostDisplayLayout(&pinnable);
+        layout = readHostDisplaysForSpan(http, m_SpanNote);
     } catch (...) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Screens: the host didn't list its displays");
         return;
     }
-    if (!pinnable) {
-        // An older host shows every session the same display, so more windows would
-        // only be copies. Say so once the stream is up.
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "Screens: this Umbra Host can't show a different display per window");
-        m_SpanUnsupported = true;
+    if (!m_SpanNote.isEmpty()) {
+        // Said once the stream is up, instead of quietly opening one window.
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Screens: %s", qPrintable(m_SpanNote));
         return;
     }
 
@@ -4181,9 +4221,8 @@ void Session::exec()
                                        m_Preferences->clientScreenIndex < 0 &&
                                        !isSpanChild());
 
-    if (m_SpanUnsupported) {
-        showStreamingToast(tr("Update Umbra Host on %1 to spread the stream across your screens.")
-                               .arg(m_Computer->name), 6000);
+    if (!m_SpanNote.isEmpty()) {
+        showStreamingToast(m_SpanNote, 8000);
     }
 
     m_MenuPanel->setActionCallback([this](OverlayMenuPanel::MenuAction action) {

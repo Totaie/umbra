@@ -604,19 +604,9 @@ NvHTTP::getSwitchableDisplays(int* currentIndex)
     return names;
 }
 
-QVector<SpanScreens::HostDisplay>
-NvHTTP::getHostDisplayLayout(bool* pinnable)
+namespace {
+QVector<SpanScreens::HostDisplay> parseHostDisplays(const QJsonObject& response)
 {
-    QJsonObject response = openJsonConnectionToObject(m_BaseUrlHttps,
-                                                      "actions/displays",
-                                                      QJsonObject(),
-                                                      false,
-                                                      FAST_FAIL_TIMEOUT_MS,
-                                                      NvLogLevel::NVLL_ERROR);
-    if (pinnable != nullptr) {
-        *pinnable = response.value("pinnable").toBool(false);
-    }
-
     QVector<SpanScreens::HostDisplay> layout;
     const QJsonArray displays = response.value("displays").toArray();
     for (const QJsonValue& value : displays) {
@@ -631,6 +621,45 @@ NvHTTP::getHostDisplayLayout(bool* pinnable)
         layout.append(display);
     }
     return layout;
+}
+}
+
+QVector<SpanScreens::HostDisplay>
+NvHTTP::getHostDisplayLayout(bool* pinnable, bool* restorable)
+{
+    QJsonObject response = openJsonConnectionToObject(m_BaseUrlHttps,
+                                                      "actions/displays",
+                                                      QJsonObject(),
+                                                      false,
+                                                      FAST_FAIL_TIMEOUT_MS,
+                                                      NvLogLevel::NVLL_ERROR);
+    if (pinnable != nullptr) {
+        *pinnable = response.value("pinnable").toBool(false);
+    }
+    if (restorable != nullptr) {
+        *restorable = response.value("restorable").toBool(false);
+    }
+    return parseHostDisplays(response);
+}
+
+QVector<SpanScreens::HostDisplay>
+NvHTTP::restoreHostDisplays(QString* state, int* inactive)
+{
+    // The host waits for the displays to come back before it answers, which can take
+    // several seconds.
+    QJsonObject response = openJsonConnectionToObject(m_BaseUrlHttps,
+                                                      "actions/displays/restore",
+                                                      QJsonObject(),
+                                                      true,
+                                                      20000,
+                                                      NvLogLevel::NVLL_ERROR);
+    if (state != nullptr) {
+        *state = response.value("state").toString();
+    }
+    if (inactive != nullptr) {
+        *inactive = response.value("inactive").toInt(-1);
+    }
+    return parseHostDisplays(response);
 }
 
 bool

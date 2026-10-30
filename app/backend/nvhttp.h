@@ -159,7 +159,14 @@ public:
     // session a display of its own (umbraDisplay at launch); a host that can't shows
     // every session the same display.
     QVector<SpanScreens::HostDisplay>
-    getHostDisplayLayout(bool* pinnable);
+    getHostDisplayLayout(bool* pinnable, bool* restorable = nullptr);
+
+    // Asks the host for its displays as they are without a stream (a stream before may
+    // have switched some off) and returns them. state receives what it did: restored,
+    // unchanged, busy (something is streaming) or failed; inactive how many monitors
+    // are still switched off, -1 if it can't tell.
+    QVector<SpanScreens::HostDisplay>
+    restoreHostDisplays(QString* state, int* inactive);
 
     QJsonObject
     configureAbr(bool enabled,

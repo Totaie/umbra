@@ -5005,17 +5005,8 @@ namespace nvhttp {
    * host has always understood. This endpoint exists only so the client can show
    * real display names instead of offering thirteen function keys.
    */
-  void getDisplays(resp_https_t response, req_https_t request) {
-    print_req<SunshineHTTPS>(request);
-
-    auto verified_client = get_verified_cert(request);
-    if (!has_client_perm(verified_client, PERM::_allow_view)) {
-      log_permission_denied("Displays"sv, "View stream"sv, verified_client, true);
-      response->write(SimpleWeb::StatusCode::client_error_unauthorized);
-      response->close_connection_after_response = true;
-      return;
-    }
-
+  /// What GET /actions/displays answers, and POST /actions/displays/restore after it.
+  nlohmann::json displays_json() {
     const auto listing = video::switchable_displays();
 
     nlohmann::json body = nlohmann::json::object();
@@ -5023,6 +5014,8 @@ namespace nvhttp {
     // A session launched with umbraDisplay=<index> shows that display whatever the
     // others show (see rtsp_stream::launch_session_t::pinned_display).
     body["pinnable"] = true;
+    // POST /actions/displays/restore exists.
+    body["restorable"] = true;
     body["displays"] = nlohmann::json::array();
     for (std::size_t i = 0; i < listing.names.size(); ++i) {
       nlohmann::json entry = nlohmann::json::object();
@@ -5036,6 +5029,108 @@ namespace nvhttp {
       }
       body["displays"].push_back(std::move(entry));
     }
+    return body;
+  }
+
+  /// Monitors that are plugged in but switched off, or -1 when that can't be told.
+  int inactive_display_count() {
+    const auto devices = display_helper_integration::enumerate_devices();
+    if (!devices) {
+      return -1;
+    }
+    return (int) std::count_if(devices->begin(), devices->end(), [](const auto &device) {
+      return !device.m_info.has_value();
+    });
+  }
+
+  /**
+   * POST /actions/displays/restore: the displays as they are without a stream, for a
+   * client about to lay them out across its screens.
+   *
+   * A stream can change the displays (a display configuration that turns the others
+   * off, say), and with "restore on disconnect" off they stay that way until the app
+   * is quit - so a client asking afterwards would be shown one display where the host
+   * has two. With no stream running and a monitor switched off, this does the restore
+   * a stream's end would have done, then waits for the displays to come back.
+   *
+   * Answers the same as GET /actions/displays, plus "state" (restored, unchanged,
+   * busy while something streams, failed) and "inactive", monitors still switched off.
+   */
+  void restoreDisplays(resp_https_t response, req_https_t request) {
+    print_req<SunshineHTTPS>(request);
+
+    auto verified_client = get_verified_cert(request);
+    // It changes the host's displays, as a launch does.
+    if (!has_client_perm(verified_client, PERM::launch)) {
+      log_permission_denied("Restore displays"sv, "Launch applications"sv, verified_client, true);
+      response->write(SimpleWeb::StatusCode::client_error_unauthorized);
+      response->close_connection_after_response = true;
+      return;
+    }
+
+    std::string state = "unchanged";
+    int inactive = inactive_display_count();
+#ifdef _WIN32
+    if (inactive > 0) {
+      bool dispatched = false;
+      {
+        std::unique_lock<std::mutex> lifecycle_lock(stream_lifecycle_mutex());
+        if (has_stream_session_activity()) {
+          // The displays are some stream's now; changing them would change its picture.
+          state = "busy";
+        } else {
+          BOOST_LOG(info) << "Displays: "sv << verified_client->name << " wants them as they are without a stream; "sv
+                          << inactive << " switched off, restoring"sv;
+          dispatched = display_helper_integration::revert(true);
+          state = dispatched ? "restored" : "failed";
+        }
+      }
+
+      if (dispatched) {
+        // The helper restores asynchronously. Wait for the monitors to come back, and
+        // then for the list to hold still for a moment, so the client plans with it.
+        const auto before = video::switchable_displays().names.size();
+        auto count = before;
+        auto changed_at = std::chrono::steady_clock::now();
+        const auto deadline = std::chrono::steady_clock::now() + 8s;
+        while (std::chrono::steady_clock::now() < deadline) {
+          std::this_thread::sleep_for(250ms);
+          const auto now_count = video::switchable_displays().names.size();
+          if (now_count != count) {
+            count = now_count;
+            changed_at = std::chrono::steady_clock::now();
+          } else if (count > before && std::chrono::steady_clock::now() - changed_at >= 1s) {
+            break;
+          }
+        }
+        inactive = inactive_display_count();
+        BOOST_LOG(info) << "Displays: "sv << count << " after restoring ("sv << before << " before)"sv;
+      }
+    }
+#endif
+
+    nlohmann::json body = displays_json();
+    body["state"] = state;
+    body["inactive"] = inactive;
+
+    SimpleWeb::CaseInsensitiveMultimap headers;
+    headers.emplace("Content-Type", "application/json");
+    response->write(SimpleWeb::StatusCode::success_ok, body.dump(), headers);
+    response->close_connection_after_response = true;
+  }
+
+  void getDisplays(resp_https_t response, req_https_t request) {
+    print_req<SunshineHTTPS>(request);
+
+    auto verified_client = get_verified_cert(request);
+    if (!has_client_perm(verified_client, PERM::_allow_view)) {
+      log_permission_denied("Displays"sv, "View stream"sv, verified_client, true);
+      response->write(SimpleWeb::StatusCode::client_error_unauthorized);
+      response->close_connection_after_response = true;
+      return;
+    }
+
+    nlohmann::json body = displays_json();
 
     SimpleWeb::CaseInsensitiveMultimap headers;
     headers.emplace("Content-Type", "application/json");
@@ -5265,6 +5360,7 @@ namespace nvhttp {
     https_server.resource["^/bitrate$"]["GET"] = setBitrate;
     https_server.resource["^/api/abr/capabilities$"]["GET"] = getAbrCapabilities;
     https_server.resource["^/actions/displays$"]["GET"] = getDisplays;
+    https_server.resource["^/actions/displays/restore$"]["POST"] = restoreDisplays;
 
     // Cap how much of a request body will be buffered.
     //

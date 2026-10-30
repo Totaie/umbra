@@ -241,6 +241,9 @@ private:
     // window is one of, and which host display it shows.
     bool isSpanChild() const { return !m_Preferences->spanGroup.isEmpty(); }
     void planSpanScreens(class NvHTTP& http);
+    // The host's displays for a spread, restored first if a stream left some switched
+    // off. problem receives why there aren't enough, for the user.
+    QVector<SpanScreens::HostDisplay> readHostDisplaysForSpan(class NvHTTP& http, QString& problem);
     QString startSpanWindows(const QVector<SpanScreens::Placement>& others);
     void showStreamingToast(const QString& message, int durationMs = 2000);
     void updateFileMappingMenuState();
@@ -375,7 +378,8 @@ private:
     QVector<QRect> m_ClientScreenBounds;
     int m_StartDisplayIndex = 0;
     bool m_SpanRequested = false;
-    bool m_SpanUnsupported = false;
+    // Why this session isn't spread across the screens it was asked to be, for a toast.
+    QString m_SpanNote;
     bool m_SpanPlanned = false;
     int m_PinnedHostDisplay = -1;
     QString m_PinnedHostDisplayName;
